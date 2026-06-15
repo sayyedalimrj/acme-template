@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "WooCommerce Client Dashboard",
+    "slug": "ww-client-dashboard",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "wwclient",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "platforms": ["ios", "android", "web"],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "plugins": ["expo-router", "expo-status-bar"]
+  }
+}
