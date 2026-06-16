@@ -22,6 +22,8 @@ export interface AppConfig {
   readonly defaultDirection: 'ltr' | 'rtl';
   /** Human-readable app name. */
   readonly appName: string;
+  /** Static app version (display only). */
+  readonly appVersion: string;
 }
 
 export const appConfig: AppConfig = {
@@ -30,4 +32,5 @@ export const appConfig: AppConfig = {
   defaultLocale: 'en',
   defaultDirection: 'ltr',
   appName: 'WooCommerce Client Dashboard',
+  appVersion: '0.1.0',
 };
