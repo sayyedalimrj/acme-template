@@ -98,6 +98,7 @@ export const dashboardOverview: DashboardOverview = {
   outOfStockCount: outOfStockProducts.length,
   fulfillment,
   actionItems,
+  inventoryAlerts: [...outOfStockProducts, ...lowStockProducts].slice(0, 6),
   recentOrders: [...orders].sort((a, b) => b.dateCreated.localeCompare(a.dateCreated)).slice(0, 5),
   topProducts,
   activity: [
