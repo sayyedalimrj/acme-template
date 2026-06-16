@@ -1,9 +1,10 @@
 /**
  * Sign-in screen (mock).
  *
- * A serious, minimal sign-in: optional name/email, then "Sign in to continue". There is no
- * password and nothing is stored — real authentication arrives later. On success the session
- * boundary flips to authenticated and the (auth) layout redirects into the app.
+ * Ecme-style auth: a centered, elevated card on a soft admin background with a circular brand
+ * logo, a strong "welcome" heading, a muted subtitle, and a clean form. Optional name/email,
+ * then "Sign in to continue" — no password, nothing stored. On success the session boundary
+ * flips to authenticated and the (auth) layout redirects into the app.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
@@ -15,7 +16,7 @@ import { useSession } from '@/session/SessionProvider';
 import { useTheme } from '@/theme';
 
 export function SignInScreen(): React.JSX.Element {
-  const { tokens } = useTheme();
+  const { tokens, shadow } = useTheme();
   const t = useT();
   const { signIn, status } = useSession();
   const { width } = useWindowDimensions();
@@ -28,69 +29,81 @@ export function SignInScreen(): React.JSX.Element {
     void signIn({ name: name.trim() || undefined, email: email.trim() || undefined });
   };
 
+  const cardWidth = Math.min(440, width - tokens.spacing.lg * 2);
+
   return (
-    <Screen scroll contentStyle={{ alignItems: 'center', justifyContent: 'center', flexGrow: 1 }}>
-      <Card style={{ width: '100%', maxWidth: Math.min(420, width - tokens.spacing.lg * 2) }}>
-        <View
-          style={{ alignItems: 'center', gap: tokens.spacing.sm, marginBottom: tokens.spacing.sm }}
-        >
+    <Screen
+      scroll
+      maxWidth={9999}
+      contentStyle={{ alignItems: 'center', justifyContent: 'center', flexGrow: 1 }}
+    >
+      <View style={{ width: cardWidth, gap: tokens.spacing.lg }}>
+        {/* Brand + welcome header, centered above the card (Ecme auth rhythm). */}
+        <View style={{ alignItems: 'center', gap: tokens.spacing.md }}>
           <View
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: tokens.radius.md,
+              width: 60,
+              height: 60,
+              borderRadius: tokens.radius.pill,
               backgroundColor: tokens.color.primary,
               alignItems: 'center',
               justifyContent: 'center',
+              ...shadow('md'),
             }}
           >
-            <Ionicons name="cart-outline" size={24} color={tokens.color.onPrimary} />
+            <Ionicons name="cart-outline" size={30} color={tokens.color.onPrimary} />
           </View>
-          <Text variant="title">{t('app.name')}</Text>
-          <Text tone="muted" style={{ textAlign: 'center' }}>
-            {t('auth.subtitle')}
-          </Text>
+          <View style={{ alignItems: 'center', gap: tokens.spacing.xs }}>
+            <Text variant="display" style={{ textAlign: 'center' }}>
+              {t('auth.welcome')}
+            </Text>
+            <Text tone="muted" style={{ textAlign: 'center', maxWidth: 360 }}>
+              {t('auth.subtitle')}
+            </Text>
+          </View>
         </View>
 
-        <FormField label={t('auth.nameLabel')}>
-          <Input
-            value={name}
-            onChangeText={setName}
-            placeholder={t('auth.namePlaceholder')}
-            autoCapitalize="words"
-            editable={!submitting}
-            returnKeyType="next"
+        <Card elevation="md" padding="lg" contentStyle={{ gap: tokens.spacing.md }}>
+          <FormField label={t('auth.nameLabel')}>
+            <Input
+              value={name}
+              onChangeText={setName}
+              placeholder={t('auth.namePlaceholder')}
+              autoCapitalize="words"
+              editable={!submitting}
+              returnKeyType="next"
+            />
+          </FormField>
+
+          <FormField label={t('auth.emailLabel')}>
+            <Input
+              value={email}
+              onChangeText={setEmail}
+              placeholder={t('auth.emailPlaceholder')}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!submitting}
+              returnKeyType="go"
+              onSubmitEditing={onSubmit}
+            />
+          </FormField>
+
+          <Button
+            label={submitting ? t('auth.signingIn') : t('auth.signInCta')}
+            onPress={onSubmit}
+            loading={submitting}
+            style={{ marginTop: tokens.spacing.xs }}
           />
-        </FormField>
 
-        <FormField label={t('auth.emailLabel')}>
-          <Input
-            value={email}
-            onChangeText={setEmail}
-            placeholder={t('auth.emailPlaceholder')}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!submitting}
-            returnKeyType="go"
-            onSubmitEditing={onSubmit}
-          />
-        </FormField>
+          <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>
+            {t('auth.mockNote')}
+          </Text>
+        </Card>
 
-        <Button
-          label={submitting ? t('auth.signingIn') : t('auth.signInCta')}
-          onPress={onSubmit}
-          loading={submitting}
-          style={{ marginTop: tokens.spacing.xs }}
-        />
-
-        <Text
-          variant="caption"
-          tone="muted"
-          style={{ textAlign: 'center', marginTop: tokens.spacing.xs }}
-        >
-          {t('auth.mockNote')}
+        <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>
+          {t('app.name')}
         </Text>
-      </Card>
+      </View>
     </Screen>
   );
 }

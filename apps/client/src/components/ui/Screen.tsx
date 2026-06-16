@@ -16,6 +16,8 @@ export interface ScreenProps {
   scroll?: boolean;
   /** Apply default content padding. */
   padded?: boolean;
+  /** Max content width on wide (desktop) viewports; content is centered. */
+  maxWidth?: number;
   contentStyle?: ViewStyle;
   testID?: string;
 }
@@ -24,6 +26,7 @@ export function Screen({
   children,
   scroll = true,
   padded = true,
+  maxWidth = 1180,
   contentStyle,
   testID,
 }: ScreenProps): React.JSX.Element {
@@ -35,6 +38,10 @@ export function Screen({
     padding,
     paddingBottom: padding + insets.bottom,
     gap: tokens.spacing.lg,
+    // Desktop-admin rhythm: cap and center content on wide screens, full-width on mobile.
+    width: '100%',
+    maxWidth,
+    alignSelf: 'center',
   };
 
   const containerStyle: ViewStyle = {

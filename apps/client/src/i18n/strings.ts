@@ -27,6 +27,7 @@ export const en = {
   'common.cancel': 'Cancel',
   // Authentication
   'auth.title': 'Sign in',
+  'auth.welcome': 'Welcome back!',
   'auth.subtitle': 'Sign in to manage your connected stores.',
   'auth.nameLabel': 'Your name',
   'auth.namePlaceholder': 'e.g. Alex Operator',
@@ -316,6 +317,7 @@ export const fa: Record<StringKey, string> = {
   'common.demoData': 'داده آزمایشی',
   'common.cancel': 'انصراف',
   'auth.title': 'ورود',
+  'auth.welcome': 'خوش آمدید!',
   'auth.subtitle': 'برای مدیریت فروشگاه‌های متصل خود وارد شوید.',
   'auth.nameLabel': 'نام شما',
   'auth.namePlaceholder': 'مثال: علی اپراتور',

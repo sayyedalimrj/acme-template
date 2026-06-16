@@ -11,7 +11,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { type ReactNode } from 'react';
+import React, { type ComponentProps, type ReactNode } from 'react';
 import { Pressable, View, type ViewStyle } from 'react-native';
 
 import {
@@ -29,12 +29,71 @@ import { fulfillmentBadge } from '@/features/orders/orderHelpers';
 import { stockBadge } from '@/features/products/productHelpers';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
-import { useTheme } from '@/theme';
+import { useTheme, type ColorTokens } from '@/theme';
 import { formatCurrency, formatDate, formatNumber } from '@/utils/format';
 import type { ActionItem, ActionSeverity, Order, Product } from '@/domain/types';
 
 import { orderStatusLabel, orderStatusTone } from './status';
 import { useDashboard } from './useDashboard';
+
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+type Tint = 'primary' | 'success' | 'warning' | 'info' | 'danger';
+
+const TINT: Record<Tint, { bg: keyof ColorTokens; fg: keyof ColorTokens }> = {
+  primary: { bg: 'primarySoft', fg: 'primary' },
+  success: { bg: 'successSoft', fg: 'success' },
+  warning: { bg: 'warningSoft', fg: 'warning' },
+  info: { bg: 'infoSoft', fg: 'info' },
+  danger: { bg: 'dangerSoft', fg: 'danger' },
+};
+
+/** Circular tinted icon chip (Ecme stat/list iconography). */
+function IconChip({
+  icon,
+  tint,
+  size = 44,
+}: {
+  icon: IoniconName;
+  tint: Tint;
+  size?: number;
+}): React.JSX.Element {
+  const { tokens } = useTheme();
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: tokens.radius.pill,
+        backgroundColor: tokens.color[TINT[tint].bg],
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Ionicons name={icon} size={Math.round(size * 0.46)} color={tokens.color[TINT[tint].fg]} />
+    </View>
+  );
+}
+
+/** Circular rank chip for merchandising lists (top products). */
+function RankChip({ rank }: { rank: number }): React.JSX.Element {
+  const { tokens } = useTheme();
+  return (
+    <View
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: tokens.radius.pill,
+        backgroundColor: tokens.color.primarySoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text variant="label" tone="primary" style={{ fontWeight: '700' }}>
+        {rank}
+      </Text>
+    </View>
+  );
+}
 
 const SEVERITY_TONE: Record<ActionSeverity, BadgeTone> = {
   critical: 'danger',
@@ -73,30 +132,47 @@ function usePressableRowStyle(): ViewStyle {
 interface KpiCardProps {
   label: string;
   value: string;
+  icon: IoniconName;
+  tint: Tint;
   onPress?: () => void;
 }
 
-function KpiCard({ label, value, onPress }: KpiCardProps): React.JSX.Element {
+function KpiCard({ label, value, icon, tint, onPress }: KpiCardProps): React.JSX.Element {
+  const { tokens, rowDirection } = useTheme();
   const content = (
-    <Card>
-      <Text
-        variant="caption"
-        tone="muted"
-        style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}
+    <Card contentStyle={{ gap: 0 }}>
+      <View
+        style={{
+          flexDirection: rowDirection,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: tokens.spacing.md,
+        }}
       >
-        {label}
-      </Text>
-      <Text variant="display">{value}</Text>
+        <View style={{ flex: 1, gap: tokens.spacing.xs }}>
+          <Text
+            variant="caption"
+            tone="muted"
+            style={{ textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600' }}
+          >
+            {label}
+          </Text>
+          <Text variant="title" numberOfLines={1}>
+            {value}
+          </Text>
+        </View>
+        <IconChip icon={icon} tint={tint} />
+      </View>
     </Card>
   );
   return (
-    <View style={{ flexGrow: 1, flexBasis: 180, minWidth: 150 }}>
+    <View style={{ flexGrow: 1, flexBasis: 200, minWidth: 168 }}>
       {onPress ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={label}
           onPress={onPress}
-          style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}
+          style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}
         >
           {content}
         </Pressable>
@@ -274,23 +350,36 @@ export function DashboardScreen(): React.JSX.Element {
         <KpiCard
           label={t('dashboard.metric.sales')}
           value={formatCurrency(data.salesTotal, data.currency)}
+          icon="cash-outline"
+          tint="success"
         />
         <KpiCard
           label={t('dashboard.metric.orders')}
           value={formatNumber(data.ordersCount)}
+          icon="receipt-outline"
+          tint="info"
           onPress={() => go('/orders')}
         />
         <KpiCard
           label={t('dashboard.metric.products')}
           value={formatNumber(data.productsCount)}
+          icon="pricetags-outline"
+          tint="primary"
           onPress={() => go('/products')}
         />
         <KpiCard
           label={t('dashboard.metric.customers')}
           value={formatNumber(data.customersCount)}
+          icon="people-outline"
+          tint="warning"
           onPress={() => go('/customers')}
         />
-        <KpiCard label={t('dashboard.metric.aov')} value={formatCurrency(aov, data.currency)} />
+        <KpiCard
+          label={t('dashboard.metric.aov')}
+          value={formatCurrency(aov, data.currency)}
+          icon="trending-up-outline"
+          tint="primary"
+        />
       </View>
 
       {/* B. Action center */}
@@ -323,6 +412,7 @@ export function DashboardScreen(): React.JSX.Element {
             <View key={order.id}>
               {index > 0 ? <Divider /> : null}
               <ListRow onPress={() => go(`/orders/${order.id}`)}>
+                <IconChip icon="receipt-outline" tint="info" size={40} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text variant="label">#{order.number}</Text>
                   <Text variant="caption" tone="muted" numberOfLines={1}>
@@ -367,6 +457,11 @@ export function DashboardScreen(): React.JSX.Element {
               <View key={product.id}>
                 {index > 0 ? <Divider /> : null}
                 <ListRow onPress={() => go(`/products/${product.id}`)}>
+                  <IconChip
+                    icon="cube-outline"
+                    tint={product.stockStatus === 'outofstock' ? 'danger' : 'warning'}
+                    size={40}
+                  />
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text variant="label" numberOfLines={1}>
                       {product.name}
@@ -400,6 +495,7 @@ export function DashboardScreen(): React.JSX.Element {
           <View key={entry.product.id}>
             {index > 0 ? <Divider /> : null}
             <ListRow onPress={() => go(`/products/${entry.product.id}`)}>
+              <RankChip rank={index + 1} />
               <View style={{ flex: 1, gap: 2 }}>
                 <Text variant="label" numberOfLines={1}>
                   {entry.product.name}

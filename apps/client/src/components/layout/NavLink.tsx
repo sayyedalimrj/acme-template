@@ -3,6 +3,8 @@
  *
  * Active state is derived from the current Expo Router pathname (no custom nav state). All
  * destinations are real routes and navigable; placeholder modules show a "Soon" badge.
+ * Ecme-style: icons aligned in a fixed lead column, comfortable row height, active items get
+ * a soft primary pill with primary icon + semibold label.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
@@ -40,8 +42,9 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
     flexDirection: rowDirection,
     alignItems: 'center',
     gap: tokens.spacing.sm,
+    minHeight: compact ? undefined : 44,
     paddingVertical: tokens.spacing.sm,
-    paddingHorizontal: tokens.spacing.md,
+    paddingHorizontal: compact ? tokens.spacing.md : tokens.spacing.sm,
     borderRadius: tokens.radius.md,
     backgroundColor: isActive ? tokens.color.primarySoft : 'transparent',
   };
@@ -55,10 +58,13 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
       onPress={() => router.navigate(item.href as never)}
       style={({ pressed }) => [
         containerStyle,
-        pressed ? { backgroundColor: tokens.color.surfaceAlt } : null,
+        pressed && !isActive ? { backgroundColor: tokens.color.surfaceAlt } : null,
       ]}
     >
-      <Ionicons name={item.icon} size={compact ? 18 : 20} color={color} />
+      {/* Fixed-width icon column keeps labels aligned. */}
+      <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={item.icon} size={compact ? 18 : 20} color={color} />
+      </View>
       {!compact && (
         <View
           style={{
