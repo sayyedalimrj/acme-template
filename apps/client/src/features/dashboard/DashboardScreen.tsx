@@ -423,9 +423,7 @@ export function DashboardScreen(): React.JSX.Element {
   const inventoryAlerts = (
     <Card
       title={t('dashboard.inventoryAlerts')}
-      headerAction={
-        <SectionLink label={t('dashboard.viewAllProducts')} onPress={() => go('/products')} />
-      }
+      headerAction={<SectionLink label={t('nav.inventory')} onPress={() => go('/inventory')} />}
     >
       {data.inventoryAlerts.length === 0 ? (
         <Text tone="muted">{t('dashboard.inventory.empty')}</Text>
