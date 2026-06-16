@@ -4,6 +4,12 @@ inclusion: always
 
 # Product Steering — WordPress/WooCommerce Client Dashboard
 
+> **Evolved direction:** the product has grown into a **WordPress Commerce Operating
+> System** (connect an existing store or have us launch a new one, plus a growth/AI/
+> automation layer and subscriptions). See `platform-vision.md` and the spec
+> `.kiro/specs/wordpress-commerce-os-platform/`. This file remains accurate for the shipped
+> dashboard (Phase 0); the platform spec governs Phases 1–13.
+
 ## What we are building
 
 A serious, commercial-grade **management dashboard that lets our clients operate their
