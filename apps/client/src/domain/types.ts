@@ -396,3 +396,223 @@ export interface CustomerListQuery {
   page?: number;
   pageSize?: number;
 }
+
+// ---------------------------------------------------------------------------
+// Onboarding platform (Phase 1) — "two front doors" into the operating dashboard
+//
+// Two onboarding paths share one set of types:
+//   A) Existing-site onboarding — connect a live store, or request managed handover.
+//   B) New-store launch — we provision a WordPress/WooCommerce store, then connect it.
+//
+// SECURITY (binding — see security-model.md): onboarding records hold ONLY frontend-safe
+// data (site URL, business info, brand assets, request status). They deliberately contain
+// NO credentials of any kind — no WooCommerce keys/secrets, no WordPress application
+// passwords, no admin logins. Real connection/provisioning happens server-side later
+// (backend/proxy or companion plugin); the client only ever receives an opaque connection
+// reference. None of the shapes below carry a credential field, and the mock layer rejects
+// any attempt to add one.
+// ---------------------------------------------------------------------------
+
+/** Which front door a request came through. */
+export type OnboardingType = 'existing' | 'new';
+
+/** Subscription plan identifiers (UI placeholder — no billing is implemented). */
+export type SubscriptionPlanId = 'starter' | 'growth' | 'pro' | 'managed';
+
+/** Whether the merchant has a brand asset ready, or still needs to provide it. */
+export type AssetReadiness = 'have' | 'need';
+
+/**
+ * Brand-asset checklist keys collected for a new-store launch. These describe what the
+ * merchant can provide vs. what our team will help produce — no files are uploaded in this
+ * mock (only readiness flags).
+ */
+export type BrandAssetKey =
+  | 'logo'
+  | 'product_photos'
+  | 'product_list'
+  | 'about_text'
+  | 'contact_info'
+  | 'shipping_payment';
+
+/** A single brand-asset checklist item with its readiness flag (frontend-safe). */
+export interface BrandAssetItem {
+  key: BrandAssetKey;
+  readiness: AssetReadiness;
+}
+
+// --- Path A: existing-site onboarding --------------------------------------
+
+/** Merchant's confirmation of their current platform (non-secret). */
+export type PlatformConfirmation = 'woocommerce' | 'not_sure' | 'other';
+
+/**
+ * What the merchant is asking for on an existing site.
+ * `migration_consult` is documented for later and intentionally not offered in the first
+ * mock UI, but modeled here so the adapter/support tooling can carry it without a type change.
+ */
+export type ExistingRequestType = 'connect_only' | 'managed_handover' | 'migration_consult';
+
+/** Status flow for Path A (existing-site onboarding). */
+export type ExistingOnboardingStatus =
+  | 'draft'
+  | 'submitted'
+  | 'under_review'
+  | 'needs_customer_action'
+  | 'connection_scheduled'
+  | 'connected'
+  | 'unsupported'
+  | 'archived';
+
+// --- Path B: new-store launch ----------------------------------------------
+
+/** Status flow for Path B (new-store launch). */
+export type NewLaunchStatus =
+  | 'draft'
+  | 'submitted'
+  | 'under_review'
+  | 'awaiting_assets'
+  | 'provisioning'
+  | 'ready_for_review'
+  | 'connected'
+  | 'delivered'
+  | 'archived';
+
+/** Union of every onboarding status across both paths. */
+export type OnboardingStatus = ExistingOnboardingStatus | NewLaunchStatus;
+
+/** One entry in a request's status timeline (status + when + optional note). */
+export interface OnboardingStatusEvent {
+  status: OnboardingStatus;
+  date: ISODate;
+  note?: string;
+}
+
+/** Fields common to both onboarding paths. Frontend-safe only — never credentials. */
+interface OnboardingRequestBase {
+  id: string;
+  /** Discriminant. */
+  type: OnboardingType;
+  /** Business / brand name (frontend-safe). */
+  businessName: string;
+  /** Frontend-safe contact note (no credentials, ever). */
+  contactNote?: string;
+  /** Chronological status timeline (oldest → newest). */
+  statusHistory: OnboardingStatusEvent[];
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
+/** Path A — existing WordPress/WooCommerce site onboarding request. */
+export interface ExistingSiteOnboardingRequest extends OnboardingRequestBase {
+  type: 'existing';
+  /** Public store URL (non-secret domain). */
+  siteUrl: string;
+  /** Merchant's platform confirmation. */
+  platform: PlatformConfirmation;
+  /** What they're requesting. */
+  requestType: ExistingRequestType;
+  status: ExistingOnboardingStatus;
+}
+
+/** Path B — new managed store launch request. */
+export interface NewStoreLaunchRequest extends OnboardingRequestBase {
+  type: 'new';
+  /** Desired or owned domain (non-secret). */
+  domain: string;
+  /** Business type / category. */
+  businessType: string;
+  /** Selected template from the catalog. */
+  templateId: string;
+  /** Selected plan (placeholder; no billing). */
+  planId: SubscriptionPlanId;
+  /** Brand-assets checklist with readiness flags. */
+  brandAssets: BrandAssetItem[];
+  /** Optional free-text brand color preference (frontend-safe; e.g. "سرمه‌ای و طلایی"). */
+  brandColorPreference?: string;
+  status: NewLaunchStatus;
+}
+
+/** A request from either onboarding path (discriminated by `type`). */
+export type OnboardingRequest = ExistingSiteOnboardingRequest | NewStoreLaunchRequest;
+
+/**
+ * Input for submitting a Path A request. No credential fields exist or are accepted; the
+ * mock adapter assigns id/status/timeline/timestamps.
+ */
+export interface ExistingOnboardingInput {
+  businessName: string;
+  siteUrl: string;
+  platform: PlatformConfirmation;
+  requestType: ExistingRequestType;
+  contactNote?: string;
+}
+
+/**
+ * Input for submitting a Path B request. No credential fields exist or are accepted; the
+ * mock adapter assigns id/status/timeline/timestamps.
+ */
+export interface NewLaunchInput {
+  businessName: string;
+  domain: string;
+  businessType: string;
+  templateId: string;
+  planId: SubscriptionPlanId;
+  brandAssets: BrandAssetItem[];
+  brandColorPreference?: string;
+  contactNote?: string;
+}
+
+// --- Template catalog & subscription plans (mock) --------------------------
+
+/** Availability of a template in the catalog. */
+export type TemplateAvailability = 'available' | 'coming_soon';
+
+/** A prepared WordPress/WooCommerce store template offered for new-store launches. */
+export interface StoreTemplate {
+  id: string;
+  name: string;
+  /** Human-readable business category (Persian), e.g. "پوشاک", "آرایشی و بهداشتی". */
+  category: string;
+  /** Short marketing description. */
+  description: string;
+  /** Who this template is best suited for. */
+  recommendedFor: string;
+  /** Selling points shown on the template card. */
+  highlights: string[];
+  /** Pages included out of the box (home, shop, product, blog, contact, …). */
+  includedPages: string[];
+  /** Human-readable estimated setup time, e.g. "۳ تا ۵ روز کاری". */
+  setupTimeLabel: string;
+  /** Optional minimum plan recommended to unlock this template. */
+  requiredPlan?: SubscriptionPlanId;
+  /**
+   * Preview image placeholder label (no real asset bundled). A future adapter can replace
+   * this with a real preview URL without a type change.
+   */
+  previewLabel: string;
+  /** Optional accent tone used to tint the preview placeholder. */
+  accent?: 'primary' | 'success' | 'warning' | 'info' | 'danger';
+  /** Whether this template is featured/recommended. */
+  recommended?: boolean;
+  /** Catalog availability. */
+  availability: TemplateAvailability;
+}
+
+/** A subscription plan shown during onboarding. Placeholder only — no billing/entitlements. */
+export interface SubscriptionPlan {
+  id: SubscriptionPlanId;
+  name: string;
+  /** Display-only price label (e.g. "رایگان در دوره آزمایشی") — never a real charge. */
+  priceLabel: string;
+  /** Short tagline describing who the plan is for. */
+  tagline: string;
+  /** Feature highlights for the plan card / matrix. */
+  features: string[];
+  /** Whether managed store setup/support is included in this plan. */
+  supportSetupIncluded: boolean;
+  /** Whether the future AI advisor / SMS automation are part of this plan (later). */
+  growthChannelsLater: boolean;
+  /** Whether this plan is highlighted as the suggested choice. */
+  recommended?: boolean;
+}

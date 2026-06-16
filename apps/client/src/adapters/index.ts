@@ -13,6 +13,7 @@ import { appConfig } from '@/config/app.config';
 import { createMockAuthAdapter } from './mock/mockAuthAdapter';
 import { createMockCustomerAdapter } from './mock/mockCustomerAdapter';
 import { createMockDashboardAdapter } from './mock/mockDashboardAdapter';
+import { createMockOnboardingAdapter } from './mock/mockOnboardingAdapter';
 import { createMockOrderAdapter } from './mock/mockOrderAdapter';
 import { createMockProductAdapter } from './mock/mockProductAdapter';
 import { createMockSiteAdapter } from './mock/mockSiteAdapter';
@@ -28,6 +29,7 @@ function createMockAdapters(): Adapters {
     products: createMockProductAdapter(),
     orders: createMockOrderAdapter(),
     customers: createMockCustomerAdapter(),
+    onboarding: createMockOnboardingAdapter(),
   };
 }
 
@@ -65,4 +67,5 @@ export type {
   ProductAdapter,
   OrderAdapter,
   CustomerAdapter,
+  OnboardingAdapter,
 } from './types';

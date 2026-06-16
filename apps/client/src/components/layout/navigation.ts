@@ -25,6 +25,7 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   { key: 'dashboard', labelKey: 'nav.dashboard', href: '/', icon: 'grid-outline' },
+  { key: 'onboarding', labelKey: 'nav.onboarding', href: '/onboarding', icon: 'rocket-outline' },
   { key: 'connect-site', labelKey: 'nav.connectSite', href: '/connect-site', icon: 'link-outline' },
   { key: 'products', labelKey: 'nav.products', href: '/products', icon: 'pricetags-outline' },
   { key: 'inventory', labelKey: 'nav.inventory', href: '/inventory', icon: 'cube-outline' },

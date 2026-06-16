@@ -15,12 +15,19 @@ import type {
   Customer,
   CustomerListQuery,
   DashboardOverview,
+  ExistingOnboardingInput,
+  ExistingSiteOnboardingRequest,
+  NewLaunchInput,
+  NewStoreLaunchRequest,
+  OnboardingRequest,
   Order,
   OrderListQuery,
   Paged,
   Product,
   ProductListQuery,
   SiteConnection,
+  StoreTemplate,
+  SubscriptionPlan,
 } from '@/domain/types';
 
 export interface AuthAdapter {
@@ -68,6 +75,29 @@ export interface CustomerAdapter {
   getCustomer(id: string): Promise<Customer>;
 }
 
+/**
+ * Onboarding adapter — the seam for the "two front doors" onboarding platform (Phase 1).
+ *
+ * Mock-only: it lists the template catalog + plan placeholders, lists/reads onboarding
+ * requests, and creates requests for both paths. It accepts ONLY frontend-safe input (no
+ * credentials of any kind). Real provisioning/connection happens server-side later; a future
+ * `http` implementation will target OUR backend/proxy with the same surface.
+ */
+export interface OnboardingAdapter {
+  /** Prepared WordPress/WooCommerce store templates (mock catalog). */
+  listTemplates(): Promise<StoreTemplate[]>;
+  /** Subscription plan placeholders (no billing). */
+  listPlans(): Promise<SubscriptionPlan[]>;
+  /** All onboarding requests (both paths), newest first. */
+  listRequests(): Promise<OnboardingRequest[]>;
+  /** A single onboarding request by id. */
+  getRequest(id: string): Promise<OnboardingRequest>;
+  /** Create a Path A (existing-site) request. No credential fields are accepted. */
+  createExistingSiteRequest(input: ExistingOnboardingInput): Promise<ExistingSiteOnboardingRequest>;
+  /** Create a Path B (new-store launch) request. No credential fields are accepted. */
+  createStoreLaunchRequest(input: NewLaunchInput): Promise<NewStoreLaunchRequest>;
+}
+
 /** The full set of adapters resolved from configuration. */
 export interface Adapters {
   auth: AuthAdapter;
@@ -76,4 +106,5 @@ export interface Adapters {
   products: ProductAdapter;
   orders: OrderAdapter;
   customers: CustomerAdapter;
+  onboarding: OnboardingAdapter;
 }
