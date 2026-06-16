@@ -126,6 +126,22 @@ export function SettingsScreen(): React.JSX.Element {
         </View>
       </Card>
 
+      {/* Subscription / plans */}
+      <Card title={t('settings.section.subscription')}>
+        <Text variant="caption" tone="muted">
+          {t('settings.subscription.note')}
+        </Text>
+        <View style={{ marginTop: tokens.spacing.sm, alignItems: 'flex-start' }}>
+          <Button
+            label={t('settings.subscription.view')}
+            variant="secondary"
+            size="sm"
+            onPress={() => router.navigate('/plans' as never)}
+            leading={<Ionicons name="pricetags-outline" size={16} color={tokens.color.text} />}
+          />
+        </View>
+      </Card>
+
       {/* B. Active site */}
       <Card title={t('settings.section.activeSite')}>
         {site ? (

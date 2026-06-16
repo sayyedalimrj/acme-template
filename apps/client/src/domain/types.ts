@@ -733,3 +733,110 @@ export interface SupportOperationsSummary {
 export interface AddInternalNoteInput {
   body: string;
 }
+
+// ---------------------------------------------------------------------------
+// Subscription / billing (Phase 3) — pricing & plan comparison (mock-only)
+//
+// Makes the business model visible inside the product: the four platform plans (Starter,
+// Growth, Pro, Managed), what each includes, and how features will be gated later. This is
+// MOCK-ONLY and FRONTEND-SAFE: prices are display-only labels (never a real charge), and
+// there is NO payment-method data, NO card details, NO real billing IDs, and NO provider
+// secrets. Real billing is a future backend + billing-provider concern (see security-model.md).
+//
+// Plan identity reuses the existing `SubscriptionPlan` / `SubscriptionPlanId` (also used by
+// onboarding) so plan names/labels stay consistent across the product.
+// ---------------------------------------------------------------------------
+
+/** Billing cadence for the pricing toggle. */
+export type BillingInterval = 'monthly' | 'yearly';
+
+/** Grouping for the feature-comparison matrix. */
+export type PlanFeatureCategory = 'core' | 'operations' | 'growth' | 'managed' | 'support';
+
+/** How available a feature is on a given plan. */
+export type PlanFeatureAvailability = 'included' | 'limited' | 'later' | 'none';
+
+/** A single comparison-matrix feature with its availability per plan. */
+export interface PlanFeature {
+  id: string;
+  category: PlanFeatureCategory;
+  /** Persian, frontend-safe label. */
+  label: string;
+  availability: Record<SubscriptionPlanId, PlanFeatureAvailability>;
+}
+
+/** A display-only price for one plan + interval. Never a real charge. */
+export interface PlanPrice {
+  /** Display-only amount label, e.g. "۴۹۰٬۰۰۰ تومان" or "رایگان". */
+  amountLabel: string;
+  /** Display-only period label, e.g. "ماهانه" / "سالانه". */
+  periodLabel: string;
+  /** Optional secondary note (e.g. effective monthly on a yearly plan). */
+  note?: string;
+}
+
+/** Per-plan pricing across both intervals (display-only). */
+export interface PlanPricing {
+  planId: SubscriptionPlanId;
+  monthly: PlanPrice;
+  yearly: PlanPrice;
+  /** Optional yearly savings label, e.g. "۲ ماه رایگان". */
+  savingsLabel?: string;
+}
+
+/** A single resolved entitlement for one plan (derived from PlanFeature for display). */
+export interface PlanEntitlement {
+  featureId: string;
+  label: string;
+  availability: PlanFeatureAvailability;
+}
+
+/** Lifecycle of the (mock) current subscription. */
+export type SubscriptionStatus = 'trialing' | 'active';
+
+/**
+ * Summary of the merchant's current (mock) subscription. Frontend-safe only — no provider
+ * customer/subscription IDs, no payment method, no card data.
+ */
+export interface CurrentSubscriptionSummary {
+  planId: SubscriptionPlanId;
+  planName: string;
+  interval: BillingInterval;
+  /** Display-only price label for the current plan/interval. */
+  priceLabel: string;
+  status: SubscriptionStatus;
+  /** Frontend-safe renewal note (no real provider dates/ids). */
+  renewalNote?: string;
+}
+
+/** The action a plan card offers relative to the current plan. */
+export type PlanActionState =
+  | 'current'
+  | 'upgrade'
+  | 'downgrade'
+  | 'contact_support'
+  | 'coming_soon';
+
+/** Whether a real billing provider is wired (it is not — mock only). */
+export type BillingProviderStatus = 'not_connected' | 'mock';
+
+/** Result of previewing a plan change (mock-only; no charge is computed or made). */
+export interface PlanChangePreview {
+  fromPlanId: SubscriptionPlanId;
+  toPlanId: SubscriptionPlanId;
+  interval: BillingInterval;
+  action: PlanActionState;
+  /** Display-only target price label. */
+  priceLabel: string;
+  /** Frontend-safe, mock explanation of what would happen (no real billing). */
+  note: string;
+}
+
+/** Acknowledgement of a mock plan-change request (no backend, no charge). */
+export interface PlanChangeRequestResult {
+  acknowledged: boolean;
+  toPlanId: SubscriptionPlanId;
+  interval: BillingInterval;
+  /** Frontend-safe confirmation message. */
+  message: string;
+}

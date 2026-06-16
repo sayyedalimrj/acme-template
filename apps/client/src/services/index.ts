@@ -7,4 +7,6 @@ export { orderService } from './orderService';
 export { customerService } from './customerService';
 export { onboardingService } from './onboardingService';
 export { supportService } from './supportService';
+export { subscriptionService } from './subscriptionService';
+export type { SubscriptionOverview } from './subscriptionService';
 export { queryKeys } from './queryKeys';
