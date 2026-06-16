@@ -1,12 +1,10 @@
 /**
- * Customers route ("/customers") — placeholder until the Customers module is built.
+ * Customers route ("/customers"). Thin wrapper around the Customers list feature screen.
  */
 import React from 'react';
 
-import { ComingSoonScreen } from '@/features/common/ComingSoonScreen';
-import { useT } from '@/i18n/I18nProvider';
+import { CustomerListScreen } from '@/features/customers/CustomerListScreen';
 
 export default function CustomersRoute(): React.JSX.Element {
-  const t = useT();
-  return <ComingSoonScreen title={t('nav.customers')} />;
+  return <CustomerListScreen />;
 }
