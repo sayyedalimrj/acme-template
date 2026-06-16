@@ -67,4 +67,10 @@ export const queryKeys = {
   advisorRecommendations: () => ['advisor', 'recommendations'] as const,
   /** Mutable advisor conversation. */
   advisorConversation: () => ['advisor', 'conversation'] as const,
+
+  // Media Studio is account-level (mock), so these keys are global, not site-scoped.
+  /** Static studio info (provider status + prompts + video concepts + safety notices). */
+  mediaStudioInfo: () => ['mediaStudio', 'info'] as const,
+  /** Output variants for a product. */
+  mediaStudioVariants: (productId: string) => ['mediaStudio', 'variants', productId] as const,
 } as const;

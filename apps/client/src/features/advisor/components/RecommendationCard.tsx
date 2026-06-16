@@ -75,6 +75,20 @@ export function RecommendationCard({
       );
     }
     // review_campaign / draft_copy / open_media_studio — disabled placeholders (no real action).
+    // Exception: open_media_studio navigates to the Media Studio when a target is provided.
+    if (action.kind === 'open_media_studio' && action.targetHref) {
+      const href = action.targetHref;
+      return (
+        <Button
+          key={action.kind}
+          label={label}
+          variant="secondary"
+          size="sm"
+          disabled={busy}
+          onPress={() => router.navigate(href as never)}
+        />
+      );
+    }
     return (
       <Button
         key={action.kind}

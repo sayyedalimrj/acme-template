@@ -15,6 +15,7 @@ import { createMockAuthAdapter } from './mock/mockAuthAdapter';
 import { createMockBillingAdapter } from './mock/mockBillingAdapter';
 import { createMockCustomerAdapter } from './mock/mockCustomerAdapter';
 import { createMockDashboardAdapter } from './mock/mockDashboardAdapter';
+import { createMockMediaStudioAdapter } from './mock/mockMediaStudioAdapter';
 import { createMockOnboardingAdapter } from './mock/mockOnboardingAdapter';
 import { createMockOrderAdapter } from './mock/mockOrderAdapter';
 import { createMockProductAdapter } from './mock/mockProductAdapter';
@@ -36,6 +37,7 @@ function createMockAdapters(): Adapters {
     support: createMockSupportAdapter(),
     billing: createMockBillingAdapter(),
     advisor: createMockAIAdvisorAdapter(),
+    mediaStudio: createMockMediaStudioAdapter(),
   };
 }
 
@@ -77,4 +79,5 @@ export type {
   SupportAdapter,
   BillingAdapter,
   AIAdvisorAdapter,
+  MediaStudioAdapter,
 } from './types';

@@ -11,4 +11,6 @@ export { subscriptionService } from './subscriptionService';
 export type { SubscriptionOverview } from './subscriptionService';
 export { aiAdvisorService } from './aiAdvisorService';
 export type { AdvisorOverview } from './aiAdvisorService';
+export { mediaStudioService } from './mediaStudioService';
+export type { MediaStudioInfo } from './mediaStudioService';
 export { queryKeys } from './queryKeys';

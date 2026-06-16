@@ -256,7 +256,7 @@ export const advisorRecommendations: AIAdvisorRecommendation[] = [
     status: 'suggested',
     related: { kind: 'product', label: 'محصولات', href: '/products' },
     suggestedStep: 'محصولات با عکس ضعیف را علامت بزنید (استودیو بعداً فعال می‌شود).',
-    actions: [{ kind: 'open_media_studio' }, { kind: 'dismiss' }],
+    actions: [{ kind: 'open_media_studio', targetHref: '/media-studio' }, { kind: 'dismiss' }],
   },
   {
     id: 'rec_media_hero_video',
@@ -267,7 +267,7 @@ export const advisorRecommendations: AIAdvisorRecommendation[] = [
     priority: 'low',
     status: 'suggested',
     suggestedStep: 'محصولات کلیدی برای محتوای تبلیغاتی را انتخاب کنید.',
-    actions: [{ kind: 'open_media_studio' }, { kind: 'dismiss' }],
+    actions: [{ kind: 'open_media_studio', targetHref: '/media-studio' }, { kind: 'dismiss' }],
   },
 ];
 
