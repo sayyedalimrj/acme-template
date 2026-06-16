@@ -1,12 +1,10 @@
 /**
- * Products route ("/products") — placeholder until the Products module is built.
+ * Products route ("/products"). Thin wrapper around the Products list feature screen.
  */
 import React from 'react';
 
-import { ComingSoonScreen } from '@/features/common/ComingSoonScreen';
-import { useT } from '@/i18n/I18nProvider';
+import { ProductListScreen } from '@/features/products/ProductListScreen';
 
 export default function ProductsRoute(): React.JSX.Element {
-  const t = useT();
-  return <ComingSoonScreen title={t('nav.products')} />;
+  return <ProductListScreen />;
 }
