@@ -26,6 +26,15 @@ import type {
   DashboardOverview,
   ExistingOnboardingInput,
   ExistingSiteOnboardingRequest,
+  MediaStudioAnalyzeInput,
+  MediaStudioAsset,
+  MediaStudioGenerationInput,
+  MediaStudioGenerationRequest,
+  MediaStudioOutputVariant,
+  MediaStudioProviderStatus,
+  MediaStudioPromptSuggestion,
+  MediaStudioSafetyNotice,
+  MediaStudioVideoConcept,
   NewLaunchInput,
   NewStoreLaunchRequest,
   OnboardingRequest,
@@ -192,6 +201,36 @@ export interface AIAdvisorAdapter {
   dismissRecommendationMock(id: string): Promise<AIAdvisorRecommendation[]>;
 }
 
+/**
+ * AI Product Media Studio adapter — the seam for the mock product-media workflow (Phase 4b).
+ *
+ * Mock-only: analyzes a SIMULATED source image (preset-driven, no upload), suggests fixes,
+ * and produces placeholder output-variant + promo-video concepts. It calls NO image/video
+ * provider/API, uploads NO files, sends NO product image anywhere, and publishes/mutates
+ * NOTHING. A future real provider must go through the backend with permission checks,
+ * audit logs, asset-ownership checks, and merchant approval (see security-model.md).
+ */
+export interface MediaStudioAdapter {
+  getProviderStatus(): Promise<MediaStudioProviderStatus>;
+  listPromptSuggestions(productId?: string): Promise<MediaStudioPromptSuggestion[]>;
+  listVideoConcepts(): Promise<MediaStudioVideoConcept[]>;
+  listSafetyNotices(): Promise<MediaStudioSafetyNotice[]>;
+  /** Analyze a simulated source asset (preset-driven); returns a mock quality analysis. */
+  analyzeSourceAssetMock(input: MediaStudioAnalyzeInput): Promise<MediaStudioAsset>;
+  /** Existing mock output variants for a product. */
+  listOutputVariants(productId: string): Promise<MediaStudioOutputVariant[]>;
+  /** Create mock output variants for a task (no real generation); returns the request. */
+  createGenerationMock(input: MediaStudioGenerationInput): Promise<MediaStudioGenerationRequest>;
+  /** A stored mock generation request by id. */
+  getGenerationRequest(id: string): Promise<MediaStudioGenerationRequest>;
+  /** Mark a variant reviewed (mock-only); returns the updated variants. */
+  markVariantReviewed(id: string): Promise<MediaStudioOutputVariant[]>;
+  /** Approve a variant (mock-only; nothing is published); returns the updated variants. */
+  approveVariantMock(id: string): Promise<MediaStudioOutputVariant[]>;
+  /** Dismiss a variant (mock-only); returns the updated variants. */
+  dismissVariantMock(id: string): Promise<MediaStudioOutputVariant[]>;
+}
+
 /** The full set of adapters resolved from configuration. */
 export interface Adapters {
   auth: AuthAdapter;
@@ -204,4 +243,5 @@ export interface Adapters {
   support: SupportAdapter;
   billing: BillingAdapter;
   advisor: AIAdvisorAdapter;
+  mediaStudio: MediaStudioAdapter;
 }

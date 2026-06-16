@@ -973,3 +973,175 @@ export interface AIAdvisorStoreContextSummary {
   planId: SubscriptionPlanId;
   planName: string;
 }
+
+// ---------------------------------------------------------------------------
+// AI Product Media Studio (Phase 4b) — mock-only product media workflow
+//
+// Helps merchants improve, repair, and generate product-media IDEAS from poor/low-quality
+// source photos. It selects a product, analyzes a (simulated) source image, suggests fixes,
+// and produces MOCK output-variant + promo-video concepts.
+//
+// SECURITY (binding — see security-model.md): MOCK-ONLY. NO real AI/image/video provider is
+// connected, NO external API is called, NO file is uploaded or stored, NO product image is
+// sent anywhere, and NO generated media is published or applied to products. There are NO
+// provider keys / model IDs / file tokens / secrets. Outputs are placeholders. "Repair" is a
+// suggested-improvement mock — it never claims exact restoration of badly damaged images. A
+// future real provider must go through the backend/provider adapter with permission checks,
+// audit logs, asset-ownership checks, and explicit merchant approval before publishing.
+// ---------------------------------------------------------------------------
+
+/** Whether a real media provider is wired (it is not — mock only). */
+export type MediaStudioProviderStatus = 'not_connected' | 'mock';
+
+/** Overall quality tier of a (simulated) source image. */
+export type MediaStudioSourceQuality = 'poor' | 'fair' | 'good' | 'marketplace_ready';
+
+/** A detected quality issue on a source image. */
+export type MediaStudioQualityIssue =
+  | 'low_resolution'
+  | 'blurry'
+  | 'bad_lighting'
+  | 'noisy'
+  | 'cluttered_background'
+  | 'cropped_product'
+  | 'damaged_or_dirty_product'
+  | 'wrong_angle'
+  | 'inconsistent_brand_style'
+  | 'missing_transparency'
+  | 'unknown';
+
+/** Simulated source-photo scenario presets (no real upload). */
+export type MediaStudioSourcePreset =
+  | 'blurry'
+  | 'cluttered_background'
+  | 'low_light'
+  | 'cropped_product'
+  | 'damaged_or_dirty'
+  | 'marketplace_ready';
+
+/** A media generation/repair task the Studio can mock. */
+export type MediaStudioTaskType =
+  | 'improve_low_quality_photo'
+  | 'repair_damaged_photo'
+  | 'remove_background'
+  | 'replace_background'
+  | 'create_white_background'
+  | 'create_lifestyle_image'
+  | 'create_hero_banner'
+  | 'create_social_ad_creative'
+  | 'create_promo_video_concept'
+  | 'create_product_storyboard'
+  | 'resize_for_marketplace'
+  | 'generate_alt_text';
+
+/** Where a generated variant is best used. */
+export type MediaStudioSuggestedUse =
+  | 'product_gallery'
+  | 'homepage_hero'
+  | 'instagram_post'
+  | 'story_reel'
+  | 'marketplace_listing';
+
+/** Review lifecycle of an output variant (mock-only). */
+export type MediaStudioActionStatus = 'suggested' | 'reviewed' | 'approved' | 'dismissed';
+
+/** Accent tone for placeholder preview blocks. */
+export type MediaStudioTone = 'primary' | 'success' | 'warning' | 'info' | 'danger';
+
+/**
+ * A (simulated) source asset for a product plus its mock quality analysis. No real file is
+ * uploaded or referenced — `preset` simulates a scenario and drives a deterministic analysis.
+ */
+export interface MediaStudioAsset {
+  id: string;
+  productId: string;
+  preset: MediaStudioSourcePreset;
+  /** Persian, frontend-safe label describing the simulated source. */
+  label: string;
+  quality: MediaStudioSourceQuality;
+  /** Mock quality score 0–100. */
+  qualityScore: number;
+  issues: MediaStudioQualityIssue[];
+  /** Tasks recommended to address the detected issues. */
+  recommendedFixes: MediaStudioTaskType[];
+  /** Frontend-safe note (suggested-improvement wording). */
+  note: string;
+}
+
+/** A single mock output variant (placeholder — no real generated asset). */
+export interface MediaStudioOutputVariant {
+  id: string;
+  productId: string;
+  taskType: MediaStudioTaskType;
+  /** Persian title/description, frontend-safe. */
+  title: string;
+  description: string;
+  status: MediaStudioActionStatus;
+  suggestedUse: MediaStudioSuggestedUse;
+  /** Placeholder preview tone (no real image). */
+  tone: MediaStudioTone;
+  /** Honest limitations/warnings about the mock output. */
+  limitations: string[];
+}
+
+/** Input for a mock generation request. */
+export interface MediaStudioGenerationInput {
+  productId: string;
+  taskType: MediaStudioTaskType;
+  preset?: MediaStudioSourcePreset;
+  /** Optional prompt text (frontend-safe; never sent anywhere). */
+  promptText?: string;
+}
+
+/** A mock generation request and its produced variants. */
+export interface MediaStudioGenerationRequest {
+  id: string;
+  productId: string;
+  taskType: MediaStudioTaskType;
+  preset?: MediaStudioSourcePreset;
+  promptText?: string;
+  status: 'mock_completed';
+  createdAt: ISODate;
+  variants: MediaStudioOutputVariant[];
+}
+
+/** One scene in a mock storyboard. */
+export interface MediaStudioStoryboardScene {
+  order: number;
+  /** Persian scene description. */
+  description: string;
+  durationLabel?: string;
+}
+
+/** A mock promo-video concept / storyboard. */
+export interface MediaStudioVideoConcept {
+  id: string;
+  /** Persian title/goal, frontend-safe. */
+  title: string;
+  goal: string;
+  scenes: MediaStudioStoryboardScene[];
+  captionIdea: string;
+  ctaIdea: string;
+  /** Recommended channel, e.g. "اینستاگرام". */
+  channel: string;
+}
+
+/** A clickable prompt chip. */
+export interface MediaStudioPromptSuggestion {
+  id: string;
+  text: string;
+}
+
+/** A frontend-safe safety/handoff notice shown in the Studio. */
+export interface MediaStudioSafetyNotice {
+  id: string;
+  severity: 'info' | 'warning';
+  /** Persian, frontend-safe message. */
+  message: string;
+}
+
+/** Input for analyzing a simulated source asset. */
+export interface MediaStudioAnalyzeInput {
+  productId: string;
+  preset: MediaStudioSourcePreset;
+}

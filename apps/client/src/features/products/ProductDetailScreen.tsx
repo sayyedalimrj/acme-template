@@ -10,7 +10,16 @@ import { useRouter } from 'expo-router';
 import React, { type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Badge, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from '@/components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  Screen,
+  Text,
+} from '@/components/ui';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
@@ -195,6 +204,15 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
 
       <Card title={t('product.section.media')}>
         <Text tone="muted">{t('product.media.placeholder')}</Text>
+        <View style={{ marginTop: tokens.spacing.sm, alignItems: 'flex-start' }}>
+          <Button
+            label={t('product.media.openStudio')}
+            variant="secondary"
+            size="sm"
+            onPress={() => router.navigate(`/media-studio?productId=${product.id}` as never)}
+            leading={<Ionicons name="color-palette-outline" size={16} color={tokens.color.text} />}
+          />
+        </View>
       </Card>
     </Screen>
   );

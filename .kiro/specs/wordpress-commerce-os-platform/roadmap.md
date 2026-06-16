@@ -33,9 +33,12 @@ recommendations (sales/inventory/marketing/content/media) · prompt chips. No re
 provider/API; every suggestion is review-only. Adapter boundary: mock → API provider →
 local model.
 
-### Phase 4b — AI Product Media Studio (mock) — future (Growth/AI)
-Product photo/video **generation and repair** from a merchant's own product images —
-including low-quality, messy, or damaged source photos — to produce marketplace-ready media.
+### Phase 4b — AI Product Media Studio (mock) ✅ (shipped)
+Mock product-media workflow: product selector · simulated source-image quality analysis ·
+task chooser (improve/repair/background/lifestyle/hero/ad/video/storyboard/resize/alt-text) ·
+placeholder output variants · promo-video/storyboard concepts. Review-only; no real
+image/video generation, no upload, nothing published. Adapter: mock → API provider →
+local/on-device model.
 
 Planned capabilities (all **mock-first**, provider-gated later):
 - Improve low-quality product photos; remove/replace background; produce clean
@@ -122,13 +125,12 @@ Real SMS provider · real billing provider · real AI provider · advanced autom
 - Advanced automation
 
 ## Next implementation PR (recommended)
-Phases 1 (onboarding), 2 (support operations), 3 (subscription plans), and 4 (AI Business
-Advisor) are shipped. The recommended next PR is **`AI Product Media Studio mock`** (Phase
-4b, P1) — mock product photo/video generation & repair from merchant images, background
-cleanup, hero images, and short promo-video concepts, producing **suggestions only** that
-require merchant approval before use/publish.
+Phases 1 (onboarding), 2 (support operations), 3 (subscription plans), 4 (AI Business
+Advisor), and 4b (AI Product Media Studio) are shipped. The recommended next PR is
+**`Customer Intelligence and Event Tracking model`** — a mock customer-intelligence layer
+and event taxonomy/schema (behavior/search/cart/purchase signals) feeding segments and
+the advisor, modeled client-side with no real tracking pipeline yet.
 
 Constraints (unchanged): **no real credentials, no real billing, no real provisioning, no
-real AI/media generation, no backend.** Mock-only, behind adapter boundaries, following
-`security-model.md`. The Media Studio remains mock/provider-gated and requires merchant
-approval before any generated asset is used or published.
+real AI/media generation, no real tracking/PII pipeline, no backend.** Mock-only, behind
+adapter boundaries, following `security-model.md`.
