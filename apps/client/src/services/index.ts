@@ -6,4 +6,5 @@ export { productService } from './productService';
 export { orderService } from './orderService';
 export { customerService } from './customerService';
 export { onboardingService } from './onboardingService';
+export { supportService } from './supportService';
 export { queryKeys } from './queryKeys';

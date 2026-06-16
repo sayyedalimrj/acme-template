@@ -10,6 +10,7 @@
  * security review (see security steering).
  */
 import type {
+  AddInternalNoteInput,
   AuthSession,
   ConnectSiteInput,
   Customer,
@@ -28,6 +29,8 @@ import type {
   SiteConnection,
   StoreTemplate,
   SubscriptionPlan,
+  SupportQueueItem,
+  SupportRequestStatus,
 } from '@/domain/types';
 
 export interface AuthAdapter {
@@ -98,6 +101,29 @@ export interface OnboardingAdapter {
   createStoreLaunchRequest(input: NewLaunchInput): Promise<NewStoreLaunchRequest>;
 }
 
+/**
+ * Support adapter — the seam for the internal support/operations queue (Phase 2).
+ *
+ * Mock-only and in-memory: it lists/reads queue items and performs staff actions (status
+ * progression, assignment, checklist toggles, internal notes). All data is frontend-safe;
+ * no method accepts or returns credentials. A future `apps/admin` + `apps/api` take over
+ * this surface without UI rework. There is NO real provisioning, connection, or notification.
+ */
+export interface SupportAdapter {
+  /** All support queue items, sorted by the adapter. */
+  listSupportQueue(): Promise<SupportQueueItem[]>;
+  /** A single queue item by id. */
+  getSupportRequest(id: string): Promise<SupportQueueItem>;
+  /** Move a request to a new status (mock-only; appends a timeline event). */
+  updateSupportStatus(id: string, status: SupportRequestStatus): Promise<SupportQueueItem>;
+  /** Assign/unassign a teammate (mock-only). Pass null to unassign. */
+  assignSupportRequest(id: string, assigneeId: string | null): Promise<SupportQueueItem>;
+  /** Toggle a checklist/playbook item (mock-only). */
+  toggleChecklistItem(id: string, checklistItemId: string): Promise<SupportQueueItem>;
+  /** Add a frontend-safe internal note (mock-only). */
+  addInternalNote(id: string, input: AddInternalNoteInput): Promise<SupportQueueItem>;
+}
+
 /** The full set of adapters resolved from configuration. */
 export interface Adapters {
   auth: AuthAdapter;
@@ -107,4 +133,5 @@ export interface Adapters {
   orders: OrderAdapter;
   customers: CustomerAdapter;
   onboarding: OnboardingAdapter;
+  support: SupportAdapter;
 }

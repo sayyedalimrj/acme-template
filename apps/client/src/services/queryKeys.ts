@@ -49,4 +49,10 @@ export const queryKeys = {
   onboardingRequests: () => ['onboarding', 'requests'] as const,
   /** A single onboarding request. */
   onboardingRequest: (id: string) => ['onboarding', 'request', id] as const,
+
+  // Support operations is internal/account-level, so these keys are global, not site-scoped.
+  /** All support queue items. */
+  supportQueue: () => ['support', 'queue'] as const,
+  /** A single support request. */
+  supportRequest: (id: string) => ['support', 'request', id] as const,
 } as const;

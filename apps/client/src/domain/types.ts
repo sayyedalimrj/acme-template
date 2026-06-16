@@ -616,3 +616,120 @@ export interface SubscriptionPlan {
   /** Whether this plan is highlighted as the suggested choice. */
   recommended?: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Support / internal operations queue (Phase 2)
+//
+// After merchants submit onboarding requests (Path A existing-site / Path B new-store),
+// our internal support/operations team reviews, assigns, tracks, and progresses them. This
+// models that queue as a serious internal workflow — but it is MOCK-ONLY and in-memory.
+//
+// SECURITY (binding — see security-model.md): support records hold ONLY frontend-safe data.
+// They never contain credentials of any kind (no WordPress admin/application passwords, no
+// WooCommerce consumer key/secret, no hosting/cPanel/FTP logins). The workflow explicitly
+// reminds staff NOT to collect such secrets in-app; real connection/provisioning is handled
+// later server-side (backend/proxy or companion plugin) or via an approved out-of-band
+// process. A risk flag exists specifically to surface insecure-credential-sharing attempts.
+// ---------------------------------------------------------------------------
+
+/** Which onboarding path a support request originated from. */
+export type SupportRequestType = OnboardingType;
+
+/** Support request status — shares the onboarding status vocabulary across both paths. */
+export type SupportRequestStatus = OnboardingStatus;
+
+/** One entry in a support request's status timeline (reuses the onboarding event shape). */
+export type SupportTimelineItem = OnboardingStatusEvent;
+
+/** Operational priority of a queue item. */
+export type SupportPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+/** A teammate who can be assigned to a request (frontend-safe display data only). */
+export interface SupportAssignee {
+  id: string;
+  name: string;
+  /** Display-only role, e.g. "اتصال" / "راه‌اندازی". */
+  role?: string;
+}
+
+/** A single playbook/checklist step for processing a request. */
+export interface SupportChecklistItem {
+  id: string;
+  /** Persian, frontend-safe label (no secrets). */
+  label: string;
+  done: boolean;
+}
+
+/** A frontend-safe internal note left by a teammate (never contains secrets). */
+export interface SupportInternalNote {
+  id: string;
+  /** Display name of the author (mock). */
+  author: string;
+  /** Frontend-safe note body. */
+  body: string;
+  createdAt: ISODate;
+}
+
+/** Who must act next on a request. */
+export type SupportActionOwner = 'support' | 'customer';
+
+/** The next concrete action for a request (frontend-safe summary + who owns it). */
+export interface SupportNextAction {
+  /** Persian, frontend-safe summary of the next step. */
+  summary: string;
+  owner: SupportActionOwner;
+}
+
+/**
+ * Handoff/security risk flags surfaced on a request. `credentials_requested_externally`
+ * specifically flags a request where insecure credential sharing was attempted — a reminder
+ * that secrets must never be collected in-app.
+ */
+export type SupportHandoffRisk =
+  | 'platform_unconfirmed'
+  | 'awaiting_customer'
+  | 'assets_incomplete'
+  | 'domain_unverified'
+  | 'credentials_requested_externally';
+
+/** A request in the internal support operations queue (all fields frontend-safe). */
+export interface SupportQueueItem {
+  id: string;
+  type: SupportRequestType;
+  /** Merchant / store name. */
+  storeName: string;
+  /** Existing public site URL (Path A only). */
+  siteUrl?: string;
+  /** Desired/owned domain (Path B only). */
+  domain?: string;
+  /** Selected template id + display name (Path B only). */
+  templateId?: string;
+  templateName?: string;
+  /** Selected plan id + display name. */
+  planId?: SubscriptionPlanId;
+  planName?: string;
+  status: SupportRequestStatus;
+  priority: SupportPriority;
+  /** Assigned teammate, or null when unassigned. */
+  assignee: SupportAssignee | null;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+  nextAction: SupportNextAction;
+  risks: SupportHandoffRisk[];
+  checklist: SupportChecklistItem[];
+  timeline: SupportTimelineItem[];
+  notes: SupportInternalNote[];
+}
+
+/** Aggregate counts shown in the support queue summary cards. */
+export interface SupportOperationsSummary {
+  totalOpen: number;
+  urgentOrHigh: number;
+  awaitingCustomer: number;
+  readyForReviewOrConnection: number;
+}
+
+/** Input for adding an internal note (frontend-safe; the adapter assigns id/author/date). */
+export interface AddInternalNoteInput {
+  body: string;
+}

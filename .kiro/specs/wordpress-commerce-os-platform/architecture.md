@@ -21,6 +21,7 @@ only when their phase is implemented (see `roadmap.md`). Extends `structure.md`.
     ├── events/                behavior/search/cart/purchase tracking — FUTURE
     ├── notifications/         SMS/email/back-in-stock delivery — FUTURE
     ├── ai/                    advisor, recommendations, content/campaign suggestions — FUTURE
+    ├── media-studio/          AI product photo/video generation & repair — FUTURE
     └── billing/               subscription lifecycle — FUTURE
 ```
 
@@ -36,6 +37,7 @@ only when their phase is implemented (see `roadmap.md`). Extends `structure.md`.
 | **services/events** | Ingest + store behavior events (search, view, cart, purchase, interest, back-in-stock, SMS click, conversion). | Feeds intelligence, advisor, automation. |
 | **services/notifications** | SMS/email/back-in-stock delivery with consent + opt-out. | Provider adapters (mock → Kavenegar/Twilio/email). |
 | **services/ai** | AI Business Advisor, recommendations, product copy + campaign suggestions. | Adapter: mock → API provider → local model. |
+| **services/media-studio** | AI Product Media Studio: generate/repair product photos & short videos from merchant images (incl. low-quality/damaged sources); background removal, lifestyle/hero shots, ad creatives. Output **suggestions only** — merchant approves before use/publish. | Adapter: `MediaStudioService`/`MediaStudioAdapter` (mock → API provider → local/on-device model if feasible). Product context (title, SKU, category, brand, price, audience, goal). Asset safety: no copyrighted/template assets, no auto-publish, store generated-asset metadata later. |
 | **services/billing** | Subscription lifecycle: plans, upgrades, invoices, dunning, entitlements. | Adapter: mock → real provider. Entitlements gate features. |
 
 ## Cross-cutting architecture principles
