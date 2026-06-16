@@ -11,7 +11,16 @@
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
-import { Badge, Card, DataList, Screen, Text, type Column } from '@/components/ui';
+import {
+  Badge,
+  Card,
+  DataList,
+  ErrorState,
+  LoadingState,
+  Screen,
+  Text,
+  type Column,
+} from '@/components/ui';
 import type { Order, TopProductEntry } from '@/domain/types';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
@@ -53,23 +62,21 @@ export function DashboardScreen(): React.JSX.Element {
 
   if (isLoading) {
     return (
-      <Screen scroll={false} contentStyle={{ alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={tokens.color.primary} />
-        <Text tone="muted">{t('common.loading')}</Text>
+      <Screen scroll={false} padded={false}>
+        <LoadingState label={t('common.loading')} />
       </Screen>
     );
   }
 
   if (isError || !data) {
     return (
-      <Screen scroll={false} contentStyle={{ alignItems: 'center', justifyContent: 'center' }}>
-        <Card style={{ maxWidth: 420, width: '100%' }}>
-          <Text variant="heading">{t('dashboard.error')}</Text>
-          <Text tone="muted">{t('dashboard.empty')}</Text>
-          <Text tone="primary" onPress={() => refetch()} accessibilityRole="button">
-            {t('common.retry')}
-          </Text>
-        </Card>
+      <Screen scroll={false} padded={false}>
+        <ErrorState
+          title={t('dashboard.error')}
+          body={t('dashboard.empty')}
+          retryLabel={t('common.retry')}
+          onRetry={() => refetch()}
+        />
       </Screen>
     );
   }

@@ -11,6 +11,15 @@ module.exports = defineConfig([
     ignores: ['dist/*', '.expo/*', 'node_modules/*', 'web-build/*'],
   },
   {
+    // The Jest setup file uses the `jest` global at module scope.
+    files: ['jest.setup.js'],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+      },
+    },
+  },
+  {
     rules: {
       // Enforce our cross-platform rules at lint time: no browser globals or
       // DOM-only access in shared app code (see .kiro/steering/tech.md).
