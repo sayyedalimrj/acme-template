@@ -39,4 +39,20 @@ export const queryKeys = {
   /** Single customer for a site. */
   customer: (siteId: string, customerId: string) =>
     ['site', siteId, 'customer', customerId] as const,
+
+  // Onboarding is account-level (pre-/cross-site), so these keys are global, not site-scoped.
+  /** Store template catalog (mock). */
+  onboardingTemplates: () => ['onboarding', 'templates'] as const,
+  /** Subscription plan placeholders. */
+  onboardingPlans: () => ['onboarding', 'plans'] as const,
+  /** All onboarding requests (both paths). */
+  onboardingRequests: () => ['onboarding', 'requests'] as const,
+  /** A single onboarding request. */
+  onboardingRequest: (id: string) => ['onboarding', 'request', id] as const,
+
+  // Support operations is internal/account-level, so these keys are global, not site-scoped.
+  /** All support queue items. */
+  supportQueue: () => ['support', 'queue'] as const,
+  /** A single support request. */
+  supportRequest: (id: string) => ['support', 'request', id] as const,
 } as const;

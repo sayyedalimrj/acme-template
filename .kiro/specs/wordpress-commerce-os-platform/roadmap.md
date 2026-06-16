@@ -14,13 +14,14 @@ App shell · mock auth · active site · dashboard (operational home) · product
 customers · settings · inventory + fulfillment workflow · Vercel web preview ·
 Ecme/Persian/RTL visual pass. Governed by `wordpress-woocommerce-client-dashboard-mvp`.
 
-### Phase 1 — Onboarding platform (mock) — **next**
+### Phase 1 — Onboarding platform (mock) ✅ (shipped)
 Existing-Site Onboarding + New-Store-Launch modules · template catalog (mock) · request
-status timelines · entry chooser. No real credentials, no provisioning. (See "Next PR".)
+status timelines · entry chooser. No real credentials, no provisioning.
 
-### Phase 2 — Support operations (mock)
-Internal support/admin queue (mock) · request detail · checklist + status changes (mock) ·
-assignment placeholder · delivery/connection handoff placeholder. (Future `apps/admin`.)
+### Phase 2 — Support operations (mock) ✅ (shipped)
+Internal support/admin queue (mock) · request detail/review · checklist/playbook + status
+changes (mock, in-memory) · assignment placeholder · internal notes · risk/handoff
+warnings · delivery/connection handoff placeholder. (Future `apps/admin`.)
 
 ### Phase 3 — Subscription plans UI (mock)
 Plans: Starter · Growth · Pro · Managed · feature matrix · plan-gate placeholders. No real
@@ -29,6 +30,30 @@ billing. Entitlement flags modeled client-side as placeholders.
 ### Phase 4 — AI Business Advisor (mock)
 Advisor chat/panel · store-context summary · sales/product/customer insights · campaign +
 product-copy suggestions. Adapter boundary: mock → API provider → local model.
+
+### Phase 4b — AI Product Media Studio (mock) — future (Growth/AI)
+Product photo/video **generation and repair** from a merchant's own product images —
+including low-quality, messy, or damaged source photos — to produce marketplace-ready media.
+
+Planned capabilities (all **mock-first**, provider-gated later):
+- Improve low-quality product photos; remove/replace background; produce clean
+  marketplace-ready product images.
+- Create lifestyle/hero product images and social-media ad creatives.
+- Generate short product promo videos.
+- Use an uploaded product photo as a **reference** (works even when the source is low
+  quality or messy, with clearly stated limitations).
+- Output **suggestions only** — the merchant must approve before any asset is used or
+  published.
+
+Architecture (documented now, built later):
+- **`MediaStudioService`** + **`MediaStudioAdapter`** following the existing service/adapter
+  seam: `mock → API provider → local/on-device model (if feasible)`.
+- **Product context** passed to generation: product title, SKU, category, brand, price,
+  target audience, campaign goal.
+- **Asset safety:** no copyrighted/template assets; **no automatic publishing without
+  merchant approval**; generated-asset metadata stored later (provenance, source image
+  reference, approval state). Real image/video generation is **out of scope** until the
+  provider integration phase and a content-safety review.
 
 ### Phase 5 — Customer intelligence / event model (schema only)
 Event taxonomy + schema docs; no real tracking script yet. Taxonomy:
@@ -78,6 +103,7 @@ Real SMS provider · real billing provider · real AI provider · advanced autom
 
 **P1**
 - AI Advisor (mock)
+- AI Product Media Studio (mock) — product photo/video generation & repair (Phase 4b)
 - Event tracking model (schema)
 - SMS / back-in-stock (mock)
 - Reports (lightweight)
@@ -94,20 +120,12 @@ Real SMS provider · real billing provider · real AI provider · advanced autom
 - Advanced automation
 
 ## Next implementation PR (recommended)
-**`Store Launch + Existing Site Onboarding + Template Catalog mock`** (Phase 1, P0).
+Phases 1 (onboarding) and 2 (support operations) are shipped. The recommended next PR is
+**`Subscription Plans UI mock`** (Phase 3, P0) — Starter/Growth/Pro/Managed plan cards, a
+feature matrix, and plan-gate placeholders with client-side entitlement flags and **no real
+billing** — or, if growth is prioritized first, **`AI Business Advisor mock`** (Phase 4, P1).
 
-Should include:
-- An **entry chooser**: "I already have a WordPress/WooCommerce site" vs "I want you to
-  launch a new store for me".
-- **Existing-site onboarding form** (site URL, business name, platform confirmation,
-  request type) with the **managed handover request** option.
-- **New-store-launch form** (domain, business type, template selection, package selection
-  placeholder, brand-assets checklist).
-- **Template catalog** (mock list with categories/highlights/preview placeholders).
-- **Package/subscription selection placeholder** (no billing).
-- **Request status timeline** for both paths (the status flows in `onboarding-paths.md`).
-- A mock `OnboardingService`/adapter + realistic mock request data; site-aware where
-  relevant; loading/empty/error states; Persian/RTL; existing UI primitives.
-
-Constraints: **no real credentials, no real provisioning, no backend.** Mock-only, behind
-adapter boundaries, following `security-model.md`.
+Constraints (unchanged): **no real credentials, no real billing, no real provisioning, no
+backend.** Mock-only, behind adapter boundaries, following `security-model.md`. The future
+**AI Product Media Studio** (Phase 4b) remains mock/provider-gated and requires merchant
+approval before any generated asset is used or published.
