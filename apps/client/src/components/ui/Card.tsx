@@ -5,9 +5,9 @@
  * Ecme card rhythm but implemented from scratch with RN primitives and theme tokens.
  */
 import React, { type ReactNode } from 'react';
-import { Platform, StyleSheet, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { useTheme } from '@/theme';
+import { useTheme, type ElevationLevel } from '@/theme';
 
 import { Text } from './Text';
 
@@ -16,6 +16,10 @@ export interface CardProps {
   title?: string;
   /** Optional element rendered on the trailing side of the header (e.g. an action). */
   headerAction?: ReactNode;
+  /** Shadow depth. Defaults to a subtle 'sm'. */
+  elevation?: ElevationLevel;
+  /** Padding override (token spacing key). Defaults to 'lg'. */
+  padding?: keyof ReturnType<typeof useTheme>['tokens']['spacing'];
   style?: ViewStyle;
   contentStyle?: ViewStyle;
   testID?: string;
@@ -25,30 +29,23 @@ export function Card({
   children,
   title,
   headerAction,
+  elevation = 'sm',
+  padding = 'lg',
   style,
   contentStyle,
   testID,
 }: CardProps): React.JSX.Element {
-  const { tokens, rowDirection } = useTheme();
+  const { tokens, rowDirection, shadow } = useTheme();
 
   const cardStyle: ViewStyle = {
     backgroundColor: tokens.color.surface,
     borderColor: tokens.color.border,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: tokens.borderWidth.hairline,
     borderRadius: tokens.radius.lg,
-    padding: tokens.spacing.lg,
+    padding: tokens.spacing[padding],
     gap: tokens.spacing.md,
-    // Subtle elevation; platform-aware so web and native both look right.
-    ...Platform.select({
-      web: { boxShadow: '0 1px 2px rgba(16,24,40,0.06)' } as unknown as ViewStyle,
-      default: {
-        shadowColor: '#101828',
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 2,
-      },
-    }),
+    // Subtle, platform-aware elevation (web box-shadow / native shadow+elevation).
+    ...shadow(elevation),
   };
 
   return (
