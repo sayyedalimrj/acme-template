@@ -23,13 +23,15 @@ Internal support/admin queue (mock) · request detail/review · checklist/playbo
 changes (mock, in-memory) · assignment placeholder · internal notes · risk/handoff
 warnings · delivery/connection handoff placeholder. (Future `apps/admin`.)
 
-### Phase 3 — Subscription plans UI (mock)
+### Phase 3 — Subscription plans UI (mock) ✅ (shipped)
 Plans: Starter · Growth · Pro · Managed · feature matrix · plan-gate placeholders. No real
 billing. Entitlement flags modeled client-side as placeholders.
 
-### Phase 4 — AI Business Advisor (mock)
-Advisor chat/panel · store-context summary · sales/product/customer insights · campaign +
-product-copy suggestions. Adapter boundary: mock → API provider → local model.
+### Phase 4 — AI Business Advisor (mock) ✅ (shipped)
+Advisor chat/panel (deterministic mock) · store-context summary · insights · review-only
+recommendations (sales/inventory/marketing/content/media) · prompt chips. No real AI
+provider/API; every suggestion is review-only. Adapter boundary: mock → API provider →
+local model.
 
 ### Phase 4b — AI Product Media Studio (mock) — future (Growth/AI)
 Product photo/video **generation and repair** from a merchant's own product images —
@@ -120,12 +122,13 @@ Real SMS provider · real billing provider · real AI provider · advanced autom
 - Advanced automation
 
 ## Next implementation PR (recommended)
-Phases 1 (onboarding) and 2 (support operations) are shipped. The recommended next PR is
-**`Subscription Plans UI mock`** (Phase 3, P0) — Starter/Growth/Pro/Managed plan cards, a
-feature matrix, and plan-gate placeholders with client-side entitlement flags and **no real
-billing** — or, if growth is prioritized first, **`AI Business Advisor mock`** (Phase 4, P1).
+Phases 1 (onboarding), 2 (support operations), 3 (subscription plans), and 4 (AI Business
+Advisor) are shipped. The recommended next PR is **`AI Product Media Studio mock`** (Phase
+4b, P1) — mock product photo/video generation & repair from merchant images, background
+cleanup, hero images, and short promo-video concepts, producing **suggestions only** that
+require merchant approval before use/publish.
 
 Constraints (unchanged): **no real credentials, no real billing, no real provisioning, no
-backend.** Mock-only, behind adapter boundaries, following `security-model.md`. The future
-**AI Product Media Studio** (Phase 4b) remains mock/provider-gated and requires merchant
+real AI/media generation, no backend.** Mock-only, behind adapter boundaries, following
+`security-model.md`. The Media Studio remains mock/provider-gated and requires merchant
 approval before any generated asset is used or published.

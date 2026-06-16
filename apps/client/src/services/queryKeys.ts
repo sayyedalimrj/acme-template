@@ -59,4 +59,12 @@ export const queryKeys = {
   // Subscription/billing is account-level (mock), so these keys are global, not site-scoped.
   /** Everything the plans screen needs (plans + pricing + features + current + provider). */
   subscriptionOverview: () => ['subscription', 'overview'] as const,
+
+  // AI advisor is account-level (mock), so these keys are global, not site-scoped.
+  /** Static advisor overview (context + insights + prompts). */
+  advisorOverview: () => ['advisor', 'overview'] as const,
+  /** Mutable advisor recommendations. */
+  advisorRecommendations: () => ['advisor', 'recommendations'] as const,
+  /** Mutable advisor conversation. */
+  advisorConversation: () => ['advisor', 'conversation'] as const,
 } as const;
