@@ -350,6 +350,8 @@ export interface DashboardOverview {
   fulfillment: FulfillmentCounts;
   /** Urgent things needing attention (operating-home action items). */
   actionItems: ActionItem[];
+  /** Low/out-of-stock products for the inventory-alerts widget. */
+  inventoryAlerts: Product[];
   recentOrders: Order[];
   topProducts: TopProductEntry[];
   activity: ActivityEntry[];
