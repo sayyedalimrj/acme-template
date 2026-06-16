@@ -1,12 +1,10 @@
 /**
- * Orders route ("/orders") — placeholder until the Orders module is built.
+ * Orders route ("/orders"). Thin wrapper around the Orders list feature screen.
  */
 import React from 'react';
 
-import { ComingSoonScreen } from '@/features/common/ComingSoonScreen';
-import { useT } from '@/i18n/I18nProvider';
+import { OrderListScreen } from '@/features/orders/OrderListScreen';
 
 export default function OrdersRoute(): React.JSX.Element {
-  const t = useT();
-  return <ComingSoonScreen title={t('nav.orders')} />;
+  return <OrderListScreen />;
 }
