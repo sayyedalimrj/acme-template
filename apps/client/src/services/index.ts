@@ -13,4 +13,6 @@ export { aiAdvisorService } from './aiAdvisorService';
 export type { AdvisorOverview } from './aiAdvisorService';
 export { mediaStudioService } from './mediaStudioService';
 export type { MediaStudioInfo } from './mediaStudioService';
+export { customerIntelligenceService } from './customerIntelligenceService';
+export type { IntelligenceOverview } from './customerIntelligenceService';
 export { queryKeys } from './queryKeys';

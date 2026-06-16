@@ -7,7 +7,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
@@ -32,7 +32,7 @@ export function Sidebar(): React.JSX.Element {
         borderRightColor: tokens.color.border,
       }}
     >
-      {/* Branded logo header — aligned to the top-bar height with a divider. */}
+      {/* Branded logo header — fixed, aligned to the top-bar height with a divider. */}
       <View
         style={{
           height: 64,
@@ -61,12 +61,15 @@ export function Sidebar(): React.JSX.Element {
         </Text>
       </View>
 
-      <View
-        style={{
+      {/* Scrollable nav/tools region — keeps every tool reachable when the list is long. */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
           paddingHorizontal: tokens.spacing.md,
           paddingVertical: tokens.spacing.lg,
           gap: tokens.spacing.lg,
         }}
+        showsVerticalScrollIndicator={false}
       >
         {/* Active site context */}
         <ActiveSiteIndicator />
@@ -90,7 +93,7 @@ export function Sidebar(): React.JSX.Element {
             <NavLink key={item.key} item={item} />
           ))}
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }

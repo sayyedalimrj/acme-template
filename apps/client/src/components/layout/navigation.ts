@@ -30,6 +30,12 @@ export const navItems: NavItem[] = [
   { key: 'plans', labelKey: 'nav.plans', href: '/plans', icon: 'pricetags-outline' },
   { key: 'advisor', labelKey: 'nav.advisor', href: '/advisor', icon: 'sparkles-outline' },
   {
+    key: 'intelligence',
+    labelKey: 'nav.intelligence',
+    href: '/intelligence',
+    icon: 'analytics-outline',
+  },
+  {
     key: 'media-studio',
     labelKey: 'nav.mediaStudio',
     href: '/media-studio',

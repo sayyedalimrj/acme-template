@@ -73,4 +73,12 @@ export const queryKeys = {
   mediaStudioInfo: () => ['mediaStudio', 'info'] as const,
   /** Output variants for a product. */
   mediaStudioVariants: (productId: string) => ['mediaStudio', 'variants', productId] as const,
+
+  // Customer Intelligence is account-level (mock), so these keys are global, not site-scoped.
+  /** Static intelligence overview (status + readiness + summary + signals). */
+  intelligenceOverview: () => ['intelligence', 'overview'] as const,
+  /** Mutable intelligence recommendations. */
+  intelligenceRecommendations: () => ['intelligence', 'recommendations'] as const,
+  /** Mutable mock event stream. */
+  intelligenceEvents: () => ['intelligence', 'events'] as const,
 } as const;

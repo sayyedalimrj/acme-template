@@ -25,7 +25,7 @@ import {
 } from '@/components/ui';
 import { appConfig } from '@/config/app.config';
 import { useActiveSite } from '@/features/site/useSites';
-import { useT } from '@/i18n/I18nProvider';
+import { useLocale, useT } from '@/i18n/I18nProvider';
 import { useSession } from '@/session/SessionProvider';
 import { useTheme } from '@/theme';
 import type { StringKey } from '@/i18n/strings';
@@ -84,8 +84,10 @@ function siteStatusTone(status: string): BadgeTone {
 }
 
 export function SettingsScreen(): React.JSX.Element {
-  const { tokens, rowDirection, mode, toggleMode, direction, toggleDirection } = useTheme();
+  const { tokens, rowDirection, mode, toggleMode, direction, toggleDirection, setDirection } =
+    useTheme();
   const t = useT();
+  const { locale, setLocale } = useLocale();
   const router = useRouter();
   const { user, signOut } = useSession();
   const { data: site } = useActiveSite();
@@ -163,6 +165,41 @@ export function SettingsScreen(): React.JSX.Element {
             size="sm"
             onPress={() => router.navigate('/connect-site' as never)}
             leading={<Ionicons name="link-outline" size={16} color={tokens.color.text} />}
+          />
+        </View>
+      </Card>
+
+      {/* Language */}
+      <Card title={t('settings.section.language')}>
+        <Text variant="caption" tone="muted">
+          {t('settings.language.note')}
+        </Text>
+        <View
+          style={{
+            flexDirection: rowDirection,
+            gap: tokens.spacing.sm,
+            marginTop: tokens.spacing.sm,
+          }}
+        >
+          <Button
+            label={t('settings.language.persian')}
+            variant={locale === 'fa' ? 'primary' : 'secondary'}
+            size="sm"
+            testID="lang-fa"
+            onPress={() => {
+              setLocale('fa');
+              setDirection('rtl');
+            }}
+          />
+          <Button
+            label={t('settings.language.english')}
+            variant={locale === 'en' ? 'primary' : 'secondary'}
+            size="sm"
+            testID="lang-en"
+            onPress={() => {
+              setLocale('en');
+              setDirection('ltr');
+            }}
           />
         </View>
       </Card>
