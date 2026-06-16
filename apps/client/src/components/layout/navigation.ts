@@ -19,39 +19,39 @@ export interface NavItem {
   /** Expo Router href. */
   href: string;
   icon: IoniconName;
-  /** When true the destination is not implemented yet (disabled in the UI). */
-  comingSoon?: boolean;
+  /** When true the route exists but the feature is a placeholder (shows a "Soon" badge). */
+  placeholder?: boolean;
 }
 
 export const navItems: NavItem[] = [
   { key: 'dashboard', labelKey: 'nav.dashboard', href: '/', icon: 'grid-outline' },
-  { key: 'orders', labelKey: 'nav.orders', href: '/', icon: 'receipt-outline', comingSoon: true },
+  { key: 'connect-site', labelKey: 'nav.connectSite', href: '/connect-site', icon: 'link-outline' },
   {
     key: 'products',
     labelKey: 'nav.products',
-    href: '/',
+    href: '/products',
     icon: 'pricetags-outline',
-    comingSoon: true,
+    placeholder: true,
+  },
+  {
+    key: 'orders',
+    labelKey: 'nav.orders',
+    href: '/orders',
+    icon: 'receipt-outline',
+    placeholder: true,
   },
   {
     key: 'customers',
     labelKey: 'nav.customers',
-    href: '/',
+    href: '/customers',
     icon: 'people-outline',
-    comingSoon: true,
-  },
-  {
-    key: 'connect-site',
-    labelKey: 'nav.connectSite',
-    href: '/',
-    icon: 'link-outline',
-    comingSoon: true,
+    placeholder: true,
   },
   {
     key: 'settings',
     labelKey: 'nav.settings',
-    href: '/',
+    href: '/settings',
     icon: 'settings-outline',
-    comingSoon: true,
+    placeholder: true,
   },
 ];

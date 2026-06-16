@@ -1,55 +1,75 @@
 /**
- * Mock auth gate placeholder.
+ * Session boundary.
  *
- * Task 1 only establishes the SESSION BOUNDARY: a single place the app asks "is there an
- * authenticated user?" Real sign-in, sign-out, protected-route redirects, and a Zustand
- * session store arrive in the Auth/session task. For now a mock user is pre-authenticated
- * so the dashboard shell renders.
+ * The single place the app asks "is there an authenticated user?" and the single place it
+ * mutates that state. It delegates to `AuthService` (mock adapter today; a real backend/
+ * proxy adapter later) so screens and route guards never depend on the auth implementation.
  *
- * Security: this holds only safe, non-secret session metadata. It never stores WooCommerce
- * keys/secrets or WordPress application passwords (see security steering).
+ * The app starts UNAUTHENTICATED so the first-run flow is: sign in → select/connect a site →
+ * dashboard. No persistence yet: session state is in memory and resets on reload.
+ * TODO (auth hardening): persist a short-lived session reference via a cross-platform secure
+ * store (expo-secure-store / AsyncStorage) — never `localStorage`, never raw credentials.
+ *
+ * Security: holds only frontend-safe profile data. It never stores WooCommerce keys/secrets
+ * or WordPress application passwords (see security steering).
  */
-import React, { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
-export type AuthStatus = 'authenticated' | 'unauthenticated' | 'loading';
+import { authService } from '@/services';
+import type { AuthStatus, AuthUser } from '@/domain/types';
 
-/** Frontend-safe user profile. No credentials, ever. */
-export interface SessionUser {
-  id: string;
-  name: string;
-  email: string;
+export interface SignInInput {
+  name?: string;
+  email?: string;
 }
 
 export interface SessionContextValue {
   status: AuthStatus;
-  user: SessionUser | null;
-  /** Placeholder: replaced by a real auth provider in the Auth/session task. */
-  signOut: () => void;
+  user: AuthUser | null;
+  /** Establish a mock session via AuthService. */
+  signIn: (input?: SignInInput) => Promise<void>;
+  /** Clear the session via AuthService. */
+  signOut: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
-
-// Clearly-labeled non-production mock user. Not a real account; no secrets.
-const MOCK_USER: SessionUser = {
-  id: 'usr_mock_001',
-  name: 'Demo Operator',
-  email: 'operator@demo.local',
-};
 
 export interface SessionProviderProps {
   children: ReactNode;
 }
 
 export function SessionProvider({ children }: SessionProviderProps): React.JSX.Element {
-  const [user, setUser] = useState<SessionUser | null>(MOCK_USER);
+  const [status, setStatus] = useState<AuthStatus>('unauthenticated');
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  const signIn = useCallback(async (input?: SignInInput) => {
+    setStatus('loading');
+    try {
+      const session = await authService.signInMock(input);
+      setUser(session.user);
+      setStatus(session.status);
+    } catch {
+      setUser(null);
+      setStatus('unauthenticated');
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    const session = await authService.signOut();
+    setUser(session.user);
+    setStatus(session.status);
+  }, []);
 
   const value = useMemo<SessionContextValue>(
-    () => ({
-      status: user ? 'authenticated' : 'unauthenticated',
-      user,
-      signOut: () => setUser(null),
-    }),
-    [user],
+    () => ({ status, user, signIn, signOut }),
+    [status, user, signIn, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

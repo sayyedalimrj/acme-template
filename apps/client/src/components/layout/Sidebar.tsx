@@ -13,6 +13,7 @@ import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 
 import { NavLink } from './NavLink';
+import { ActiveSiteIndicator } from './ActiveSiteIndicator';
 import { navItems } from './navigation';
 
 export const SIDEBAR_WIDTH = 264;
@@ -58,6 +59,9 @@ export function Sidebar(): React.JSX.Element {
           {t('app.name')}
         </Text>
       </View>
+
+      {/* Active site context */}
+      <ActiveSiteIndicator />
 
       {/* Section + nav */}
       <View style={{ gap: tokens.spacing.xs }}>

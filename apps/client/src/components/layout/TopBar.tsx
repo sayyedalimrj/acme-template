@@ -1,9 +1,8 @@
 /**
  * TopBar.
  *
- * Shows the brand (on narrow layouts), a theme toggle, and a compact account indicator.
- * The active-site indicator and a richer user menu arrive with later tasks; the structure
- * is in place here.
+ * Shows the brand (on narrow layouts), the active-site indicator, a theme toggle, a compact
+ * account indicator, and a sign-out action.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -14,6 +13,8 @@ import { useT } from '@/i18n/I18nProvider';
 import { useSession } from '@/session/SessionProvider';
 import { useTheme } from '@/theme';
 
+import { ActiveSiteIndicator } from './ActiveSiteIndicator';
+
 export interface TopBarProps {
   /** Show the brand label (used on narrow layouts where there is no sidebar). */
   showBrand?: boolean;
@@ -22,7 +23,7 @@ export interface TopBarProps {
 export function TopBar({ showBrand = false }: TopBarProps): React.JSX.Element {
   const { tokens, rowDirection, mode, toggleMode } = useTheme();
   const t = useT();
-  const { user } = useSession();
+  const { user, signOut } = useSession();
 
   return (
     <View
@@ -46,14 +47,8 @@ export function TopBar({ showBrand = false }: TopBarProps): React.JSX.Element {
           flex: 1,
         }}
       >
-        {showBrand ? (
-          <>
-            <Ionicons name="cart-outline" size={20} color={tokens.color.primary} />
-            <Text variant="subheading" numberOfLines={1} style={{ flexShrink: 1 }}>
-              {t('app.name')}
-            </Text>
-          </>
-        ) : null}
+        {showBrand ? <Ionicons name="cart-outline" size={20} color={tokens.color.primary} /> : null}
+        <ActiveSiteIndicator compact />
       </View>
 
       <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.md }}>
@@ -89,6 +84,17 @@ export function TopBar({ showBrand = false }: TopBarProps): React.JSX.Element {
             {user ? user.name : t('topbar.account')}
           </Text>
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('topbar.signOut')}
+          onPress={() => {
+            void signOut();
+          }}
+          hitSlop={8}
+        >
+          <Ionicons name="log-out-outline" size={20} color={tokens.color.textMuted} />
+        </Pressable>
       </View>
     </View>
   );
