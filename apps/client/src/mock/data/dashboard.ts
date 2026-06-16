@@ -1,349 +1,127 @@
 /**
- * Realistic WooCommerce-like mock dataset for the dashboard.
+ * Mock dashboard overview ("operating home").
  *
- * This is demo data only — believable shapes (order numbers, statuses, currencies, decimal
- * totals, SKUs, stock states, ISO timestamps) so the UI looks and behaves like a real
- * store. It contains NO secrets, NO real customer PII, and is never sent to any network.
- *
- * Only the slice needed for the dashboard overview lives here. Full per-domain datasets
- * arrive with the Products/Orders/Customers modules.
+ * Derived from the catalog/orders/customers mock data so the numbers stay self-consistent,
+ * then enriched with commercial signals: inventory counts, fulfillment counts, urgent action
+ * items, and a lightweight abandoned-cart summary. Demo data only; no secrets, no network.
  */
-import type { DashboardSummary, Order, Product, TopProductEntry } from '@/domain/types';
+import type {
+  ActionItem,
+  DashboardOverview,
+  FulfillmentCounts,
+  TopProductEntry,
+} from '@/domain/types';
+
+import { products } from './catalog';
+import { customers } from './customers';
+import { orders } from './orders';
 
 const CURRENCY = 'USD';
 
-const products: Product[] = [
+const lowStockThreshold = 10;
+const lowStockProducts = products.filter(
+  (p) => p.stockStatus === 'instock' && (p.stockQuantity ?? 0) <= lowStockThreshold,
+);
+const outOfStockProducts = products.filter(
+  (p) => p.stockStatus === 'outofstock' || p.stockStatus === 'onbackorder',
+);
+
+const fulfillment: FulfillmentCounts = orders.reduce<FulfillmentCounts>(
+  (acc, o) => {
+    acc[o.fulfillment] += 1;
+    return acc;
+  },
+  { unfulfilled: 0, partial: 0, fulfilled: 0 },
+);
+
+const topProducts: TopProductEntry[] = [...products]
+  .filter((p) => (p.totalSales ?? 0) > 0)
+  .sort((a, b) => (b.totalSales ?? 0) - (a.totalSales ?? 0))
+  .slice(0, 4)
+  .map((product) => {
+    const unitsSold = product.totalSales ?? 0;
+    const revenue = (unitsSold * Number.parseFloat(product.price)).toFixed(2);
+    return { product, unitsSold, revenue };
+  });
+
+const actionItems: ActionItem[] = [
+  ...outOfStockProducts.map<ActionItem>((p) => ({
+    id: `act_stock_${p.id}`,
+    type: p.stockStatus === 'outofstock' ? 'out_of_stock' : 'low_stock',
+    severity: p.stockStatus === 'outofstock' ? 'critical' : 'warning',
+    title: p.stockStatus === 'outofstock' ? 'Out of stock' : 'Backordered',
+    message: `${p.name} (${p.sku}) needs restocking.`,
+    date: p.dateModified,
+    entity: { kind: 'product', id: p.id, label: p.name },
+    actionLabel: 'Restock',
+  })),
+  ...lowStockProducts.map<ActionItem>((p) => ({
+    id: `act_low_${p.id}`,
+    type: 'low_stock',
+    severity: 'warning',
+    title: 'Low stock',
+    message: `${p.name} is down to ${p.stockQuantity} units.`,
+    date: p.dateModified,
+    entity: { kind: 'product', id: p.id, label: p.name },
+    actionLabel: 'Restock',
+  })),
   {
-    id: 'prod_1001',
-    name: 'Aurora Cotton Crew Tee',
-    slug: 'aurora-cotton-crew-tee',
-    sku: 'APP-TEE-001',
-    type: 'variable',
-    status: 'publish',
-    price: '24.00',
-    regularPrice: '29.00',
-    salePrice: '24.00',
-    stockStatus: 'instock',
-    stockQuantity: 142,
-    manageStock: true,
-    categories: [{ id: 'cat_apparel', name: 'Apparel', slug: 'apparel' }],
-    images: [{ id: 'img_1001', src: 'https://example.test/img/tee.jpg', alt: 'Cotton crew tee' }],
-    dateCreated: '2025-02-11T09:14:00Z',
-    dateModified: '2026-05-30T16:02:00Z',
+    id: 'act_order_5819',
+    type: 'order_on_hold',
+    severity: 'warning',
+    title: 'Order on hold',
+    message: 'Order #5819 is awaiting payment.',
+    date: '2026-06-13T16:22:00Z',
+    entity: { kind: 'order', id: 'order_5819', label: '#5819' },
+    actionLabel: 'Review',
   },
   {
-    id: 'prod_1002',
-    name: 'Trailhead Insulated Bottle 750ml',
-    slug: 'trailhead-insulated-bottle-750ml',
-    sku: 'OUT-BTL-750',
-    type: 'simple',
-    status: 'publish',
-    price: '32.50',
-    regularPrice: '32.50',
-    stockStatus: 'instock',
-    stockQuantity: 64,
-    manageStock: true,
-    categories: [{ id: 'cat_outdoor', name: 'Outdoor', slug: 'outdoor' }],
-    images: [
-      { id: 'img_1002', src: 'https://example.test/img/bottle.jpg', alt: 'Insulated bottle' },
-    ],
-    dateCreated: '2024-11-03T12:30:00Z',
-    dateModified: '2026-06-02T08:45:00Z',
-  },
-  {
-    id: 'prod_1003',
-    name: 'Lumen Desk Lamp (Walnut)',
-    slug: 'lumen-desk-lamp-walnut',
-    sku: 'HOME-LMP-WAL',
-    type: 'simple',
-    status: 'publish',
-    price: '78.00',
-    regularPrice: '89.00',
-    salePrice: '78.00',
-    stockStatus: 'onbackorder',
-    stockQuantity: 0,
-    manageStock: true,
-    categories: [{ id: 'cat_home', name: 'Home & Living', slug: 'home-living' }],
-    images: [{ id: 'img_1003', src: 'https://example.test/img/lamp.jpg', alt: 'Walnut desk lamp' }],
-    dateCreated: '2024-09-21T15:05:00Z',
-    dateModified: '2026-05-28T11:20:00Z',
-  },
-  {
-    id: 'prod_1004',
-    name: 'Everyday Leather Cardholder',
-    slug: 'everyday-leather-cardholder',
-    sku: 'ACC-CARD-LTR',
-    type: 'simple',
-    status: 'publish',
-    price: '19.99',
-    regularPrice: '19.99',
-    stockStatus: 'instock',
-    stockQuantity: 230,
-    manageStock: true,
-    categories: [{ id: 'cat_accessories', name: 'Accessories', slug: 'accessories' }],
-    images: [
-      { id: 'img_1004', src: 'https://example.test/img/cardholder.jpg', alt: 'Leather cardholder' },
-    ],
-    dateCreated: '2025-01-08T10:00:00Z',
-    dateModified: '2026-06-10T09:10:00Z',
-  },
-  {
-    id: 'prod_1005',
-    name: 'Mesa Ceramic Pour-Over Set',
-    slug: 'mesa-ceramic-pour-over-set',
-    sku: 'KIT-POUR-CER',
-    type: 'grouped',
-    status: 'publish',
-    price: '54.00',
-    regularPrice: '54.00',
-    stockStatus: 'outofstock',
-    stockQuantity: 0,
-    manageStock: true,
-    categories: [{ id: 'cat_kitchen', name: 'Kitchen', slug: 'kitchen' }],
-    images: [
-      {
-        id: 'img_1005',
-        src: 'https://example.test/img/pourover.jpg',
-        alt: 'Ceramic pour-over set',
-      },
-    ],
-    dateCreated: '2024-12-19T14:42:00Z',
-    dateModified: '2026-06-08T13:33:00Z',
+    id: 'act_order_5818',
+    type: 'order_pending',
+    severity: 'info',
+    title: 'New order',
+    message: 'Order #5818 is pending and ready to process.',
+    date: '2026-06-15T07:48:00Z',
+    entity: { kind: 'order', id: 'order_5818', label: '#5818' },
+    actionLabel: 'Process',
   },
 ];
 
-const productById = (id: string): Product => {
-  const found = products.find((p) => p.id === id);
-  if (!found) throw new Error(`Mock product not found: ${id}`);
-  return found;
-};
-
-const recentOrders: Order[] = [
-  {
-    id: 'order_5821',
-    number: '5821',
-    status: 'processing',
-    currency: CURRENCY,
-    total: '128.49',
-    subtotal: '116.50',
-    totalTax: '6.99',
-    shippingTotal: '5.00',
-    discountTotal: '0.00',
-    customerId: 'cust_310',
-    billing: {
-      firstName: 'Maya',
-      lastName: 'Brennan',
-      email: 'maya.brennan@example.test',
-      city: 'Portland',
-      country: 'US',
-    },
-    lineItems: [
-      {
-        id: 'li_1',
-        productId: 'prod_1002',
-        name: 'Trailhead Insulated Bottle 750ml',
-        sku: 'OUT-BTL-750',
-        quantity: 2,
-        price: '32.50',
-        total: '65.00',
-      },
-      {
-        id: 'li_2',
-        productId: 'prod_1004',
-        name: 'Everyday Leather Cardholder',
-        sku: 'ACC-CARD-LTR',
-        quantity: 1,
-        price: '19.99',
-        total: '19.99',
-      },
-    ],
-    paymentMethodTitle: 'Credit Card',
-    statusHistory: [
-      { status: 'pending', date: '2026-06-14T18:02:00Z' },
-      { status: 'processing', date: '2026-06-14T18:05:00Z', note: 'Payment captured' },
-    ],
-    dateCreated: '2026-06-14T18:02:00Z',
-    dateModified: '2026-06-14T18:05:00Z',
-  },
-  {
-    id: 'order_5820',
-    number: '5820',
-    status: 'completed',
-    currency: CURRENCY,
-    total: '78.00',
-    subtotal: '78.00',
-    totalTax: '0.00',
-    shippingTotal: '0.00',
-    discountTotal: '11.00',
-    customerId: 'cust_287',
-    billing: {
-      firstName: 'Devon',
-      lastName: 'Lee',
-      email: 'devon.lee@example.test',
-      city: 'Austin',
-      country: 'US',
-    },
-    lineItems: [
-      {
-        id: 'li_3',
-        productId: 'prod_1003',
-        name: 'Lumen Desk Lamp (Walnut)',
-        sku: 'HOME-LMP-WAL',
-        quantity: 1,
-        price: '78.00',
-        total: '78.00',
-      },
-    ],
-    paymentMethodTitle: 'PayPal',
-    statusHistory: [
-      { status: 'processing', date: '2026-06-13T09:40:00Z' },
-      { status: 'completed', date: '2026-06-14T11:15:00Z', note: 'Shipped' },
-    ],
-    dateCreated: '2026-06-13T09:40:00Z',
-    dateModified: '2026-06-14T11:15:00Z',
-  },
-  {
-    id: 'order_5819',
-    number: '5819',
-    status: 'on-hold',
-    currency: CURRENCY,
-    total: '54.00',
-    subtotal: '54.00',
-    totalTax: '0.00',
-    shippingTotal: '0.00',
-    discountTotal: '0.00',
-    customerId: 'cust_142',
-    billing: {
-      firstName: 'Priya',
-      lastName: 'Nair',
-      email: 'priya.nair@example.test',
-      city: 'Seattle',
-      country: 'US',
-    },
-    lineItems: [
-      {
-        id: 'li_4',
-        productId: 'prod_1005',
-        name: 'Mesa Ceramic Pour-Over Set',
-        sku: 'KIT-POUR-CER',
-        quantity: 1,
-        price: '54.00',
-        total: '54.00',
-      },
-    ],
-    paymentMethodTitle: 'Bank Transfer',
-    statusHistory: [{ status: 'on-hold', date: '2026-06-13T16:22:00Z', note: 'Awaiting payment' }],
-    dateCreated: '2026-06-13T16:22:00Z',
-    dateModified: '2026-06-13T16:22:00Z',
-  },
-  {
-    id: 'order_5818',
-    number: '5818',
-    status: 'pending',
-    currency: CURRENCY,
-    total: '48.00',
-    subtotal: '48.00',
-    totalTax: '0.00',
-    shippingTotal: '0.00',
-    discountTotal: '0.00',
-    customerId: 'cust_409',
-    billing: {
-      firstName: 'Aiko',
-      lastName: 'Tanaka',
-      email: 'aiko.tanaka@example.test',
-      city: 'San Jose',
-      country: 'US',
-    },
-    lineItems: [
-      {
-        id: 'li_5',
-        productId: 'prod_1001',
-        name: 'Aurora Cotton Crew Tee',
-        sku: 'APP-TEE-001',
-        quantity: 2,
-        price: '24.00',
-        total: '48.00',
-      },
-    ],
-    paymentMethodTitle: 'Credit Card',
-    statusHistory: [{ status: 'pending', date: '2026-06-15T07:48:00Z' }],
-    dateCreated: '2026-06-15T07:48:00Z',
-    dateModified: '2026-06-15T07:48:00Z',
-  },
-  {
-    id: 'order_5817',
-    number: '5817',
-    status: 'refunded',
-    currency: CURRENCY,
-    total: '32.50',
-    subtotal: '32.50',
-    totalTax: '0.00',
-    shippingTotal: '0.00',
-    discountTotal: '0.00',
-    customerId: 'cust_198',
-    billing: {
-      firstName: 'Carlos',
-      lastName: 'Mendez',
-      email: 'carlos.mendez@example.test',
-      city: 'Miami',
-      country: 'US',
-    },
-    lineItems: [
-      {
-        id: 'li_6',
-        productId: 'prod_1002',
-        name: 'Trailhead Insulated Bottle 750ml',
-        sku: 'OUT-BTL-750',
-        quantity: 1,
-        price: '32.50',
-        total: '32.50',
-      },
-    ],
-    paymentMethodTitle: 'Credit Card',
-    statusHistory: [
-      { status: 'completed', date: '2026-06-10T10:00:00Z' },
-      { status: 'refunded', date: '2026-06-12T14:30:00Z', note: 'Customer request' },
-    ],
-    dateCreated: '2026-06-10T10:00:00Z',
-    dateModified: '2026-06-12T14:30:00Z',
-  },
-];
-
-const topProducts: TopProductEntry[] = [
-  { product: productById('prod_1004'), unitsSold: 312, revenue: '6236.88' },
-  { product: productById('prod_1002'), unitsSold: 188, revenue: '6110.00' },
-  { product: productById('prod_1001'), unitsSold: 154, revenue: '3696.00' },
-  { product: productById('prod_1003'), unitsSold: 73, revenue: '5694.00' },
-];
-
-export const dashboardSummary: DashboardSummary = {
+export const dashboardOverview: DashboardOverview = {
   period: { from: '2026-05-16T00:00:00Z', to: '2026-06-15T23:59:59Z' },
   currency: CURRENCY,
   salesTotal: '48217.65',
   ordersCount: 1284,
-  productsCount: 327,
-  customersCount: 4192,
-  recentOrders,
+  productsCount: products.length,
+  customersCount: customers.length,
+  lowStockCount: lowStockProducts.length,
+  outOfStockCount: outOfStockProducts.length,
+  fulfillment,
+  actionItems,
+  recentOrders: [...orders].sort((a, b) => b.dateCreated.localeCompare(a.dateCreated)).slice(0, 5),
   topProducts,
   activity: [
     {
-      id: 'act_1',
+      id: 'evt_1',
       type: 'order',
       message: 'Order #5821 moved to processing',
       date: '2026-06-14T18:05:00Z',
     },
     {
-      id: 'act_2',
+      id: 'evt_2',
       type: 'product',
       message: 'Lumen Desk Lamp went on backorder',
       date: '2026-06-08T13:33:00Z',
     },
     {
-      id: 'act_3',
+      id: 'evt_3',
       type: 'customer',
       message: 'New customer: Aiko Tanaka',
       date: '2026-06-15T07:40:00Z',
     },
-    { id: 'act_4', type: 'order', message: 'Order #5817 refunded', date: '2026-06-12T14:30:00Z' },
+    { id: 'evt_4', type: 'order', message: 'Order #5817 refunded', date: '2026-06-12T14:30:00Z' },
   ],
+  // Analytics readiness (future): conversion funnel + abandoned-cart recovery.
+  conversionRate: 2.8,
+  abandonedCarts: { count: 23, recoverableValue: '1842.30', currency: CURRENCY },
 };

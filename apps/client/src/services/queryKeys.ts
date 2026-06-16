@@ -1,0 +1,42 @@
+/**
+ * Centralized, typed TanStack Query keys.
+ *
+ * Keys for store data are SITE-AWARE: they are namespaced by the active site id so switching
+ * sites isolates cache and never bleeds one store's data into another (design.md §4/§8).
+ * Global keys (session, sites list) are not site-scoped.
+ *
+ * Keep all key construction here so invalidation and prefetching stay consistent.
+ */
+import type { CustomerListQuery, OrderListQuery, ProductListQuery } from '@/domain/types';
+
+export const queryKeys = {
+  /** Current auth session (global). */
+  session: () => ['session'] as const,
+
+  /** All connected sites (global). */
+  sites: () => ['sites'] as const,
+  /** The active site (global). */
+  activeSite: () => ['sites', 'active'] as const,
+
+  /** Operating-home overview for a site. */
+  dashboard: (siteId: string) => ['site', siteId, 'dashboard'] as const,
+
+  /** Products list (optionally filtered) for a site. */
+  products: (siteId: string, query?: ProductListQuery) =>
+    ['site', siteId, 'products', query ?? {}] as const,
+  /** Single product for a site. */
+  product: (siteId: string, productId: string) => ['site', siteId, 'product', productId] as const,
+
+  /** Orders list (optionally filtered) for a site. */
+  orders: (siteId: string, query?: OrderListQuery) =>
+    ['site', siteId, 'orders', query ?? {}] as const,
+  /** Single order for a site. */
+  order: (siteId: string, orderId: string) => ['site', siteId, 'order', orderId] as const,
+
+  /** Customers list (optionally filtered) for a site. */
+  customers: (siteId: string, query?: CustomerListQuery) =>
+    ['site', siteId, 'customers', query ?? {}] as const,
+  /** Single customer for a site. */
+  customer: (siteId: string, customerId: string) =>
+    ['site', siteId, 'customer', customerId] as const,
+} as const;

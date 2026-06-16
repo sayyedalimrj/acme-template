@@ -56,11 +56,11 @@ function MetricCard({ label, value }: MetricCardProps): React.JSX.Element {
 export function DashboardScreen(): React.JSX.Element {
   const { tokens } = useTheme();
   const t = useT();
-  const { data, isLoading, isError, refetch, isFetching } = useDashboard();
+  const { data, isPending, isError, refetch, isFetching } = useDashboard();
 
   const gap = tokens.spacing.md;
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <Screen scroll={false} padded={false}>
         <LoadingState label={t('common.loading')} />
