@@ -8,7 +8,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, View, type ViewStyle } from 'react-native';
 
 import { Badge, Text } from '@/components/ui';
@@ -35,6 +35,7 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
+  const [hovered, setHovered] = useState(false);
 
   const isActive = isRouteActive(pathname, item.href);
 
@@ -56,9 +57,11 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
       accessibilityRole="link"
       accessibilityState={{ selected: isActive }}
       onPress={() => router.navigate(item.href as never)}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       style={({ pressed }) => [
         containerStyle,
-        pressed && !isActive ? { backgroundColor: tokens.color.surfaceAlt } : null,
+        !isActive && (hovered || pressed) ? { backgroundColor: tokens.color.surfaceAlt } : null,
       ]}
     >
       {/* Fixed-width icon column keeps labels aligned. */}

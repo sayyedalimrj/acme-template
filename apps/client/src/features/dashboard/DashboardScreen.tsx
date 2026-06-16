@@ -1,37 +1,37 @@
 /**
- * Dashboard — operational commerce home.
+ * Dashboard — operational commerce home (Ecme-style).
  *
- * The store's operating home: store-pulse KPIs, an action center (urgent items with
- * severity treatment), recent orders, inventory alerts, top products, and a customer
- * signal. Every actionable row deep-links into the existing Products/Orders/Customers/
- * Connect-Site screens via Expo Router. Mock-only via DashboardService; no real APIs.
+ * Layout: a KPI stat-widget row, then a two-column admin grid on wide screens — a main
+ * column (action center + recent-orders table) beside a right rail (inventory alerts, top
+ * products, customer signal). Single column on narrow/native. Every actionable row deep-links
+ * into the existing modules via Expo Router. Mock-only via DashboardService; no real APIs.
  *
- * Visual structure is inspired by mature commerce admin homes (Shopify/Wix/Squarespace)
- * but is an original RN implementation — no Ecme code is ported, no charts/heavy deps.
+ * Visual language is rebuilt from Ecme's ecommerce dashboard (stat cards with circular icon
+ * chips, a recent-orders table, rail widgets) using RN primitives + tokens. No charts/deps.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { type ComponentProps, type ReactNode } from 'react';
-import { Pressable, View, type ViewStyle } from 'react-native';
+import React, { useState, type ComponentProps, type ReactNode } from 'react';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import {
   Badge,
   Card,
+  DataList,
   Divider,
   EmptyState,
   ErrorState,
   LoadingState,
   Screen,
   Text,
-  type BadgeTone,
+  type Column,
 } from '@/components/ui';
-import { fulfillmentBadge } from '@/features/orders/orderHelpers';
 import { stockBadge } from '@/features/products/productHelpers';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme, type ColorTokens } from '@/theme';
 import { formatCurrency, formatDate, formatNumber } from '@/utils/format';
-import type { ActionItem, ActionSeverity, Order, Product } from '@/domain/types';
+import type { ActionItem, ActionSeverity, Order } from '@/domain/types';
 
 import { orderStatusLabel, orderStatusTone } from './status';
 import { useDashboard } from './useDashboard';
@@ -46,6 +46,34 @@ const TINT: Record<Tint, { bg: keyof ColorTokens; fg: keyof ColorTokens }> = {
   info: { bg: 'infoSoft', fg: 'info' },
   danger: { bg: 'dangerSoft', fg: 'danger' },
 };
+
+const SEVERITY_TINT: Record<ActionSeverity, Tint> = {
+  critical: 'danger',
+  warning: 'warning',
+  info: 'info',
+};
+
+const SEVERITY_ICON: Record<ActionSeverity, IoniconName> = {
+  critical: 'alert-circle-outline',
+  warning: 'warning-outline',
+  info: 'information-circle-outline',
+};
+
+const SEVERITY_RANK: Record<ActionSeverity, number> = { critical: 0, warning: 1, info: 2 };
+
+function entityRoute(entity: ActionItem['entity']): string | null {
+  if (!entity) return null;
+  switch (entity.kind) {
+    case 'product':
+      return `/products/${entity.id}`;
+    case 'order':
+      return `/orders/${entity.id}`;
+    case 'customer':
+      return `/customers/${entity.id}`;
+    default:
+      return null;
+  }
+}
 
 /** Circular tinted icon chip (Ecme stat/list iconography). */
 function IconChip({
@@ -74,7 +102,6 @@ function IconChip({
   );
 }
 
-/** Circular rank chip for merchandising lists (top products). */
 function RankChip({ rank }: { rank: number }): React.JSX.Element {
   const { tokens } = useTheme();
   return (
@@ -95,40 +122,6 @@ function RankChip({ rank }: { rank: number }): React.JSX.Element {
   );
 }
 
-const SEVERITY_TONE: Record<ActionSeverity, BadgeTone> = {
-  critical: 'danger',
-  warning: 'warning',
-  info: 'info',
-};
-
-const SEVERITY_RANK: Record<ActionSeverity, number> = { critical: 0, warning: 1, info: 2 };
-
-function entityRoute(entity: ActionItem['entity']): string | null {
-  if (!entity) return null;
-  switch (entity.kind) {
-    case 'product':
-      return `/products/${entity.id}`;
-    case 'order':
-      return `/orders/${entity.id}`;
-    case 'customer':
-      return `/customers/${entity.id}`;
-    default:
-      return null;
-  }
-}
-
-function usePressableRowStyle(): ViewStyle {
-  const { tokens, rowDirection } = useTheme();
-  return {
-    flexDirection: rowDirection,
-    alignItems: 'center',
-    gap: tokens.spacing.md,
-    paddingVertical: tokens.spacing.sm,
-  };
-}
-
-// --- KPI ---------------------------------------------------------------------
-
 interface KpiCardProps {
   label: string;
   value: string;
@@ -139,8 +132,12 @@ interface KpiCardProps {
 
 function KpiCard({ label, value, icon, tint, onPress }: KpiCardProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
+  const [hovered, setHovered] = useState(false);
   const content = (
-    <Card contentStyle={{ gap: 0 }}>
+    <Card
+      contentStyle={{ gap: 0 }}
+      style={hovered ? { borderColor: tokens.color.borderStrong } : undefined}
+    >
       <View
         style={{
           flexDirection: rowDirection,
@@ -172,6 +169,8 @@ function KpiCard({ label, value, icon, tint, onPress }: KpiCardProps): React.JSX
           accessibilityRole="button"
           accessibilityLabel={label}
           onPress={onPress}
+          onHoverIn={() => setHovered(true)}
+          onHoverOut={() => setHovered(false)}
           style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}
         >
           {content}
@@ -182,8 +181,6 @@ function KpiCard({ label, value, icon, tint, onPress }: KpiCardProps): React.JSX
     </View>
   );
 }
-
-// --- Section header link ------------------------------------------------------
 
 function SectionLink({
   label,
@@ -199,15 +196,13 @@ function SectionLink({
       onPress={onPress}
       style={{ flexDirection: rowDirection, alignItems: 'center', gap: 2 }}
     >
-      <Text variant="caption" tone="primary">
+      <Text variant="caption" tone="primary" style={{ fontWeight: '600' }}>
         {label}
       </Text>
       <Ionicons name="chevron-forward" size={14} color={tokens.color.primary} />
     </Pressable>
   );
 }
-
-// --- Action center ------------------------------------------------------------
 
 function ActionRow({
   item,
@@ -217,18 +212,14 @@ function ActionRow({
   onPress?: () => void;
 }): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
-  const tone = SEVERITY_TONE[item.severity];
-  const accent =
-    tokens.color[tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : 'primary'];
+  const [hovered, setHovered] = useState(false);
+  const tint = SEVERITY_TINT[item.severity];
 
   const body = (
     <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.md }}>
-      <View style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, backgroundColor: accent }} />
+      <IconChip icon={SEVERITY_ICON[item.severity]} tint={tint} size={40} />
       <View style={{ flex: 1, gap: 2 }}>
-        <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.xs }}>
-          <Text variant="label">{item.title}</Text>
-          <Badge tone={tone} label={item.severity} />
-        </View>
+        <Text variant="label">{item.title}</Text>
         <Text variant="caption" tone="muted" numberOfLines={2}>
           {item.message}
         </Text>
@@ -247,17 +238,21 @@ function ActionRow({
       accessibilityRole="button"
       accessibilityLabel={item.title}
       onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       style={({ pressed }) => [
-        { paddingVertical: tokens.spacing.sm, borderRadius: tokens.radius.sm },
-        pressed ? { backgroundColor: tokens.color.surfaceAlt } : null,
+        {
+          paddingVertical: tokens.spacing.sm,
+          paddingHorizontal: tokens.spacing.sm,
+          borderRadius: tokens.radius.md,
+        },
+        hovered || pressed ? { backgroundColor: tokens.color.surfaceAlt } : null,
       ]}
     >
       {body}
     </Pressable>
   );
 }
-
-// --- Generic pressable list row ----------------------------------------------
 
 function ListRow({
   onPress,
@@ -266,16 +261,24 @@ function ListRow({
   onPress: () => void;
   children: ReactNode;
 }): React.JSX.Element {
-  const { tokens } = useTheme();
-  const rowStyle = usePressableRowStyle();
+  const { tokens, rowDirection } = useTheme();
+  const [hovered, setHovered] = useState(false);
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       style={({ pressed }) => [
-        rowStyle,
-        { borderRadius: tokens.radius.sm },
-        pressed ? { backgroundColor: tokens.color.surfaceAlt } : null,
+        {
+          flexDirection: rowDirection,
+          alignItems: 'center',
+          gap: tokens.spacing.md,
+          paddingVertical: tokens.spacing.sm,
+          paddingHorizontal: tokens.spacing.sm,
+          borderRadius: tokens.radius.md,
+        },
+        hovered || pressed ? { backgroundColor: tokens.color.surfaceAlt } : null,
       ]}
     >
       {children}
@@ -288,11 +291,12 @@ export function DashboardScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const go = (href: string) => router.navigate(href as never);
+  const { width } = useWindowDimensions();
+  const twoCol = width >= 1024;
 
   const activeSite = useActiveSite();
   const { data, isPending, isError, refetch } = useDashboard();
 
-  // No active site → guide to Connect Site (mirrors the feature screens).
   if (!activeSite.isPending && !activeSite.data) {
     return (
       <Screen scroll={false} padded={false}>
@@ -334,6 +338,189 @@ export function DashboardScreen(): React.JSX.Element {
 
   const sortedActions = [...data.actionItems].sort(
     (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
+  );
+
+  const orderColumns: Column<Order>[] = [
+    {
+      key: 'number',
+      header: t('dashboard.col.order'),
+      flex: 1,
+      render: (o) => <Text variant="label">#{o.number}</Text>,
+    },
+    {
+      key: 'customer',
+      header: t('dashboard.col.customer'),
+      flex: 1.6,
+      render: (o) => (
+        <Text numberOfLines={1}>
+          {o.billing.firstName} {o.billing.lastName}
+        </Text>
+      ),
+    },
+    {
+      key: 'status',
+      header: t('dashboard.col.status'),
+      flex: 1.3,
+      render: (o) => <Badge tone={orderStatusTone(o.status)} label={orderStatusLabel(o.status)} />,
+    },
+    {
+      key: 'total',
+      header: t('dashboard.col.total'),
+      flex: 1,
+      align: 'end',
+      render: (o) => <Text variant="label">{formatCurrency(o.total, o.currency)}</Text>,
+    },
+    {
+      key: 'date',
+      header: t('dashboard.col.date'),
+      flex: 1.2,
+      align: 'end',
+      render: (o) => (
+        <Text variant="caption" tone="muted">
+          {formatDate(o.dateCreated)}
+        </Text>
+      ),
+    },
+  ];
+
+  const actionCenter = (
+    <Card
+      title={t('dashboard.actionCenter')}
+      headerAction={<Badge tone="neutral" label={formatNumber(sortedActions.length)} />}
+    >
+      {sortedActions.length === 0 ? (
+        <Text tone="muted">{t('dashboard.actionCenter.empty')}</Text>
+      ) : (
+        sortedActions.map((item, index) => {
+          const route = entityRoute(item.entity);
+          return (
+            <View key={item.id}>
+              {index > 0 ? <Divider /> : null}
+              <ActionRow item={item} onPress={route ? () => go(route) : undefined} />
+            </View>
+          );
+        })
+      )}
+    </Card>
+  );
+
+  const recentOrders = (
+    <Card
+      title={t('dashboard.recentOrders')}
+      headerAction={
+        <SectionLink label={t('dashboard.viewAllOrders')} onPress={() => go('/orders')} />
+      }
+    >
+      <DataList<Order>
+        data={data.recentOrders}
+        columns={orderColumns}
+        keyExtractor={(o) => o.id}
+        emptyLabel={t('dashboard.empty')}
+      />
+    </Card>
+  );
+
+  const inventoryAlerts = (
+    <Card
+      title={t('dashboard.inventoryAlerts')}
+      headerAction={
+        <SectionLink label={t('dashboard.viewAllProducts')} onPress={() => go('/products')} />
+      }
+    >
+      {data.inventoryAlerts.length === 0 ? (
+        <Text tone="muted">{t('dashboard.inventory.empty')}</Text>
+      ) : (
+        data.inventoryAlerts.map((product, index) => {
+          const stock = stockBadge(product);
+          return (
+            <View key={product.id}>
+              {index > 0 ? <Divider /> : null}
+              <ListRow onPress={() => go(`/products/${product.id}`)}>
+                <IconChip
+                  icon="cube-outline"
+                  tint={product.stockStatus === 'outofstock' ? 'danger' : 'warning'}
+                  size={40}
+                />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text variant="label" numberOfLines={1}>
+                    {product.name}
+                  </Text>
+                  <Text variant="caption" tone="muted">
+                    {product.sku}
+                  </Text>
+                </View>
+                <Badge tone={stock.tone} label={t(stock.labelKey)} />
+              </ListRow>
+            </View>
+          );
+        })
+      )}
+    </Card>
+  );
+
+  const topProducts = (
+    <Card
+      title={t('dashboard.topProducts')}
+      headerAction={
+        <SectionLink label={t('dashboard.viewAllProducts')} onPress={() => go('/products')} />
+      }
+    >
+      {data.topProducts.map((entry, index) => (
+        <View key={entry.product.id}>
+          {index > 0 ? <Divider /> : null}
+          <ListRow onPress={() => go(`/products/${entry.product.id}`)}>
+            <RankChip rank={index + 1} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="label" numberOfLines={1}>
+                {entry.product.name}
+              </Text>
+              <Text variant="caption" tone="muted">
+                {entry.product.sku} · {formatNumber(entry.unitsSold)} {t('orders.items')}
+              </Text>
+            </View>
+            <Text variant="label">{formatCurrency(entry.revenue, data.currency)}</Text>
+          </ListRow>
+        </View>
+      ))}
+    </Card>
+  );
+
+  const customerSignal = (
+    <Card
+      title={t('dashboard.customers.title')}
+      headerAction={
+        <SectionLink label={t('dashboard.viewAllCustomers')} onPress={() => go('/customers')} />
+      }
+    >
+      <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.md }}>
+        <IconChip icon="people-outline" tint="warning" size={40} />
+        <View style={{ flex: 1 }}>
+          <Text variant="caption" tone="muted">
+            {t('dashboard.customers.total')}
+          </Text>
+          <Text variant="heading">{formatNumber(data.customersCount)}</Text>
+        </View>
+      </View>
+      {data.abandonedCarts ? (
+        <>
+          <Divider />
+          <View
+            style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.md }}
+          >
+            <IconChip icon="cart-outline" tint="info" size={40} />
+            <View style={{ flex: 1 }}>
+              <Text variant="caption" tone="muted">
+                {t('dashboard.customers.abandoned')}
+              </Text>
+              <Text variant="heading">
+                {formatNumber(data.abandonedCarts.count)} ·{' '}
+                {formatCurrency(data.abandonedCarts.recoverableValue, data.abandonedCarts.currency)}
+              </Text>
+            </View>
+          </View>
+        </>
+      ) : null}
+    </Card>
   );
 
   return (
@@ -382,174 +569,24 @@ export function DashboardScreen(): React.JSX.Element {
         />
       </View>
 
-      {/* B. Action center */}
-      <Card title={t('dashboard.actionCenter')}>
-        {sortedActions.length === 0 ? (
-          <Text tone="muted">{t('dashboard.actionCenter.empty')}</Text>
-        ) : (
-          sortedActions.map((item, index) => {
-            const route = entityRoute(item.entity);
-            return (
-              <View key={item.id}>
-                {index > 0 ? <Divider /> : null}
-                <ActionRow item={item} onPress={route ? () => go(route) : undefined} />
-              </View>
-            );
-          })
-        )}
-      </Card>
-
-      {/* C. Recent orders */}
-      <Card
-        title={t('dashboard.recentOrders')}
-        headerAction={
-          <SectionLink label={t('dashboard.viewAllOrders')} onPress={() => go('/orders')} />
-        }
+      {/* Two-column admin grid (main + right rail) on wide; stacked on narrow. */}
+      <View
+        style={{
+          flexDirection: twoCol ? rowDirection : 'column',
+          gap: tokens.spacing.lg,
+          alignItems: 'stretch',
+        }}
       >
-        {data.recentOrders.map((order: Order, index) => {
-          const fulfillment = fulfillmentBadge(order.fulfillment);
-          return (
-            <View key={order.id}>
-              {index > 0 ? <Divider /> : null}
-              <ListRow onPress={() => go(`/orders/${order.id}`)}>
-                <IconChip icon="receipt-outline" tint="info" size={40} />
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text variant="label">#{order.number}</Text>
-                  <Text variant="caption" tone="muted" numberOfLines={1}>
-                    {order.billing.firstName} {order.billing.lastName} ·{' '}
-                    {formatDate(order.dateCreated)}
-                  </Text>
-                  <View
-                    style={{
-                      flexDirection: rowDirection,
-                      gap: tokens.spacing.xs,
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <Badge
-                      tone={orderStatusTone(order.status)}
-                      label={orderStatusLabel(order.status)}
-                    />
-                    <Badge tone={fulfillment.tone} label={t(fulfillment.labelKey)} />
-                  </View>
-                </View>
-                <Text variant="label">{formatCurrency(order.total, order.currency)}</Text>
-                <Ionicons name="chevron-forward" size={16} color={tokens.color.textMuted} />
-              </ListRow>
-            </View>
-          );
-        })}
-      </Card>
-
-      {/* D. Inventory alerts */}
-      <Card
-        title={t('dashboard.inventoryAlerts')}
-        headerAction={
-          <SectionLink label={t('dashboard.viewAllProducts')} onPress={() => go('/products')} />
-        }
-      >
-        {data.inventoryAlerts.length === 0 ? (
-          <Text tone="muted">{t('dashboard.inventory.empty')}</Text>
-        ) : (
-          data.inventoryAlerts.map((product: Product, index) => {
-            const stock = stockBadge(product);
-            return (
-              <View key={product.id}>
-                {index > 0 ? <Divider /> : null}
-                <ListRow onPress={() => go(`/products/${product.id}`)}>
-                  <IconChip
-                    icon="cube-outline"
-                    tint={product.stockStatus === 'outofstock' ? 'danger' : 'warning'}
-                    size={40}
-                  />
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text variant="label" numberOfLines={1}>
-                      {product.name}
-                    </Text>
-                    <Text variant="caption" tone="muted">
-                      {product.sku}
-                    </Text>
-                  </View>
-                  <Badge tone={stock.tone} label={t(stock.labelKey)} />
-                  {typeof product.stockQuantity === 'number' ? (
-                    <Text variant="caption" tone="muted">
-                      {formatNumber(product.stockQuantity)}
-                    </Text>
-                  ) : null}
-                  <Ionicons name="chevron-forward" size={16} color={tokens.color.textMuted} />
-                </ListRow>
-              </View>
-            );
-          })
-        )}
-      </Card>
-
-      {/* E. Top products */}
-      <Card
-        title={t('dashboard.topProducts')}
-        headerAction={
-          <SectionLink label={t('dashboard.viewAllProducts')} onPress={() => go('/products')} />
-        }
-      >
-        {data.topProducts.map((entry, index) => (
-          <View key={entry.product.id}>
-            {index > 0 ? <Divider /> : null}
-            <ListRow onPress={() => go(`/products/${entry.product.id}`)}>
-              <RankChip rank={index + 1} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text variant="label" numberOfLines={1}>
-                  {entry.product.name}
-                </Text>
-                <Text variant="caption" tone="muted">
-                  {entry.product.sku} · {formatNumber(entry.unitsSold)} {t('orders.items')}
-                </Text>
-              </View>
-              <Text variant="label">{formatCurrency(entry.revenue, data.currency)}</Text>
-              <Ionicons name="chevron-forward" size={16} color={tokens.color.textMuted} />
-            </ListRow>
-          </View>
-        ))}
-      </Card>
-
-      {/* F. Customer signal */}
-      <Card
-        title={t('dashboard.customers.title')}
-        headerAction={
-          <SectionLink label={t('dashboard.viewAllCustomers')} onPress={() => go('/customers')} />
-        }
-      >
-        <View
-          style={{
-            flexDirection: rowDirection,
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingVertical: tokens.spacing.xs,
-          }}
-        >
-          <Text variant="label" tone="muted">
-            {t('dashboard.customers.total')}
-          </Text>
-          <Text variant="label">{formatNumber(data.customersCount)}</Text>
+        <View style={{ flex: twoCol ? 2 : undefined, gap: tokens.spacing.lg, minWidth: 0 }}>
+          {actionCenter}
+          {recentOrders}
         </View>
-        {data.abandonedCarts ? (
-          <View
-            style={{
-              flexDirection: rowDirection,
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingVertical: tokens.spacing.xs,
-            }}
-          >
-            <Text variant="label" tone="muted">
-              {t('dashboard.customers.abandoned')}
-            </Text>
-            <Text variant="label">
-              {formatNumber(data.abandonedCarts.count)} ·{' '}
-              {formatCurrency(data.abandonedCarts.recoverableValue, data.abandonedCarts.currency)}
-            </Text>
-          </View>
-        ) : null}
-      </Card>
+        <View style={{ flex: twoCol ? 1 : undefined, gap: tokens.spacing.lg, minWidth: 0 }}>
+          {inventoryAlerts}
+          {topProducts}
+          {customerSignal}
+        </View>
+      </View>
     </Screen>
   );
 }

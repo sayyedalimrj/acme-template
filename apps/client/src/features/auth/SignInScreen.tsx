@@ -1,25 +1,72 @@
 /**
- * Sign-in screen (mock).
+ * Sign-in screen (mock) — Ecme-style split auth.
  *
- * Ecme-style auth: a centered, elevated card on a soft admin background with a circular brand
- * logo, a strong "welcome" heading, a muted subtitle, and a clean form. Optional name/email,
- * then "Sign in to continue" — no password, nothing stored. On success the session boundary
- * flips to authenticated and the (auth) layout redirects into the app.
+ * Wide web: a two-column split — a primary-colored brand panel (logo + tagline) beside a
+ * centered form card. Narrow/mobile: the form card alone, centered. No password, no backend,
+ * nothing stored. On success the session boundary flips to authenticated and the (auth)
+ * layout redirects into the app.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Card, FormField, Input, Screen, Text } from '@/components/ui';
+import { Button, Card, FormField, Input, Text } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
 import { useSession } from '@/session/SessionProvider';
 import { useTheme } from '@/theme';
 
-export function SignInScreen(): React.JSX.Element {
+function BrandPanel(): React.JSX.Element {
   const { tokens, shadow } = useTheme();
   const t = useT();
+  return (
+    <View
+      style={[
+        {
+          flex: 1,
+          backgroundColor: tokens.color.primary,
+          borderRadius: tokens.radius.xl + 8,
+          padding: tokens.spacing.xxl,
+          justifyContent: 'center',
+          gap: tokens.spacing.xl,
+        },
+        shadow('md'),
+      ]}
+    >
+      <View
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: tokens.radius.lg,
+          backgroundColor: 'rgba(255,255,255,0.18)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons name="cart-outline" size={38} color={tokens.color.onPrimary} />
+      </View>
+      <View style={{ gap: tokens.spacing.md }}>
+        <Text variant="display" tone="onPrimary" style={{ fontWeight: '700' }}>
+          {t('app.name')}
+        </Text>
+        <Text variant="heading" tone="onPrimary" style={{ opacity: 0.95 }}>
+          {t('auth.tagline')}
+        </Text>
+        <Text tone="onPrimary" style={{ opacity: 0.8, maxWidth: 460 }}>
+          {t('auth.taglineSub')}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+export function SignInScreen(): React.JSX.Element {
+  const { tokens, rowDirection } = useTheme();
+  const t = useT();
+  const insets = useSafeAreaInsets();
   const { signIn, status } = useSession();
   const { width } = useWindowDimensions();
+  const wide = width >= 920;
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -29,38 +76,29 @@ export function SignInScreen(): React.JSX.Element {
     void signIn({ name: name.trim() || undefined, email: email.trim() || undefined });
   };
 
-  const cardWidth = Math.min(440, width - tokens.spacing.lg * 2);
-
-  return (
-    <Screen
-      scroll
-      maxWidth={9999}
-      contentStyle={{ alignItems: 'center', justifyContent: 'center', flexGrow: 1 }}
-    >
-      <View style={{ width: cardWidth, gap: tokens.spacing.lg }}>
-        {/* Brand + welcome header, centered above the card (Ecme auth rhythm). */}
-        <View style={{ alignItems: 'center', gap: tokens.spacing.md }}>
-          <View
-            style={{
-              width: 60,
-              height: 60,
-              borderRadius: tokens.radius.pill,
-              backgroundColor: tokens.color.primary,
-              alignItems: 'center',
-              justifyContent: 'center',
-              ...shadow('md'),
-            }}
-          >
-            <Ionicons name="cart-outline" size={30} color={tokens.color.onPrimary} />
-          </View>
-          <View style={{ alignItems: 'center', gap: tokens.spacing.xs }}>
-            <Text variant="display" style={{ textAlign: 'center' }}>
-              {t('auth.welcome')}
-            </Text>
-            <Text tone="muted" style={{ textAlign: 'center', maxWidth: 360 }}>
-              {t('auth.subtitle')}
-            </Text>
-          </View>
+  const formColumn = (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: '100%', maxWidth: 420, gap: tokens.spacing.lg }}>
+        <View style={{ gap: tokens.spacing.xs }}>
+          {!wide ? (
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: tokens.radius.lg,
+                backgroundColor: tokens.color.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: tokens.spacing.sm,
+              }}
+            >
+              <Ionicons name="cart-outline" size={30} color={tokens.color.onPrimary} />
+            </View>
+          ) : null}
+          <Text variant="display" style={{ fontWeight: '700' }}>
+            {t('auth.welcome')}
+          </Text>
+          <Text tone="muted">{t('auth.subtitle')}</Text>
         </View>
 
         <Card elevation="md" padding="lg" contentStyle={{ gap: tokens.spacing.md }}>
@@ -74,7 +112,6 @@ export function SignInScreen(): React.JSX.Element {
               returnKeyType="next"
             />
           </FormField>
-
           <FormField label={t('auth.emailLabel')}>
             <Input
               value={email}
@@ -87,23 +124,36 @@ export function SignInScreen(): React.JSX.Element {
               onSubmitEditing={onSubmit}
             />
           </FormField>
-
           <Button
             label={submitting ? t('auth.signingIn') : t('auth.signInCta')}
             onPress={onSubmit}
             loading={submitting}
             style={{ marginTop: tokens.spacing.xs }}
           />
-
           <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>
             {t('auth.mockNote')}
           </Text>
         </Card>
-
-        <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>
-          {t('app.name')}
-        </Text>
       </View>
-    </Screen>
+    </View>
+  );
+
+  return (
+    <ScrollView
+      testID="sign-in-screen"
+      style={{ flex: 1, backgroundColor: tokens.color.background }}
+      contentContainerStyle={{
+        flexGrow: 1,
+        padding: tokens.spacing.lg,
+        paddingTop: tokens.spacing.lg + insets.top,
+        paddingBottom: tokens.spacing.lg + insets.bottom,
+        flexDirection: wide ? rowDirection : 'column',
+        gap: tokens.spacing.lg,
+      }}
+      showsVerticalScrollIndicator={false}
+    >
+      {wide ? <BrandPanel /> : null}
+      {formColumn}
+    </ScrollView>
   );
 }
