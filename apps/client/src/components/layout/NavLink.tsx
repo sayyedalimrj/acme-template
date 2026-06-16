@@ -1,8 +1,8 @@
 /**
  * NavLink: a single navigation entry used by the sidebar and the mobile nav.
  *
- * Active state is derived from the current Expo Router pathname (no custom nav state).
- * "Coming soon" entries are rendered disabled so the IA is visible without dead links.
+ * Active state is derived from the current Expo Router pathname (no custom nav state). All
+ * destinations are real routes and navigable; placeholder modules show a "Soon" badge.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
@@ -21,14 +21,20 @@ export interface NavLinkProps {
   compact?: boolean;
 }
 
+function isRouteActive(pathname: string, href: string): boolean {
+  if (href === '/') {
+    return pathname === '/';
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
 
-  const isActive = !item.comingSoon && pathname === item.href;
-  const disabled = Boolean(item.comingSoon);
+  const isActive = isRouteActive(pathname, item.href);
 
   const containerStyle: ViewStyle = {
     flexDirection: rowDirection,
@@ -38,7 +44,6 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
     paddingHorizontal: tokens.spacing.md,
     borderRadius: tokens.radius.md,
     backgroundColor: isActive ? tokens.color.primarySoft : 'transparent',
-    opacity: disabled ? 0.5 : 1,
   };
 
   const color = isActive ? tokens.color.primary : tokens.color.textMuted;
@@ -46,14 +51,11 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityState={{ selected: isActive, disabled }}
-      disabled={disabled}
-      onPress={() => {
-        if (!disabled) router.navigate(item.href as never);
-      }}
+      accessibilityState={{ selected: isActive }}
+      onPress={() => router.navigate(item.href as never)}
       style={({ pressed }) => [
         containerStyle,
-        pressed && !disabled ? { backgroundColor: tokens.color.surfaceAlt } : null,
+        pressed ? { backgroundColor: tokens.color.surfaceAlt } : null,
       ]}
     >
       <Ionicons name={item.icon} size={compact ? 18 : 20} color={color} />
@@ -72,7 +74,7 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
           >
             {t(item.labelKey)}
           </Text>
-          {item.comingSoon ? <Badge tone="neutral" label={t('nav.comingSoon')} /> : null}
+          {item.placeholder ? <Badge tone="neutral" label={t('nav.soon')} /> : null}
         </View>
       )}
       {compact && (

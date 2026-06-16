@@ -1,24 +1,31 @@
 /**
  * Authenticated route group layout.
  *
- * Wraps all in-app routes with the AppShell (sidebar/topbar/mobile nav). It also hosts the
- * AUTH GATE placeholder: it checks the session boundary and, in a later task, will redirect
- * unauthenticated users to the sign-in screen. For Task 1 a mock user is always present, so
- * the gate currently renders the shell.
+ * The route guard: unauthenticated users are redirected to the sign-in screen; while a
+ * sign-in is in flight a loading state is shown; authenticated users get the AppShell
+ * (sidebar/topbar/mobile nav) wrapping the in-app routes. Uses Expo Router only — no
+ * browser APIs.
  */
-import { Slot } from 'expo-router';
+import { Redirect, Slot, type Href } from 'expo-router';
 import React from 'react';
 
 import { AppShell } from '@/components/layout';
+import { LoadingState, Screen } from '@/components/ui';
 import { useSession } from '@/session/SessionProvider';
 
-export default function AppGroupLayout(): React.JSX.Element | null {
+export default function AppGroupLayout(): React.JSX.Element {
   const { status } = useSession();
 
-  // Auth gate placeholder. Real redirect to (auth)/sign-in arrives in the Auth/session task:
-  //   if (status === 'unauthenticated') return <Redirect href="/(auth)/sign-in" />;
-  if (status !== 'authenticated') {
-    return null;
+  if (status === 'loading') {
+    return (
+      <Screen scroll={false} padded={false}>
+        <LoadingState />
+      </Screen>
+    );
+  }
+
+  if (status === 'unauthenticated') {
+    return <Redirect href={'/sign-in' as Href} />;
   }
 
   return (
