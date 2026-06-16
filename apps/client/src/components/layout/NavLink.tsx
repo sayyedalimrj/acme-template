@@ -70,7 +70,11 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
         >
           <Text
             variant="label"
-            style={{ color: isActive ? tokens.color.primary : tokens.color.text, flexShrink: 1 }}
+            style={{
+              color: isActive ? tokens.color.primary : tokens.color.text,
+              fontWeight: isActive ? '600' : '500',
+              flexShrink: 1,
+            }}
           >
             {t(item.labelKey)}
           </Text>

@@ -16,7 +16,7 @@ import { NavLink } from './NavLink';
 import { ActiveSiteIndicator } from './ActiveSiteIndicator';
 import { navItems } from './navigation';
 
-export const SIDEBAR_WIDTH = 264;
+export const SIDEBAR_WIDTH = 280;
 
 export function Sidebar(): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();

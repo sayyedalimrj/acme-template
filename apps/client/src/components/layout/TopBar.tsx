@@ -32,7 +32,7 @@ export function TopBar({ showBrand = false }: TopBarProps): React.JSX.Element {
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: tokens.spacing.md,
-        height: 56,
+        height: 64,
         paddingHorizontal: tokens.spacing.lg,
         backgroundColor: tokens.color.chrome,
         borderBottomWidth: StyleSheet.hairlineWidth,

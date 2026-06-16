@@ -32,7 +32,7 @@ export function Text({
   style,
   ...rest
 }: TextProps): React.JSX.Element {
-  const { tokens } = useTheme();
+  const { tokens, isRTL } = useTheme();
   const typography = tokens.typography[variant];
 
   const toneColor: Record<TextTone, string> = {
@@ -53,6 +53,10 @@ export function Text({
           lineHeight: typography.lineHeight,
           fontWeight: typography.fontWeight,
           color: toneColor[tone],
+          // RTL-aware: text reads in the active direction and aligns to its start edge.
+          // Explicit `textAlign` passed via `style` still overrides this default.
+          textAlign: isRTL ? 'right' : 'left',
+          writingDirection: isRTL ? 'rtl' : 'ltr',
         },
         style,
       ])}

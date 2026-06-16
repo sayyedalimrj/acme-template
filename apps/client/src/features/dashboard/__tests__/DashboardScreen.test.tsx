@@ -39,24 +39,26 @@ beforeEach(() => {
   resetAdaptersForTests();
 });
 
+// Assertions use stable, locale-independent values (testIDs, mock data, currency formatted
+// with the en util locale) so they survive the Persian UI default.
 describe('DashboardScreen (operational home)', () => {
-  it('renders KPI store pulse and the action center once data loads', async () => {
+  it('renders the KPI store pulse and the action center once data loads', async () => {
     renderWithProviders(<DashboardScreen />);
-    // KPI labels (store pulse).
-    expect(await screen.findByText('Sales', {}, { timeout: 4000 })).toBeTruthy();
-    expect(screen.getByText('Orders')).toBeTruthy();
-    expect(screen.getByText('Avg. order value')).toBeTruthy();
-    // Section headers for action center + operational sections.
-    expect(screen.getByText('Action center')).toBeTruthy();
-    expect(screen.getByText('Recent orders')).toBeTruthy();
-    expect(screen.getByText('Inventory alerts')).toBeTruthy();
-    expect(screen.getByText('Top products')).toBeTruthy();
+    expect(await screen.findByTestId('dashboard-screen', {}, { timeout: 4000 })).toBeTruthy();
+    // Store pulse KPI value (sales total, formatted with the en number util).
+    expect(screen.getByText('$48,217.65')).toBeTruthy();
+    // Action center renders an urgent item (message text comes from mock data).
+    expect(screen.getByText(/awaiting payment/i)).toBeTruthy();
   });
 
-  it('renders recent orders with a deep link affordance and order numbers', async () => {
+  it('renders recent orders, inventory alerts and top products', async () => {
     renderWithProviders(<DashboardScreen />);
-    // A recent order from the mock renders and the "All orders" link is present.
-    expect(await screen.findByText('#5821', {}, { timeout: 4000 })).toBeTruthy();
-    expect(screen.getByText('All orders')).toBeTruthy();
+    await screen.findByTestId('dashboard-screen', {}, { timeout: 4000 });
+    // Recent orders (mock order number).
+    expect(screen.getByText('#5821')).toBeTruthy();
+    // Inventory alert (out-of-stock product, unique to that section).
+    expect(screen.getByText('Mesa Ceramic Pour-Over Set')).toBeTruthy();
+    // Top product (unique to the top-products section).
+    expect(screen.getByText('Everyday Leather Cardholder')).toBeTruthy();
   });
 });
