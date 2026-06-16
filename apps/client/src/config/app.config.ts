@@ -1,0 +1,33 @@
+/**
+ * Application configuration.
+ *
+ * The data layer is driven by `dataSource`. For the MVP this is always `'mock'`:
+ * the app runs entirely on in-memory, realistic WooCommerce-like data behind adapter
+ * interfaces. A future `'http'` source will talk to OUR backend/proxy (never directly to
+ * a store, and never holding store credentials in the frontend — see security steering).
+ *
+ * No secrets, keys, or credentials are ever stored in this file or in the frontend bundle.
+ */
+
+export type DataSource = 'mock' | 'http';
+
+export interface AppConfig {
+  /** Selected data source. MVP: 'mock'. */
+  readonly dataSource: DataSource;
+  /** Base URL for the future backend/proxy. Empty in the MVP (mock only). */
+  readonly apiBaseUrl: string;
+  /** Default UI locale (full i18n wiring arrives in a later task). */
+  readonly defaultLocale: string;
+  /** Default layout direction. */
+  readonly defaultDirection: 'ltr' | 'rtl';
+  /** Human-readable app name. */
+  readonly appName: string;
+}
+
+export const appConfig: AppConfig = {
+  dataSource: 'mock',
+  apiBaseUrl: '',
+  defaultLocale: 'en',
+  defaultDirection: 'ltr',
+  appName: 'WooCommerce Client Dashboard',
+};
