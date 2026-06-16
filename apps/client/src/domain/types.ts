@@ -840,3 +840,136 @@ export interface PlanChangeRequestResult {
   /** Frontend-safe confirmation message. */
   message: string;
 }
+
+// ---------------------------------------------------------------------------
+// AI Business Advisor (Phase 4) — mock-only commerce assistant
+//
+// Helps merchants understand and grow their store using existing mock store context. It
+// produces insights + actionable recommendations (campaigns, product copy, restock,
+// retention, SEO, pricing, media ideas) and a deterministic mock chat.
+//
+// SECURITY (binding — see security-model.md): this is a MOCK advisor. NO real AI provider is
+// connected; NO external API is called; NO API keys / provider secrets / model config exist.
+// Every suggestion is REVIEW-ONLY — nothing is published, no product/order is mutated, and no
+// customer message is ever sent automatically. A future real provider must go through the
+// backend/provider adapter with permission checks, audit logs, and explicit merchant approval.
+// ---------------------------------------------------------------------------
+
+/** Whether a real AI provider is wired (it is not — mock only). */
+export type AIAdvisorProviderStatus = 'not_connected' | 'mock';
+
+/** Priority of an insight/recommendation. */
+export type AIAdvisorPriority = 'low' | 'medium' | 'high';
+
+/** High-level grouping for recommendations on the screen. */
+export type AIAdvisorCategory = 'sales' | 'inventory' | 'marketing' | 'content' | 'media';
+
+/** The kind of recommendation produced by the advisor. */
+export type AIAdvisorRecommendationType =
+  | 'sales_insight'
+  | 'product_copy'
+  | 'campaign_idea'
+  | 'restock_action'
+  | 'customer_retention'
+  | 'seo_suggestion'
+  | 'pricing_suggestion'
+  | 'inventory_warning'
+  | 'support_followup'
+  | 'media_studio_idea';
+
+/** Review lifecycle of a recommendation (mock-only). */
+export type AIAdvisorActionStatus = 'suggested' | 'reviewed' | 'dismissed';
+
+/** A frontend-safe reference to a related entity, with an optional in-app link. */
+export interface AIAdvisorRelatedEntity {
+  kind: 'product' | 'order' | 'orders' | 'customer' | 'inventory';
+  label: string;
+  /** Optional in-app route for read-only navigation (no mutation). */
+  href?: string;
+}
+
+/** A review-only action a recommendation can offer. */
+export type AIAdvisorActionKind =
+  | 'view_product'
+  | 'view_orders'
+  | 'view_inventory'
+  | 'review_campaign'
+  | 'draft_copy'
+  | 'open_media_studio'
+  | 'mark_reviewed'
+  | 'dismiss';
+
+/** A single suggested action button (review-only / mock). */
+export interface AIAdvisorSuggestedAction {
+  kind: AIAdvisorActionKind;
+  /** Optional in-app route for navigable, read-only actions. */
+  targetHref?: string;
+}
+
+/** A read-only insight about the store. */
+export interface AIAdvisorInsight {
+  id: string;
+  /** Persian, frontend-safe. */
+  title: string;
+  summary: string;
+  priority: AIAdvisorPriority;
+  related?: AIAdvisorRelatedEntity;
+  /** Suggested next step (Persian, frontend-safe). */
+  suggestedStep: string;
+}
+
+/** An actionable, review-only recommendation. */
+export interface AIAdvisorRecommendation {
+  id: string;
+  type: AIAdvisorRecommendationType;
+  category: AIAdvisorCategory;
+  /** Persian, frontend-safe. */
+  title: string;
+  summary: string;
+  priority: AIAdvisorPriority;
+  status: AIAdvisorActionStatus;
+  related?: AIAdvisorRelatedEntity;
+  /** Suggested next step (Persian, frontend-safe). */
+  suggestedStep: string;
+  /** Review-only action buttons. */
+  actions: AIAdvisorSuggestedAction[];
+}
+
+/** A clickable prompt chip. */
+export interface AIAdvisorPromptSuggestion {
+  id: string;
+  /** Persian prompt text. */
+  text: string;
+}
+
+/** A single chat message in the mock conversation. */
+export interface AIAdvisorConversationMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  /** Frontend-safe message text. */
+  text: string;
+  createdAt: ISODate;
+}
+
+/**
+ * Lightweight, frontend-safe snapshot of the store used to ground the advisor. Built from
+ * existing mock dashboard/subscription data — no customer PII, no secrets.
+ */
+export interface AIAdvisorStoreContextSummary {
+  /** Display store name (mock). */
+  storeName: string;
+  currency: string;
+  salesTotal: string;
+  ordersCount: number;
+  productsCount: number;
+  customersCount: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  /** Orders still awaiting fulfillment. */
+  fulfillmentPending: number;
+  /** Top-selling product name (mock), if any. */
+  topProductName?: string;
+  /** Current subscription plan (for the advisor gating hint). */
+  planId: SubscriptionPlanId;
+  planName: string;
+}

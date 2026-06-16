@@ -11,6 +11,11 @@
  */
 import type {
   AddInternalNoteInput,
+  AIAdvisorConversationMessage,
+  AIAdvisorInsight,
+  AIAdvisorPromptSuggestion,
+  AIAdvisorRecommendation,
+  AIAdvisorStoreContextSummary,
   AuthSession,
   BillingInterval,
   BillingProviderStatus,
@@ -164,6 +169,29 @@ export interface BillingAdapter {
   ): Promise<PlanChangeRequestResult>;
 }
 
+/**
+ * AI Business Advisor adapter — the seam for the mock commerce assistant (Phase 4).
+ *
+ * Mock-only: it returns a frontend-safe store-context summary, insights, review-only
+ * recommendations, prompt chips, and a DETERMINISTIC mock conversation. It calls NO AI
+ * provider/API, sends nothing externally, and mutates no real store data. `siteId` is
+ * accepted for forward-compatibility but ignored by the mock. A future real provider goes
+ * through a backend/provider adapter with permission checks + merchant approval.
+ */
+export interface AIAdvisorAdapter {
+  getStoreContextSummary(siteId?: string): Promise<AIAdvisorStoreContextSummary>;
+  listInsights(siteId?: string): Promise<AIAdvisorInsight[]>;
+  listRecommendations(siteId?: string): Promise<AIAdvisorRecommendation[]>;
+  listPromptSuggestions(siteId?: string): Promise<AIAdvisorPromptSuggestion[]>;
+  getConversation(siteId?: string): Promise<AIAdvisorConversationMessage[]>;
+  /** Append the user message + a deterministic mock assistant reply; returns the thread. */
+  sendAdvisorMessageMock(message: string, siteId?: string): Promise<AIAdvisorConversationMessage[]>;
+  /** Mark a recommendation reviewed (mock-only); returns the updated list. */
+  markRecommendationReviewed(id: string): Promise<AIAdvisorRecommendation[]>;
+  /** Dismiss a recommendation (mock-only); returns the updated list. */
+  dismissRecommendationMock(id: string): Promise<AIAdvisorRecommendation[]>;
+}
+
 /** The full set of adapters resolved from configuration. */
 export interface Adapters {
   auth: AuthAdapter;
@@ -175,4 +203,5 @@ export interface Adapters {
   onboarding: OnboardingAdapter;
   support: SupportAdapter;
   billing: BillingAdapter;
+  advisor: AIAdvisorAdapter;
 }

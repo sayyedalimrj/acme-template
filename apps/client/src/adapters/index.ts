@@ -10,6 +10,7 @@
  */
 import { appConfig } from '@/config/app.config';
 
+import { createMockAIAdvisorAdapter } from './mock/mockAIAdvisorAdapter';
 import { createMockAuthAdapter } from './mock/mockAuthAdapter';
 import { createMockBillingAdapter } from './mock/mockBillingAdapter';
 import { createMockCustomerAdapter } from './mock/mockCustomerAdapter';
@@ -34,6 +35,7 @@ function createMockAdapters(): Adapters {
     onboarding: createMockOnboardingAdapter(),
     support: createMockSupportAdapter(),
     billing: createMockBillingAdapter(),
+    advisor: createMockAIAdvisorAdapter(),
   };
 }
 
@@ -74,4 +76,5 @@ export type {
   OnboardingAdapter,
   SupportAdapter,
   BillingAdapter,
+  AIAdvisorAdapter,
 } from './types';

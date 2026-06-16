@@ -9,4 +9,6 @@ export { onboardingService } from './onboardingService';
 export { supportService } from './supportService';
 export { subscriptionService } from './subscriptionService';
 export type { SubscriptionOverview } from './subscriptionService';
+export { aiAdvisorService } from './aiAdvisorService';
+export type { AdvisorOverview } from './aiAdvisorService';
 export { queryKeys } from './queryKeys';
