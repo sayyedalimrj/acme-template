@@ -90,7 +90,7 @@ export function Button({
       ) : (
         <>
           {leading ? <View>{leading}</View> : null}
-          <Text variant="label" tone={textTone[variant]}>
+          <Text variant="label" tone={textTone[variant]} style={{ fontWeight: '600' }}>
             {label}
           </Text>
         </>

@@ -5,6 +5,7 @@ export * from './Screen';
 export * from './Surface';
 export * from './Card';
 export * from './Button';
+export * from './IconButton';
 export * from './Badge';
 export * from './Divider';
 export * from './DataList';

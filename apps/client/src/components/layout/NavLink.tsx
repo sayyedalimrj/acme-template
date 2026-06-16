@@ -3,10 +3,12 @@
  *
  * Active state is derived from the current Expo Router pathname (no custom nav state). All
  * destinations are real routes and navigable; placeholder modules show a "Soon" badge.
+ * Ecme-style: icons aligned in a fixed lead column, comfortable row height, active items get
+ * a soft primary pill with primary icon + semibold label.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, View, type ViewStyle } from 'react-native';
 
 import { Badge, Text } from '@/components/ui';
@@ -33,6 +35,7 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
+  const [hovered, setHovered] = useState(false);
 
   const isActive = isRouteActive(pathname, item.href);
 
@@ -40,8 +43,9 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
     flexDirection: rowDirection,
     alignItems: 'center',
     gap: tokens.spacing.sm,
+    minHeight: compact ? undefined : 44,
     paddingVertical: tokens.spacing.sm,
-    paddingHorizontal: tokens.spacing.md,
+    paddingHorizontal: compact ? tokens.spacing.md : tokens.spacing.sm,
     borderRadius: tokens.radius.md,
     backgroundColor: isActive ? tokens.color.primarySoft : 'transparent',
   };
@@ -53,12 +57,17 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
       accessibilityRole="link"
       accessibilityState={{ selected: isActive }}
       onPress={() => router.navigate(item.href as never)}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       style={({ pressed }) => [
         containerStyle,
-        pressed ? { backgroundColor: tokens.color.surfaceAlt } : null,
+        !isActive && (hovered || pressed) ? { backgroundColor: tokens.color.surfaceAlt } : null,
       ]}
     >
-      <Ionicons name={item.icon} size={compact ? 18 : 20} color={color} />
+      {/* Fixed-width icon column keeps labels aligned. */}
+      <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={item.icon} size={compact ? 18 : 20} color={color} />
+      </View>
       {!compact && (
         <View
           style={{
@@ -70,7 +79,11 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
         >
           <Text
             variant="label"
-            style={{ color: isActive ? tokens.color.primary : tokens.color.text, flexShrink: 1 }}
+            style={{
+              color: isActive ? tokens.color.primary : tokens.color.text,
+              fontWeight: isActive ? '600' : '500',
+              flexShrink: 1,
+            }}
           >
             {t(item.labelKey)}
           </Text>

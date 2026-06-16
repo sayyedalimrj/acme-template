@@ -57,6 +57,9 @@ export function Card({
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: tokens.spacing.sm,
+            paddingBottom: tokens.spacing.sm,
+            borderBottomWidth: tokens.borderWidth.hairline,
+            borderBottomColor: tokens.color.border,
           }}
         >
           {title ? <Text variant="subheading">{title}</Text> : <View />}

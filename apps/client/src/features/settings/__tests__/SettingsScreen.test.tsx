@@ -45,24 +45,24 @@ beforeEach(() => {
 describe('SettingsScreen', () => {
   it('renders the app overview with version and platform note', () => {
     renderWithProviders(<SettingsScreen />);
-    expect(screen.getByText('App overview')).toBeTruthy();
+    expect(screen.getByTestId('settings-screen')).toBeTruthy();
     expect(screen.getByText('0.1.0')).toBeTruthy();
     expect(screen.getByText('Expo · React Native · Web-ready')).toBeTruthy();
-    // Active site summary section is present.
-    expect(screen.getByText('Active site')).toBeTruthy();
+    // Active site summary section (Persian copy).
+    expect(screen.getByText('فروشگاه فعال')).toBeTruthy();
   });
 
-  it('renders the security / backend-proxy warning', () => {
+  it('renders the security / backend-proxy warning (Persian)', () => {
     renderWithProviders(<SettingsScreen />);
-    expect(screen.getByText(/secure backend\/proxy/i)).toBeTruthy();
+    expect(screen.getByText(/وارد یا ذخیره نمی‌شوند/)).toBeTruthy();
   });
 
-  it('renders the team & roles placeholder', () => {
+  it('renders the team & roles placeholder (Persian role names)', () => {
     renderWithProviders(<SettingsScreen />);
-    expect(screen.getByText('Owner')).toBeTruthy();
-    expect(screen.getByText('Manager')).toBeTruthy();
-    expect(screen.getByText('Staff')).toBeTruthy();
-    expect(screen.getByText('Viewer')).toBeTruthy();
+    expect(screen.getByText('مالک')).toBeTruthy();
+    expect(screen.getByText('مدیر')).toBeTruthy();
+    expect(screen.getByText('کارمند')).toBeTruthy();
+    expect(screen.getByText('بیننده')).toBeTruthy();
   });
 
   it('renders the appearance theme/direction controls', () => {

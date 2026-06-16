@@ -29,8 +29,8 @@ export interface AppConfig {
 export const appConfig: AppConfig = {
   dataSource: 'mock',
   apiBaseUrl: '',
-  defaultLocale: 'en',
-  defaultDirection: 'ltr',
+  defaultLocale: 'fa',
+  defaultDirection: 'rtl',
   appName: 'WooCommerce Client Dashboard',
   appVersion: '0.1.0',
 };
