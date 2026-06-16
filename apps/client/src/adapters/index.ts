@@ -11,6 +11,7 @@
 import { appConfig } from '@/config/app.config';
 
 import { createMockAuthAdapter } from './mock/mockAuthAdapter';
+import { createMockBillingAdapter } from './mock/mockBillingAdapter';
 import { createMockCustomerAdapter } from './mock/mockCustomerAdapter';
 import { createMockDashboardAdapter } from './mock/mockDashboardAdapter';
 import { createMockOnboardingAdapter } from './mock/mockOnboardingAdapter';
@@ -32,6 +33,7 @@ function createMockAdapters(): Adapters {
     customers: createMockCustomerAdapter(),
     onboarding: createMockOnboardingAdapter(),
     support: createMockSupportAdapter(),
+    billing: createMockBillingAdapter(),
   };
 }
 
@@ -71,4 +73,5 @@ export type {
   CustomerAdapter,
   OnboardingAdapter,
   SupportAdapter,
+  BillingAdapter,
 } from './types';

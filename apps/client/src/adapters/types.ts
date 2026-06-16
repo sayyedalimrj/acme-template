@@ -12,7 +12,10 @@
 import type {
   AddInternalNoteInput,
   AuthSession,
+  BillingInterval,
+  BillingProviderStatus,
   ConnectSiteInput,
+  CurrentSubscriptionSummary,
   Customer,
   CustomerListQuery,
   DashboardOverview,
@@ -24,11 +27,16 @@ import type {
   Order,
   OrderListQuery,
   Paged,
+  PlanChangePreview,
+  PlanChangeRequestResult,
+  PlanFeature,
+  PlanPricing,
   Product,
   ProductListQuery,
   SiteConnection,
   StoreTemplate,
   SubscriptionPlan,
+  SubscriptionPlanId,
   SupportQueueItem,
   SupportRequestStatus,
 } from '@/domain/types';
@@ -124,6 +132,38 @@ export interface SupportAdapter {
   addInternalNote(id: string, input: AddInternalNoteInput): Promise<SupportQueueItem>;
 }
 
+/**
+ * Billing/subscription adapter — the seam for the pricing & plans module (Phase 3).
+ *
+ * Mock-only and FRONTEND-SAFE: it lists plans + display-only pricing + the feature matrix,
+ * reports the (mock) current subscription, and previews/acknowledges plan changes WITHOUT
+ * any real charge. It never touches payment methods, card data, provider secrets, or real
+ * billing IDs. A future `services/billing` + provider integration replaces this surface
+ * after a security review (see security-model.md).
+ */
+export interface BillingAdapter {
+  /** The four platform plans (reuses the shared SubscriptionPlan identity). */
+  listPlans(): Promise<SubscriptionPlan[]>;
+  /** Display-only per-plan pricing across intervals. */
+  listPlanPricing(): Promise<PlanPricing[]>;
+  /** The feature-comparison matrix. */
+  listPlanFeatures(): Promise<PlanFeature[]>;
+  /** The merchant's current (mock) subscription summary. */
+  getCurrentSubscription(): Promise<CurrentSubscriptionSummary>;
+  /** Whether a real billing provider is wired (it is not). */
+  getProviderStatus(): Promise<BillingProviderStatus>;
+  /** Preview a plan change relative to the current plan (mock-only; no charge). */
+  previewPlanChange(
+    planId: SubscriptionPlanId,
+    interval: BillingInterval,
+  ): Promise<PlanChangePreview>;
+  /** Acknowledge a mock plan-change request (no backend, no charge, no state change). */
+  requestPlanChangeMock(
+    planId: SubscriptionPlanId,
+    interval: BillingInterval,
+  ): Promise<PlanChangeRequestResult>;
+}
+
 /** The full set of adapters resolved from configuration. */
 export interface Adapters {
   auth: AuthAdapter;
@@ -134,4 +174,5 @@ export interface Adapters {
   customers: CustomerAdapter;
   onboarding: OnboardingAdapter;
   support: SupportAdapter;
+  billing: BillingAdapter;
 }

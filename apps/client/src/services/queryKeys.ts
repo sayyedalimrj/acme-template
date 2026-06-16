@@ -55,4 +55,8 @@ export const queryKeys = {
   supportQueue: () => ['support', 'queue'] as const,
   /** A single support request. */
   supportRequest: (id: string) => ['support', 'request', id] as const,
+
+  // Subscription/billing is account-level (mock), so these keys are global, not site-scoped.
+  /** Everything the plans screen needs (plans + pricing + features + current + provider). */
+  subscriptionOverview: () => ['subscription', 'overview'] as const,
 } as const;
