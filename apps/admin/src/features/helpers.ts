@@ -1,15 +1,11 @@
 /**
- * Platform Admin presentation helpers — pure status → tone/label mappings.
- *
- * Keep mapping logic out of screens so it stays testable and consistent. Every label is an
- * i18n key (en + fa), and tones map to the shared Badge/StatusBadge palette.
+ * Presentation helpers — pure status → tone/label mappings for platform + workflow data.
+ * Labels are admin LabelKeys; tones map to the admin Badge palette.
  */
-import type { BadgeTone } from '@/components/ui';
-import type { StringKey } from '@/i18n/strings';
+import type { BadgeTone } from '@/ui';
+import type { LabelKey } from '@/labels';
 import type {
   PlatformAdminPriority,
-  PlatformAdminWorkflowStatus,
-  PlatformPlanTier,
   PlatformSecuritySeverity,
   PlatformSecuritySignalType,
   PlatformSignedSyncState,
@@ -17,12 +13,24 @@ import type {
   PlatformSubscriptionState,
   PlatformSyncState,
   PlatformTenantStatus,
+  PlatformPlanTier,
+  PlatformAdminWorkflowStatus,
+  WorkflowAutomationReadiness,
+  WorkflowSla,
+  WorkflowStatus,
+  WorkflowType,
 } from '@/domain/types';
 
 export interface Meta {
   tone: BadgeTone;
-  labelKey: StringKey;
+  labelKey: LabelKey;
 }
+
+export const HEALTH_LABEL_KEYS = {
+  healthy: 'health.healthy',
+  degraded: 'health.degraded',
+  critical: 'health.critical',
+} as const satisfies Record<string, LabelKey>;
 
 export function tenantStatusMeta(status: PlatformTenantStatus): Meta {
   const map: Record<PlatformTenantStatus, Meta> = {
@@ -84,8 +92,8 @@ export function severityMeta(severity: PlatformSecuritySeverity): Meta {
   return map[severity];
 }
 
-export function securityTypeLabelKey(type: PlatformSecuritySignalType): StringKey {
-  const map: Record<PlatformSecuritySignalType, StringKey> = {
+export function securityTypeLabelKey(type: PlatformSecuritySignalType): LabelKey {
+  const map: Record<PlatformSecuritySignalType, LabelKey> = {
     raw_secret_rejected: 'platformAdmin.secType.raw_secret_rejected',
     invalid_signature: 'platformAdmin.secType.invalid_signature',
     replay_rejected: 'platformAdmin.secType.replay_rejected',
@@ -107,19 +115,19 @@ export function priorityMeta(priority: PlatformAdminPriority): Meta {
   return map[priority];
 }
 
-export function workflowStatusMeta(status: PlatformAdminWorkflowStatus): Meta {
+export function adminTaskStatusMeta(status: PlatformAdminWorkflowStatus): Meta {
   const map: Record<PlatformAdminWorkflowStatus, Meta> = {
-    open: { tone: 'neutral', labelKey: 'platformAdmin.workflow.open' },
-    in_progress: { tone: 'info', labelKey: 'platformAdmin.workflow.in_progress' },
-    blocked: { tone: 'danger', labelKey: 'platformAdmin.workflow.blocked' },
-    waiting_customer: { tone: 'warning', labelKey: 'platformAdmin.workflow.waiting_customer' },
-    done: { tone: 'success', labelKey: 'platformAdmin.workflow.done' },
+    open: { tone: 'neutral', labelKey: 'workflow.status.todo' },
+    in_progress: { tone: 'info', labelKey: 'workflow.status.in_progress' },
+    blocked: { tone: 'danger', labelKey: 'workflow.status.blocked' },
+    waiting_customer: { tone: 'warning', labelKey: 'workflow.status.waiting_customer' },
+    done: { tone: 'success', labelKey: 'workflow.status.done' },
   };
   return map[status];
 }
 
-export function planTierLabelKey(tier: PlatformPlanTier): StringKey {
-  const map: Record<PlatformPlanTier, StringKey> = {
+export function planTierLabelKey(tier: PlatformPlanTier): LabelKey {
+  const map: Record<PlatformPlanTier, LabelKey> = {
     starter: 'platformAdmin.tier.starter',
     growth: 'platformAdmin.tier.growth',
     pro: 'platformAdmin.tier.pro',
@@ -128,9 +136,67 @@ export function planTierLabelKey(tier: PlatformPlanTier): StringKey {
   return map[tier];
 }
 
-/** Translated band labels for HealthScoreBadge (reuses the shared health.* strings). */
-export const HEALTH_LABEL_KEYS = {
-  healthy: 'health.healthy',
-  degraded: 'health.degraded',
-  critical: 'health.critical',
-} as const;
+// --- Workflow ---
+export function workflowTypeLabelKey(type: WorkflowType): LabelKey {
+  const map: Record<WorkflowType, LabelKey> = {
+    store_launch: 'workflow.type.store_launch',
+    existing_site_connection: 'workflow.type.existing_site_connection',
+    template_setup: 'workflow.type.template_setup',
+    support_handoff: 'workflow.type.support_handoff',
+    plugin_health_issue: 'workflow.type.plugin_health_issue',
+    sync_review: 'workflow.type.sync_review',
+    security_review: 'workflow.type.security_review',
+    billing_followup: 'workflow.type.billing_followup',
+    customer_success: 'workflow.type.customer_success',
+    internal_task: 'workflow.type.internal_task',
+  };
+  return map[type];
+}
+
+export function workflowStatusMeta(status: WorkflowStatus): Meta {
+  const map: Record<WorkflowStatus, Meta> = {
+    backlog: { tone: 'neutral', labelKey: 'workflow.status.backlog' },
+    todo: { tone: 'neutral', labelKey: 'workflow.status.todo' },
+    in_progress: { tone: 'info', labelKey: 'workflow.status.in_progress' },
+    waiting_customer: { tone: 'warning', labelKey: 'workflow.status.waiting_customer' },
+    waiting_internal: { tone: 'warning', labelKey: 'workflow.status.waiting_internal' },
+    blocked: { tone: 'danger', labelKey: 'workflow.status.blocked' },
+    review: { tone: 'info', labelKey: 'workflow.status.review' },
+    done: { tone: 'success', labelKey: 'workflow.status.done' },
+    canceled: { tone: 'neutral', labelKey: 'workflow.status.canceled' },
+  };
+  return map[status];
+}
+
+export function slaMeta(sla: WorkflowSla): Meta {
+  const map: Record<WorkflowSla, Meta> = {
+    on_track: { tone: 'success', labelKey: 'workflow.sla.on_track' },
+    due_soon: { tone: 'warning', labelKey: 'workflow.sla.due_soon' },
+    overdue: { tone: 'danger', labelKey: 'workflow.sla.overdue' },
+    paused: { tone: 'neutral', labelKey: 'workflow.sla.paused' },
+    no_sla: { tone: 'neutral', labelKey: 'workflow.sla.no_sla' },
+  };
+  return map[sla];
+}
+
+export function readinessLabelKey(readiness: WorkflowAutomationReadiness): LabelKey {
+  const map: Record<WorkflowAutomationReadiness, LabelKey> = {
+    manual_only_now: 'workflow.readiness.manual_only_now',
+    automation_candidate_later: 'workflow.readiness.automation_candidate_later',
+    requires_backend_later: 'workflow.readiness.requires_backend_later',
+    requires_provider_later: 'workflow.readiness.requires_provider_later',
+  };
+  return map[readiness];
+}
+
+/** Which board column a workflow status belongs to. */
+export type BoardColumnKey = 'backlog' | 'inProgress' | 'waitingBlocked' | 'review' | 'done';
+export function columnForStatus(status: WorkflowStatus): BoardColumnKey | null {
+  if (status === 'canceled') return null;
+  if (status === 'backlog' || status === 'todo') return 'backlog';
+  if (status === 'in_progress') return 'inProgress';
+  if (status === 'waiting_customer' || status === 'waiting_internal' || status === 'blocked')
+    return 'waitingBlocked';
+  if (status === 'review') return 'review';
+  return 'done';
+}
