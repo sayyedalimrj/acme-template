@@ -18,12 +18,18 @@ import type {
   AIAdvisorRecommendation,
   AIAdvisorStoreContextSummary,
   AuthSession,
+  AutomationRule,
+  AutomationSafetyNotice,
   BackInStockInterest,
+  BackInStockSubscription,
   BillingInterval,
   BillingProviderStatus,
   CampaignConversionSignal,
+  CampaignDraft,
+  CampaignMessagePreview,
   CommerceEvent,
   ConnectSiteInput,
+  ConsentReadiness,
   CurrentSubscriptionSummary,
   Customer,
   CustomerListQuery,
@@ -45,6 +51,8 @@ import type {
   MediaStudioVideoConcept,
   NewLaunchInput,
   NewStoreLaunchRequest,
+  NotificationProviderStatus,
+  NotificationReadiness,
   OnboardingRequest,
   Order,
   OrderListQuery,
@@ -269,6 +277,33 @@ export interface CustomerIntelligenceAdapter {
   dismissRecommendationMock(id: string): Promise<IntelligenceRecommendation[]>;
 }
 
+/**
+ * Notification / automation adapter — the seam for SMS & back-in-stock automation (Phase 6).
+ *
+ * Mock-only: lists back-in-stock subscriptions, automation rules, and review-only campaign
+ * drafts, and builds consent-gated message previews. It calls NO SMS/email/WhatsApp provider
+ * (no Kavenegar/Twilio/Klaviyo), sends NOTHING, stores NO real phone numbers/consent, and has
+ * NO scheduler. `siteId` is accepted for forward-compatibility but ignored by the mock. Future
+ * real sending must go through a backend/provider adapter with consent + opt-out + audit logs.
+ */
+export interface NotificationAutomationAdapter {
+  getProviderStatus(): Promise<NotificationProviderStatus>;
+  getReadiness(): Promise<NotificationReadiness>;
+  getConsentReadiness(): Promise<ConsentReadiness>;
+  listBackInStockSubscriptions(siteId?: string): Promise<BackInStockSubscription[]>;
+  listAutomationRules(siteId?: string): Promise<AutomationRule[]>;
+  listCampaignDrafts(siteId?: string): Promise<CampaignDraft[]>;
+  listSafetyNotices(): Promise<AutomationSafetyNotice[]>;
+  /** Build a deterministic, consent-gated message preview (no send). */
+  previewCampaignMessage(draftId: string): Promise<CampaignMessagePreview>;
+  /** Create a mock back-in-stock campaign draft for a product; returns the draft. */
+  createBackInStockDraftMock(productId: string): Promise<CampaignDraft>;
+  markDraftReviewed(id: string): Promise<CampaignDraft[]>;
+  /** Approve a draft (mock-only; nothing is sent); returns the updated drafts. */
+  approveDraftMock(id: string): Promise<CampaignDraft[]>;
+  dismissDraftMock(id: string): Promise<CampaignDraft[]>;
+}
+
 /** The full set of adapters resolved from configuration. */
 export interface Adapters {
   auth: AuthAdapter;
@@ -283,4 +318,5 @@ export interface Adapters {
   advisor: AIAdvisorAdapter;
   mediaStudio: MediaStudioAdapter;
   intelligence: CustomerIntelligenceAdapter;
+  automation: NotificationAutomationAdapter;
 }

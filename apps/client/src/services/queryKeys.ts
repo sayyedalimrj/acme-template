@@ -81,4 +81,10 @@ export const queryKeys = {
   intelligenceRecommendations: () => ['intelligence', 'recommendations'] as const,
   /** Mutable mock event stream. */
   intelligenceEvents: () => ['intelligence', 'events'] as const,
+
+  // SMS/back-in-stock automation is account-level (mock), so these keys are global.
+  /** Static automation overview (status + readiness + consent + subscriptions + rules). */
+  automationOverview: () => ['automation', 'overview'] as const,
+  /** Mutable campaign drafts. */
+  automationDrafts: () => ['automation', 'drafts'] as const,
 } as const;
