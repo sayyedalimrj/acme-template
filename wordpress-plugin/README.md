@@ -1,15 +1,15 @@
 # wordpress-plugin — WordPress Commerce OS Companion
 
-> **Status: read-only sync foundation (post Plugin PR 3).** This is **one plugin** — _WordPress
+> **Status: signed delivery foundation (post Plugin PR 3).** This is **one plugin** — _WordPress
 > Commerce OS Companion_ — with WooCommerce, events, webhook config, controlled actions, sync,
-> and diagnostics all as **internal modules**. On top of the connection state, read-only
-> WooCommerce bridge, local event bridge, and controlled-actions foundation, it now builds a
-> **redacted, summary-only read-only sync package** and exposes a **local delivery preview**.
-> **Backend delivery is disabled by default** and there is still **no network code**: the
-> plugin **collects no credentials, makes no external requests, calls no WooCommerce/WordPress
-> REST API, creates no API keys, registers no real webhooks, and performs no mutations.** The
-> backend (`apps/api`) provides pure, dependency-free **validators/ingestors** for the package
-> (in-memory only; no persistence).
+> signature, and diagnostics all as **internal modules**. It builds a redacted, summary-only
+> read-only sync package, a **local delivery preview**, and now a **signed preview shape** (the
+> backend verifies HMAC-SHA256 signatures with injected signing material). **Backend delivery
+> is disabled by default** and there is still **no network code**: the plugin **collects no
+> credentials, stores no signing secret, makes no external requests, calls no
+> WooCommerce/WordPress REST API, creates no API keys, registers no real webhooks, and performs
+> no mutations.** The backend (`apps/api`) provides a pure, framework-agnostic **signed-delivery
+> handler** (signature + replay verification → in-memory ingest; no server, no persistence).
 >
 > Plugin PR plan: 1) runtime skeleton + admin UI + health/WooCommerce detection (shipped), 2) secure connection state + read-only WooCommerce bridge (shipped), 3) event/webhook bridge
 >
@@ -73,31 +73,33 @@ This is a manual, local-only install for development:
 
 No public/unauthenticated access. Responses are summary-only and redacted.
 
-| Method | Endpoint                                           | Returns                                                                   |
-| ------ | -------------------------------------------------- | ------------------------------------------------------------------------- |
-| GET    | `/wp-json/wcos/v1/status`                          | plugin/connection status, site/home URL, WooCommerce + capability summary |
-| GET    | `/wp-json/wcos/v1/health`                          | health-check summary (ok / warning / error / not_configured)              |
-| GET    | `/wp-json/wcos/v1/connection`                      | non-secret local connection summary + site identity                       |
-| POST   | `/wp-json/wcos/v1/connection/local-ready`          | mark local readiness (non-secret options only)                            |
-| POST   | `/wp-json/wcos/v1/connection/disconnect`           | clear local connection state                                              |
-| GET    | `/wp-json/wcos/v1/woocommerce/summary`             | counts + read-capability readiness                                        |
-| GET    | `/wp-json/wcos/v1/woocommerce/products?limit=10`   | product summaries (max 20)                                                |
-| GET    | `/wp-json/wcos/v1/woocommerce/orders?limit=10`     | order summaries (max 20, generic customer label)                          |
-| GET    | `/wp-json/wcos/v1/woocommerce/customers?limit=10`  | customer summaries (max 20, masked label)                                 |
-| GET    | `/wp-json/wcos/v1/events?limit=20`                 | local event queue (summary-only) + bridge status                          |
-| POST   | `/wp-json/wcos/v1/events/test`                     | enqueue a synthetic, PII-free test event locally                          |
-| POST   | `/wp-json/wcos/v1/events/clear`                    | clear the local event queue                                               |
-| GET    | `/wp-json/wcos/v1/webhook-config`                  | non-secret delivery placeholder (no URL, no secret)                       |
-| POST   | `/wp-json/wcos/v1/webhook-config/local-queue-only` | set delivery status = local queue only                                    |
-| POST   | `/wp-json/wcos/v1/webhook-config/disable`          | set delivery status = disabled                                            |
-| GET    | `/wp-json/wcos/v1/actions`                         | controlled-action intents (all disabled)                                  |
-| POST   | `/wp-json/wcos/v1/actions/request`                 | placeholder — always disabled, never mutates                              |
-| GET    | `/wp-json/wcos/v1/audit?limit=20`                  | recent local audit entries (summary-only)                                 |
-| GET    | `/wp-json/wcos/v1/sync/package?limit=10`           | redacted, summary-only read-only sync package                             |
-| GET    | `/wp-json/wcos/v1/sync/preview`                    | local delivery preview (nothing is sent)                                  |
-| GET    | `/wp-json/wcos/v1/delivery`                        | non-secret delivery summary (disabled by default; no URL/secret)          |
-| POST   | `/wp-json/wcos/v1/delivery/local-preview-only`     | set delivery = local preview only (still no network)                      |
-| POST   | `/wp-json/wcos/v1/delivery/disable`                | set delivery = disabled                                                   |
+| Method | Endpoint                                           | Returns                                                                      |
+| ------ | -------------------------------------------------- | ---------------------------------------------------------------------------- |
+| GET    | `/wp-json/wcos/v1/status`                          | plugin/connection status, site/home URL, WooCommerce + capability summary    |
+| GET    | `/wp-json/wcos/v1/health`                          | health-check summary (ok / warning / error / not_configured)                 |
+| GET    | `/wp-json/wcos/v1/connection`                      | non-secret local connection summary + site identity                          |
+| POST   | `/wp-json/wcos/v1/connection/local-ready`          | mark local readiness (non-secret options only)                               |
+| POST   | `/wp-json/wcos/v1/connection/disconnect`           | clear local connection state                                                 |
+| GET    | `/wp-json/wcos/v1/woocommerce/summary`             | counts + read-capability readiness                                           |
+| GET    | `/wp-json/wcos/v1/woocommerce/products?limit=10`   | product summaries (max 20)                                                   |
+| GET    | `/wp-json/wcos/v1/woocommerce/orders?limit=10`     | order summaries (max 20, generic customer label)                             |
+| GET    | `/wp-json/wcos/v1/woocommerce/customers?limit=10`  | customer summaries (max 20, masked label)                                    |
+| GET    | `/wp-json/wcos/v1/events?limit=20`                 | local event queue (summary-only) + bridge status                             |
+| POST   | `/wp-json/wcos/v1/events/test`                     | enqueue a synthetic, PII-free test event locally                             |
+| POST   | `/wp-json/wcos/v1/events/clear`                    | clear the local event queue                                                  |
+| GET    | `/wp-json/wcos/v1/webhook-config`                  | non-secret delivery placeholder (no URL, no secret)                          |
+| POST   | `/wp-json/wcos/v1/webhook-config/local-queue-only` | set delivery status = local queue only                                       |
+| POST   | `/wp-json/wcos/v1/webhook-config/disable`          | set delivery status = disabled                                               |
+| GET    | `/wp-json/wcos/v1/actions`                         | controlled-action intents (all disabled)                                     |
+| POST   | `/wp-json/wcos/v1/actions/request`                 | placeholder — always disabled, never mutates                                 |
+| GET    | `/wp-json/wcos/v1/audit?limit=20`                  | recent local audit entries (summary-only)                                    |
+| GET    | `/wp-json/wcos/v1/sync/package?limit=10`           | redacted, summary-only read-only sync package                                |
+| GET    | `/wp-json/wcos/v1/sync/preview`                    | local delivery preview (nothing is sent)                                     |
+| GET    | `/wp-json/wcos/v1/delivery`                        | non-secret delivery summary (disabled by default; no URL/secret)             |
+| POST   | `/wp-json/wcos/v1/delivery/local-preview-only`     | set delivery = local preview only (still no network)                         |
+| POST   | `/wp-json/wcos/v1/delivery/disable`                | set delivery = disabled                                                      |
+| GET    | `/wp-json/wcos/v1/sync/signed-preview`             | local signed-preview shape (signature status `not_configured`; nothing sent) |
+| GET    | `/wp-json/wcos/v1/signature/status`                | non-secret signing/delivery-security summary (no secret, no URL)             |
 
 Test as a logged-in admin, e.g. in the browser console:
 `fetch('/wp-json/wcos/v1/events', { headers: { 'X-WP-Nonce': wpApiSettings.nonce } }).then(r => r.json())`.

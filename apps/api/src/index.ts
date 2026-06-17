@@ -144,9 +144,42 @@ export {
 } from './plugin/pluginSyncIngestor';
 export { ingestPluginEventBatch } from './plugin/pluginEventIngestor';
 export {
+  PLUGIN_SIGNATURE_ALGORITHM,
   buildSignatureBaseString,
+  signPluginSyncPayload,
+  verifyPluginSyncSignature,
+  safeCompareSignatures,
   verifyPluginSignaturePlaceholder,
 } from './plugin/pluginSignature';
+export type { PluginSignatureInput } from './plugin/pluginSignature';
+export { sha256Hex, hmacSha256Hex } from './plugin/pluginCrypto';
+export type {
+  PluginSigningSecretStatus,
+  PluginSigningSecretMetadata,
+  PluginSigningSecretResolution,
+  PluginSigningSecretProvider,
+} from './plugin/pluginSigningSecret';
+export { notConfiguredSigningSecretProvider } from './plugin/pluginSigningSecret';
+export type { ReplayRequestRef, ReplayCheckResult, ReplayGuard } from './plugin/pluginReplayGuard';
+export {
+  buildReplayKey,
+  checkReplayWindow,
+  createInMemoryReplayGuard,
+  recordOrRejectReplay,
+  resetDefaultReplayGuard,
+} from './plugin/pluginReplayGuard';
+export type {
+  PluginDeliveryHeaders,
+  PluginDeliveryBody,
+  PluginDeliveryRequest,
+} from './plugin/pluginDeliveryRequest';
+export type {
+  PluginDeliveryErrorCode,
+  PluginDeliverySecurityContext,
+  PluginDeliveryHandlerContext,
+  PluginDeliveryResult,
+} from './plugin/pluginDeliveryResponse';
+export { handlePluginSyncDelivery } from './plugin/pluginDeliveryEndpoint';
 export {
   registerPluginConnectionPlaceholder,
   getPluginConnectionStatus,

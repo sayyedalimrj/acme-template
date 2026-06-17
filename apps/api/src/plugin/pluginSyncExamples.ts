@@ -13,7 +13,17 @@ import {
   resetPluginConnectionRegistry,
 } from './pluginConnectionRegistry';
 import { ingestPluginEventBatch } from './pluginEventIngestor';
-import { verifyPluginSignaturePlaceholder } from './pluginSignature';
+import { hmacSha256Hex, sha256Hex } from './pluginCrypto';
+import { handlePluginSyncDelivery } from './pluginDeliveryEndpoint';
+import type { PluginDeliveryHandlerContext } from './pluginDeliveryResponse';
+import type { PluginDeliveryRequest } from './pluginDeliveryRequest';
+import { createInMemoryReplayGuard } from './pluginReplayGuard';
+import { signPluginSyncPayload, verifyPluginSignaturePlaceholder } from './pluginSignature';
+import {
+  notConfiguredSigningSecretProvider,
+  type PluginSigningSecretProvider,
+} from './pluginSigningSecret';
+import type { PluginSyncEnvelope } from './pluginSyncEnvelope';
 import {
   buildSyncEnvelopeWithOversizeProducts,
   buildSyncEnvelopeWithRawEmail,
@@ -162,7 +172,203 @@ export function collectPluginSyncExampleResults(): ExampleResult[] {
 /** Eagerly computed results (pure) — handy for docs and a future test runner. */
 export const PLUGIN_SYNC_EXAMPLE_RESULTS: ExampleResult[] = collectPluginSyncExampleResults();
 
+// ---------------------------------------------------------------------------
+// Signed delivery example checks (signature + replay + handler).
+// ---------------------------------------------------------------------------
+
+/** Obviously test-only, non-production, non-token-like signing material. */
+const TEST_SIGNING_MATERIAL = 'dev-only-signing-material-not-production';
+const BASE_NOW = Date.parse('2026-06-17T08:00:00.000Z');
+
+const testSigningProvider: PluginSigningSecretProvider = (siteId) => ({
+  metadata: { siteId, status: 'configured_in_backend_later' },
+  material: TEST_SIGNING_MATERIAL,
+});
+
+interface SignedRequestOverrides {
+  timestamp?: string;
+  nonce?: string;
+  signature?: string;
+  omitSignature?: boolean;
+}
+
+function buildSignedRequest(
+  envelope: PluginSyncEnvelope,
+  material: string,
+  overrides: SignedRequestOverrides = {},
+): PluginDeliveryRequest {
+  const bodyString = JSON.stringify(envelope);
+  const timestamp = overrides.timestamp ?? new Date(BASE_NOW).toISOString();
+  const nonce = overrides.nonce ?? 'nonce-abc-123';
+  const siteId = envelope.payload.connection?.siteId ?? 'site_local_demo';
+  const tenantId = envelope.payload.connection?.tenantId;
+  const pluginVersion = envelope.source.pluginVersion;
+  const signature =
+    overrides.signature ??
+    signPluginSyncPayload(
+      { siteId, tenantId, timestamp, nonce, pluginVersion, bodyString },
+      material,
+    );
+  const headers: PluginDeliveryRequest['headers'] = {
+    'x-wcos-site-id': siteId,
+    'x-wcos-tenant-id': tenantId,
+    'x-wcos-timestamp': timestamp,
+    'x-wcos-nonce': nonce,
+    'x-wcos-plugin-version': pluginVersion,
+  };
+  if (!overrides.omitSignature) {
+    headers['x-wcos-signature'] = signature;
+  }
+  return { headers, body: { envelope }, rawBody: bodyString };
+}
+
+function freshContext(provider: PluginSigningSecretProvider): PluginDeliveryHandlerContext {
+  return {
+    security: {
+      signatureProvider: provider,
+      replayGuard: createInMemoryReplayGuard(),
+      now: BASE_NOW,
+      maxSkewSeconds: 300,
+    },
+  };
+}
+
+/** Run signed-delivery example checks. */
+export function collectSignedDeliveryExampleResults(): ExampleResult[] {
+  const results: ExampleResult[] = [];
+
+  // 0. Crypto known-answer test (proves the dependency-free HMAC is correct).
+  {
+    const sha = sha256Hex('abc');
+    const mac = hmacSha256Hex('key', 'The quick brown fox jumps over the lazy dog');
+    const passed =
+      sha === 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' &&
+      mac === 'f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8';
+    results.push({
+      name: 'crypto HMAC-SHA256 known-answer',
+      passed,
+      note: 'Pure SHA-256/HMAC matches published test vectors.',
+    });
+  }
+
+  // 1. Valid signed delivery accepted.
+  {
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL);
+    const result = handlePluginSyncDelivery(req, freshContext(testSigningProvider));
+    results.push({
+      name: 'valid signed delivery accepted',
+      passed: result.accepted && result.statusCodeSuggestion === 202 && !!result.snapshot,
+      note: 'A correctly signed, fresh request is accepted with an in-memory snapshot.',
+    });
+  }
+
+  // 2. Missing signature rejected.
+  {
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL, {
+      omitSignature: true,
+    });
+    const result = handlePluginSyncDelivery(req, freshContext(testSigningProvider));
+    results.push({
+      name: 'missing signature rejected',
+      passed: !result.accepted && result.errorCode === 'missing_headers',
+      note: 'A request without the signature header is rejected.',
+    });
+  }
+
+  // 3. Invalid signature rejected.
+  {
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL, {
+      signature: 'deadbeef'.repeat(8),
+    });
+    const result = handlePluginSyncDelivery(req, freshContext(testSigningProvider));
+    results.push({
+      name: 'invalid signature rejected',
+      passed: !result.accepted && result.errorCode === 'invalid_signature',
+      note: 'A tampered signature fails verification.',
+    });
+  }
+
+  // 4. Stale timestamp rejected.
+  {
+    const staleTs = new Date(BASE_NOW - 10 * 60 * 1000).toISOString();
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL, {
+      timestamp: staleTs,
+    });
+    const result = handlePluginSyncDelivery(req, freshContext(testSigningProvider));
+    results.push({
+      name: 'stale timestamp rejected',
+      passed: !result.accepted && result.errorCode === 'invalid_timestamp',
+      note: 'A timestamp outside the skew window is rejected.',
+    });
+  }
+
+  // 5. Replayed nonce rejected.
+  {
+    const ctx = freshContext(testSigningProvider);
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL);
+    const first = handlePluginSyncDelivery(req, ctx);
+    const second = handlePluginSyncDelivery(req, ctx);
+    results.push({
+      name: 'replayed nonce rejected',
+      passed: first.accepted && !second.accepted && second.errorCode === 'replayed',
+      note: 'The same signed request replayed against the same guard is rejected.',
+    });
+  }
+
+  // 6. Raw PII payload rejected (signature valid, envelope invalid).
+  {
+    const env = buildSyncEnvelopeWithRawEmail();
+    const req = buildSignedRequest(env, TEST_SIGNING_MATERIAL);
+    const result = handlePluginSyncDelivery(req, freshContext(testSigningProvider));
+    results.push({
+      name: 'raw PII payload rejected',
+      passed: !result.accepted && result.errorCode === 'invalid_payload',
+      note: 'A correctly signed but PII-bearing payload is rejected at validation.',
+    });
+  }
+
+  // 7. Secret-looking payload rejected.
+  {
+    const req = buildSignedRequest(buildSyncEnvelopeWithSecret(), TEST_SIGNING_MATERIAL);
+    const result = handlePluginSyncDelivery(req, freshContext(testSigningProvider));
+    results.push({
+      name: 'secret-looking payload rejected',
+      passed: !result.accepted && result.errorCode === 'invalid_payload',
+      note: 'A correctly signed but secret-bearing payload is rejected at validation.',
+    });
+  }
+
+  // 8. Oversized list rejected.
+  {
+    const req = buildSignedRequest(buildSyncEnvelopeWithOversizeProducts(), TEST_SIGNING_MATERIAL);
+    const result = handlePluginSyncDelivery(req, freshContext(testSigningProvider));
+    results.push({
+      name: 'oversized list rejected',
+      passed: !result.accepted && result.errorCode === 'invalid_payload',
+      note: 'A correctly signed but oversized payload is rejected at validation.',
+    });
+  }
+
+  // 9. Signature provider not configured rejected safely.
+  {
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL);
+    const result = handlePluginSyncDelivery(req, freshContext(notConfiguredSigningSecretProvider));
+    results.push({
+      name: 'signature provider not configured rejected',
+      passed: !result.accepted && result.errorCode === 'signature_not_configured',
+      note: 'When no signing material is configured, delivery is safely rejected.',
+    });
+  }
+
+  return results;
+}
+
+/** Combined results across the read-only sync checks and the signed-delivery checks. */
+export const SIGNED_DELIVERY_EXAMPLE_RESULTS: ExampleResult[] =
+  collectSignedDeliveryExampleResults();
+
 /** True only if every example check passes. */
-export const ALL_PLUGIN_SYNC_EXAMPLES_PASS: boolean = PLUGIN_SYNC_EXAMPLE_RESULTS.every(
-  (r) => r.passed,
-);
+export const ALL_PLUGIN_SYNC_EXAMPLES_PASS: boolean = [
+  ...PLUGIN_SYNC_EXAMPLE_RESULTS,
+  ...SIGNED_DELIVERY_EXAMPLE_RESULTS,
+].every((r) => r.passed);

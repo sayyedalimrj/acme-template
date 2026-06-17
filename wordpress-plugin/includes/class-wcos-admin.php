@@ -349,6 +349,7 @@ if (!class_exists('WCOS_Admin')) {
             $audit_entries     = WCOS_Audit::list_entries(10);
             $package_summary   = WCOS_Sync_Package::get_package_summary();
             $delivery          = WCOS_Delivery::get_delivery_summary();
+            $delivery_security = WCOS_Delivery::get_delivery_security_summary();
             $health            = WCOS_Health::run();
             list($conn_label, $conn_class) = self::connection_label($connection['status']);
             $wc_version        = isset($wc['version']) && $wc['version'] ? $wc['version'] : esc_html__('Unknown', 'wordpress-commerce-os-companion');
@@ -480,6 +481,25 @@ if (!class_exists('WCOS_Admin')) {
                             <tr>
                                 <th><?php echo esc_html__('Delivery status', 'wordpress-commerce-os-companion'); ?></th>
                                 <td><span class="wcos-badge wcos-badge-muted"><?php echo esc_html($delivery['delivery_status']); ?></span> <span class="wcos-hint"><?php echo esc_html($delivery['destination_label']); ?></span></td>
+                            </tr>
+                            <tr>
+                                <th><?php echo esc_html__('Signature status', 'wordpress-commerce-os-companion'); ?></th>
+                                <td><span class="wcos-badge wcos-badge-muted"><?php echo esc_html($delivery_security['signing_status']); ?></span> <span class="wcos-hint"><?php echo esc_html($delivery_security['algorithm']); ?></span></td>
+                            </tr>
+                            <tr>
+                                <th><?php echo esc_html__('Delivery security', 'wordpress-commerce-os-companion'); ?></th>
+                                <td>
+                                    <?php echo esc_html__('External delivery', 'wordpress-commerce-os-companion'); ?>:
+                                    <?php echo $delivery_security['external_delivery'] ? esc_html($yes) : esc_html($no); ?> ·
+                                    <?php echo esc_html__('Signing key', 'wordpress-commerce-os-companion'); ?>:
+                                    <?php echo $delivery_security['has_signing_key'] ? esc_html($yes) : esc_html($no); ?> ·
+                                    <?php echo esc_html__('Replay protection', 'wordpress-commerce-os-companion'); ?>:
+                                    <?php echo esc_html($delivery_security['replay_protection']); ?>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><?php echo esc_html__('Signed preview', 'wordpress-commerce-os-companion'); ?></th>
+                                <td class="wcos-hint"><?php echo esc_html__('Available (admin REST: /wp-json/wcos/v1/sync/signed-preview)', 'wordpress-commerce-os-companion'); ?></td>
                             </tr>
                         </tbody>
                     </table>
@@ -684,7 +704,7 @@ if (!class_exists('WCOS_Admin')) {
                 <div class="wcos-card">
                     <h2><?php echo esc_html__('Next steps', 'wordpress-commerce-os-companion'); ?></h2>
                     <p><?php echo esc_html__('Secure backend connection will be handled later via the backend/proxy handshake. No credentials are collected or stored by this plugin, and it makes no network requests.', 'wordpress-commerce-os-companion'); ?></p>
-                    <p class="wcos-hint"><?php echo esc_html__('Admin-only REST endpoints: /wp-json/wcos/v1/status, /health, /connection, /woocommerce/*, /events, /webhook-config, /actions, /audit, /sync/*, /delivery.', 'wordpress-commerce-os-companion'); ?></p>
+                    <p class="wcos-hint"><?php echo esc_html__('Admin-only REST endpoints: /wp-json/wcos/v1/status, /health, /connection, /woocommerce/*, /events, /webhook-config, /actions, /audit, /sync/*, /delivery, /signature/status.', 'wordpress-commerce-os-companion'); ?></p>
                 </div>
             </div>
             <?php

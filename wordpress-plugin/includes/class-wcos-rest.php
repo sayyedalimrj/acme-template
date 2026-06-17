@@ -26,6 +26,8 @@
  *   - GET  /wp-json/wcos/v1/delivery
  *   - POST /wp-json/wcos/v1/delivery/local-preview-only
  *   - POST /wp-json/wcos/v1/delivery/disable
+ *   - GET  /wp-json/wcos/v1/sync/signed-preview
+ *   - GET  /wp-json/wcos/v1/signature/status
  *
  * ALL routes require the `manage_options` capability (no public/unauthenticated access). The
  * POST routes mutate only non-secret local options/queue (no network, no credentials, no
@@ -311,6 +313,26 @@ if (!class_exists('WCOS_REST')) {
                 array(
                     'methods'             => 'POST',
                     'callback'            => array(__CLASS__, 'post_delivery_disable'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/sync/signed-preview',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array(__CLASS__, 'get_signed_preview'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/signature/status',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array(__CLASS__, 'get_signature_status'),
                     'permission_callback' => array(__CLASS__, 'permission_check'),
                 )
             );
@@ -659,6 +681,29 @@ if (!class_exists('WCOS_REST')) {
         public static function post_delivery_disable() {
             return rest_ensure_response(
                 WCOS_Redaction::redact_array(WCOS_Delivery::disable_delivery())
+            );
+        }
+
+        /**
+         * GET /wcos/v1/sync/signed-preview — local signed preview shape (nothing is sent;
+         * signature status is `not_configured` because the plugin stores no signing material).
+         *
+         * @return mixed REST response.
+         */
+        public static function get_signed_preview() {
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(WCOS_Delivery::build_signed_preview_payload())
+            );
+        }
+
+        /**
+         * GET /wcos/v1/signature/status — non-secret signing/delivery security summary.
+         *
+         * @return mixed REST response.
+         */
+        public static function get_signature_status() {
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(WCOS_Delivery::get_delivery_security_summary())
             );
         }
 

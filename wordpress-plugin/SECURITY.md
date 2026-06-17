@@ -122,6 +122,29 @@ The read-only sync package + delivery placeholder are bound by these additional 
   secrets/oversized lists) and builds normalized read-model snapshots — **no database, no
   persistence, no network**. The plugin never imports from `apps/api` and vice versa.
 
+## Runtime security (signed delivery foundation)
+
+The signed-preview + backend signed-delivery handler are bound by these additional rules:
+
+- **The plugin stores NO signing secret.** `WCOS_Signature` reports `not_configured`; there is
+  **no admin field** for a signing secret, it is never exposed, and it is never logged. HMAC
+  is only computed when signing material is **injected at call time** (e.g. runtime sanity
+  tests) — never from a stored value.
+- **Signed preview sends nothing.** `WCOS_Delivery::build_signed_preview_payload()` returns
+  `would_send: false` with a `signing` block of `status: not_configured` and a redacted
+  package preview. `get_delivery_security_summary()` reports `external_delivery: false` and
+  `has_signing_key: false`. No destination URL and no secret exist.
+- **Backend handler is framework-agnostic and pure.** `handlePluginSyncDelivery` verifies
+  required headers, the timestamp/replay window (in-memory), the HMAC-SHA256 signature (using
+  signing material resolved through an **injected provider**), and the envelope — then ingests
+  an in-memory snapshot. There is **no HTTP server, no deployment, no database, and no external
+  network**. The signing material is never hard-coded or committed; examples use an obviously
+  test-only, non-token-like string.
+- **Replay protection is an in-memory placeholder** (stale-timestamp + duplicate-nonce
+  rejection); durable idempotency arrives with the dev delivery endpoint phase.
+- Signed-delivery REST routes (`/sync/signed-preview`, `/signature/status`) are **admin-only**
+  and redacted. No new persistent options are stored by this phase.
+
 ## Handshake security (designed, not implemented here)
 
 - A **short-lived challenge** issued by the backend; the plugin responds (signed) later.
