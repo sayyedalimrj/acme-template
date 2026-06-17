@@ -4,8 +4,11 @@
  * `handlePluginSyncDelivery` is a PURE function: it validates headers, the timestamp/replay
  * window, resolves injected signing material, verifies the HMAC signature, validates the sync
  * envelope, and ingests an in-memory snapshot — returning a `PluginDeliveryResult` with a
- * suggested status code. There is NO HTTP server, NO Express/Fastify/Nest, NO deployment, NO
- * database, and NO external network. See `security-model.md`.
+ * suggested status code. It supports two modes via the OPTIONAL persistence context:
+ * `validate_only` (default — never persists) and `validate_and_persist_dev` (persists an
+ * accepted snapshot to the IN-MEMORY dev repository only). There is NO HTTP server, NO
+ * Express/Fastify/Nest, NO deployment, NO database, and NO external network. See
+ * `security-model.md`.
  */
 import { createSafeError, type SafeApiError } from '../security/errors';
 import type {
@@ -17,6 +20,12 @@ import type { PluginDeliveryRequest } from './pluginDeliveryRequest';
 import { checkReplayWindow } from './pluginReplayGuard';
 import { verifyPluginSyncSignature } from './pluginSignature';
 import { ingestPluginSyncEnvelope } from './pluginSyncIngestor';
+import { persistValidatedPluginSync } from './pluginSyncPersistence';
+import {
+  classifyValidationIssues,
+  isPersistMode,
+  mapDeliveryErrorCodeToStatus,
+} from './pluginSyncState';
 import type { PluginSyncIssue } from './pluginSyncEnvelope';
 
 const ACCEPTED_AUDIT = 'plugin.sync.delivery.accepted';
@@ -54,6 +63,8 @@ function reject(
     error: toSafeError(errorCode, message),
     warnings,
     auditActionSuggestion: REJECTED_AUDIT,
+    persistenceStatus: mapDeliveryErrorCodeToStatus(errorCode),
+    persisted: false,
   };
 }
 
@@ -143,15 +154,41 @@ export function handlePluginSyncDelivery(
       }),
       warnings,
       auditActionSuggestion: REJECTED_AUDIT,
+      persistenceStatus: classifyValidationIssues(ingest.validation.errors),
+      persisted: false,
     };
   }
 
-  // 7. Accepted.
+  // 7. Accepted. Optionally persist to the in-memory dev repository (controlled dev mode).
+  const persistence = context.persistence;
+  if (persistence && isPersistMode(persistence.mode) && persistence.repository) {
+    const persistResult = persistValidatedPluginSync(request.body?.envelope, {
+      repository: persistence.repository,
+      mode: persistence.mode,
+      source: persistence.source ?? 'signed_delivery_dev',
+      now,
+      generateId: persistence.generateId,
+    });
+    return {
+      accepted: true,
+      statusCodeSuggestion: 202,
+      warnings,
+      snapshot: ingest.snapshot,
+      auditActionSuggestion: ACCEPTED_AUDIT,
+      persistenceStatus: persistResult.status,
+      persisted: persistResult.persisted,
+      persistence: persistResult,
+    };
+  }
+
+  // Accepted, validate-only (default safe path): nothing is persisted.
   return {
     accepted: true,
     statusCodeSuggestion: 202,
     warnings,
     snapshot: ingest.snapshot,
     auditActionSuggestion: ACCEPTED_AUDIT,
+    persistenceStatus: 'accepted_not_persisted',
+    persisted: false,
   };
 }

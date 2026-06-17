@@ -116,8 +116,12 @@ validators/ingestors/connection-registry that turn a package into an in-memory r
 snapshot (no persistence, no secrets, no PII). A **signed delivery foundation** then adds a
 framework-agnostic backend handler that verifies an HMAC-SHA256 signature (injected signing
 material) + replay/timestamp window before in-memory ingest, plus a plugin **signed preview**
-(no stored secret). Next: a **controlled dev delivery endpoint + read-only sync persistence**,
-then flipping client adapters to backend-backed reads.
+(no stored secret). A **controlled dev read-only sync persistence** foundation now lets the
+signed-delivery handler optionally persist accepted, normalized, summary-only snapshots to an
+**in-memory dev repository** (modes: `validate_only` default / `validate_and_persist_dev`;
+no production DB, no filesystem, no network, no mutation, raw PII/secrets rejected before
+persistence). Next: a **production database schema + tenant isolation** design, then flipping
+client adapters to backend-backed reads.
 
 ### Phase 11 — Webhook ingestion
 Order/product/customer/coupon events · signature verification · idempotency · event log ·
