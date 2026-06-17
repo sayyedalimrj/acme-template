@@ -1056,7 +1056,6 @@ export const en = {
   'reports.chart.empty': 'No trend data for this period yet.',
   'reports.chart.period': 'Last 30 days',
   // --- Platform Admin (internal control layer) ---
-  'nav.platformAdmin': 'Platform Admin',
   'platformAdmin.title': 'Platform Admin',
   'platformAdmin.subtitle': 'Manage our SaaS customers, their stores, and platform health.',
   'platformAdmin.security.note':
@@ -2169,7 +2168,6 @@ export const fa: Record<StringKey, string> = {
   'reports.chart.empty': 'هنوز داده‌ای برای روند این بازه وجود ندارد.',
   'reports.chart.period': '۳۰ روز اخیر',
   // --- Platform Admin (internal control layer) ---
-  'nav.platformAdmin': 'مدیریت پلتفرم',
   'platformAdmin.title': 'مدیریت پلتفرم',
   'platformAdmin.subtitle': 'مدیریت مشتریان SaaS، فروشگاه‌های آن‌ها و سلامت پلتفرم.',
   'platformAdmin.security.note':

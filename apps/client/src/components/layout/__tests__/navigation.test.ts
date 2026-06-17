@@ -43,10 +43,9 @@ describe('navigation grouping', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('includes the Platform Admin entry under the platform group', () => {
-    const platform = navSections.find((s) => s.key === 'platform');
-    expect(platform?.items.some((i) => i.key === 'platform-admin' && i.href === '/platform-admin')).toBe(
-      true,
-    );
+  it('does not expose the internal Platform Admin as a merchant route', () => {
+    // Platform Admin is internal-only and must live in a separate app (apps/admin),
+    // never in the merchant navigation. Guards against regressions.
+    expect(navItems.some((i) => i.href.startsWith('/platform-admin'))).toBe(false);
   });
 });
