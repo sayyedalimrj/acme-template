@@ -17,4 +17,6 @@ export { customerIntelligenceService } from './customerIntelligenceService';
 export type { IntelligenceOverview } from './customerIntelligenceService';
 export { notificationAutomationService } from './notificationAutomationService';
 export type { AutomationOverview } from './notificationAutomationService';
+export { reportsAnalyticsService } from './reportsAnalyticsService';
+export type { ReportsOverview } from './reportsAnalyticsService';
 export { queryKeys } from './queryKeys';

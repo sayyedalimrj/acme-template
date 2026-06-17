@@ -523,11 +523,21 @@ export function DashboardScreen(): React.JSX.Element {
 
   return (
     <Screen testID="dashboard-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('dashboard.title')}</Text>
-        <Text tone="muted">
-          {t('dashboard.activeStore')}: {activeSite.data?.name ?? '—'}
-        </Text>
+      <View
+        style={{
+          flexDirection: rowDirection,
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: tokens.spacing.sm,
+        }}
+      >
+        <View style={{ gap: tokens.spacing.xs, flex: 1 }}>
+          <Text variant="title">{t('dashboard.title')}</Text>
+          <Text tone="muted">
+            {t('dashboard.activeStore')}: {activeSite.data?.name ?? '—'}
+          </Text>
+        </View>
+        <SectionLink label={t('dashboard.reports')} onPress={() => go('/reports')} />
       </View>
 
       {/* A. Store pulse / KPIs */}
