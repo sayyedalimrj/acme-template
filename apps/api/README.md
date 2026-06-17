@@ -93,6 +93,27 @@ persistence, and no delivery** — ingestion returns normalized **in-memory** re
 - `pluginSyncFixtures.ts` / `pluginSyncExamples.ts` — safe fixtures (reserved
   `example-store.test` domain, no PII/secrets) and dependency-free example checks.
 
+### Signed delivery foundation (framework-agnostic; no server)
+
+- `pluginSignature.ts` — `buildSignatureBaseString`, `signPluginSyncPayload`,
+  `verifyPluginSyncSignature`, `safeCompareSignatures` (HMAC-SHA256 over a canonical,
+  non-secret base string; signing material is **injected**, never stored). The legacy
+  `verifyPluginSignaturePlaceholder` remains for the no-material case.
+- `pluginCrypto.ts` — dependency-free pure SHA-256 / HMAC-SHA256 (no Node/Web Crypto types),
+  verified against published test vectors.
+- `pluginSigningSecret.ts` — `PluginSigningSecretMetadata` / `…Status` / `…Provider`
+  (metadata only; the real key is resolved via an injected provider, never committed) +
+  `notConfiguredSigningSecretProvider`.
+- `pluginReplayGuard.ts` — `checkReplayWindow`, `buildReplayKey`, `createInMemoryReplayGuard`,
+  `recordOrRejectReplay` (in-memory; rejects stale timestamps + duplicate nonces).
+- `pluginDeliveryRequest.ts` / `pluginDeliveryResponse.ts` — request headers (`x-wcos-*`),
+  body, and a framework-agnostic result with a suggested status code (no Authorization/bearer/
+  basic/API-key).
+- `pluginDeliveryEndpoint.ts` — `handlePluginSyncDelivery(request, context)`: a PURE handler
+  that validates headers → timestamp/replay → resolves injected signing material → verifies
+  the HMAC signature → validates the envelope → ingests an in-memory snapshot. **No HTTP
+  server, no Express/Fastify/Nest, no deployment, no DB, no external network.**
+
 **No external delivery by default**, **no secrets**, **no raw PII**, **no mutations**, and **no
 database**. The plugin's package shape (snake_case PHP) maps onto these camelCase contracts; a
 mapping/transport layer arrives with real signed delivery (next phase).

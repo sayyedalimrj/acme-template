@@ -45,6 +45,8 @@ if (!class_exists('WCOS_Redaction')) {
                 'nonce',
                 'webhooksecret',
                 'signature',
+                'signingmaterial',
+                'signingsecret',
                 // PII field names (defense-in-depth — these must never appear in output).
                 'ipaddress',
                 'useragent',

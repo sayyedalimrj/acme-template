@@ -89,6 +89,54 @@ if (!class_exists('WCOS_Delivery')) {
         }
 
         /**
+         * Current signature status (delegates to WCOS_Signature; always not_configured here).
+         *
+         * @return string
+         */
+        public static function get_signature_status() {
+            return class_exists('WCOS_Signature') ? WCOS_Signature::get_signature_status() : 'not_configured';
+        }
+
+        /**
+         * Non-secret delivery security summary. No signing secret, no URL, no external delivery.
+         * Key names deliberately avoid the redactor's sensitive tokens so the structured flags
+         * survive `WCOS_Redaction::redact_array`.
+         *
+         * @return array<string,mixed>
+         */
+        public static function get_delivery_security_summary() {
+            return array(
+                'signing_status'    => self::get_signature_status(),
+                'algorithm'         => 'hmac-sha256',
+                'replay_protection' => 'backend_in_memory_later',
+                'external_delivery' => false,
+                'has_signing_key'   => false,
+                'note'              => 'Signed delivery requires backend-provisioned signing material later. The plugin stores no signing secret, exposes no signing field, and sends nothing.',
+            );
+        }
+
+        /**
+         * Build a local SIGNED-preview payload. Does NOT send anything and does NOT compute a
+         * real signature (no signing material is stored): the signing block reports
+         * `status: not_configured`.
+         *
+         * @return array<string,mixed>
+         */
+        public static function build_signed_preview_payload() {
+            return array(
+                'delivery'        => self::get_delivery_summary(),
+                'would_send'      => false,
+                'signing'         => array(
+                    'status'        => self::get_signature_status(),
+                    'algorithm'     => 'hmac-sha256',
+                    'key_present'   => false,
+                    'value_present' => false,
+                ),
+                'package_preview' => WCOS_Sync_Package::build_package(WCOS_Sync_Package::MAX_RECORDS),
+            );
+        }
+
+        /**
          * Persist a status (autoload disabled).
          *
          * @param string $status One of allowed_statuses().

@@ -7,12 +7,15 @@
 > status page + health + internal WooCommerce detection (PR 1), non-secret local connection
 > state + a read-only summarized WooCommerce bridge (PR 2), and a local-only summary event
 > bridge + webhook delivery placeholder + disabled controlled-actions + local audit (PR 3).
-> A **read-only sync foundation** now builds a redacted, summary-only **sync package** with a
-> **local delivery preview** (delivery disabled by default, no network), and the backend
-> (`apps/api`) provides pure **validators/ingestors** that turn a package into an in-memory
-> read-model snapshot (no persistence). It still performs **no** backend delivery, real
-> handshake, credential handling, WooCommerce REST/API-key calls, real webhooks, or mutations.
-> The recommended next step is a **secure backend delivery endpoint + signed plugin sync**.
+> A **read-only sync foundation** builds a redacted, summary-only **sync package** with a
+> **local delivery preview** (delivery disabled by default, no network), and a **signed
+> delivery foundation** adds a **signed preview shape** plus a backend, framework-agnostic
+> **signed-delivery handler** that verifies an HMAC-SHA256 signature (with **injected** signing
+> material) + a replay/timestamp window and then ingests an in-memory snapshot. The plugin
+> stores **no signing secret** (status `not_configured`). It still performs **no** real backend
+> delivery, real handshake, credential handling, WooCommerce REST/API-key calls, real webhooks,
+> mutations, server runtime, or persistence. The recommended next step is a **controlled dev
+> delivery endpoint + read-only sync persistence**.
 
 ## Actors
 

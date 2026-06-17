@@ -113,8 +113,11 @@ mutations. Flip the existing adapters from `mock` to `http` (backend-backed).
 redacted, summary-only **sync package** + event batch and exposes a **local delivery preview**
 (delivery disabled by default, no network); `apps/api` provides pure
 validators/ingestors/connection-registry that turn a package into an in-memory read-model
-snapshot (no persistence, no secrets, no PII). Next: a **secure backend delivery endpoint +
-signed plugin sync**, then flipping client adapters to backend-backed reads.
+snapshot (no persistence, no secrets, no PII). A **signed delivery foundation** then adds a
+framework-agnostic backend handler that verifies an HMAC-SHA256 signature (injected signing
+material) + replay/timestamp window before in-memory ingest, plus a plugin **signed preview**
+(no stored secret). Next: a **controlled dev delivery endpoint + read-only sync persistence**,
+then flipping client adapters to backend-backed reads.
 
 ### Phase 11 — Webhook ingestion
 Order/product/customer/coupon events · signature verification · idempotency · event log ·
