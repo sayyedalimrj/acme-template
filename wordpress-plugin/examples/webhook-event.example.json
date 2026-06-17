@@ -1,0 +1,16 @@
+{
+  "_comment": "EXAMPLE ONLY — summary-only event envelope. No raw payload, no PII, no secrets, fake domain.",
+  "eventId": "evt_demo_0001",
+  "siteId": "site_demo_1",
+  "type": "order.updated",
+  "source": "woocommerce",
+  "occurredAt": "2026-06-17T08:10:00.000Z",
+  "deliveryStatus": "not_configured",
+  "payloadDigest": "sha256:placeholder-not-computed",
+  "summary": {
+    "entityType": "order",
+    "entityRef": "order_10428",
+    "changeSummary": "status: processing -> completed",
+    "occurredAt": "2026-06-17T08:10:00.000Z"
+  }
+}

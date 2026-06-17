@@ -1,0 +1,58 @@
+{
+  "_comment": "EXAMPLE ONLY — plugin health check report. No secrets, fake domain.",
+  "siteId": "site_demo_1",
+  "generatedAt": "2026-06-17T08:05:00.000Z",
+  "overall": "warn",
+  "items": [
+    {
+      "id": "wp_rest_api_reachable",
+      "label": "WordPress REST API reachable",
+      "status": "pass",
+      "severity": "critical"
+    },
+    {
+      "id": "woocommerce_active",
+      "label": "WooCommerce active",
+      "status": "pass",
+      "severity": "critical"
+    },
+    {
+      "id": "https_enabled",
+      "label": "HTTPS enabled",
+      "status": "pass",
+      "severity": "critical"
+    },
+    {
+      "id": "permalink_rest_readiness",
+      "label": "Permalink / REST readiness",
+      "status": "pass",
+      "severity": "warning"
+    },
+    {
+      "id": "plugin_version",
+      "label": "Companion plugin version",
+      "status": "pass",
+      "severity": "info",
+      "detail": "0.0.0-contract"
+    },
+    {
+      "id": "webhook_readiness",
+      "label": "Webhook readiness",
+      "status": "warn",
+      "severity": "warning",
+      "detail": "Webhook registration is planned (webhook phase)."
+    },
+    {
+      "id": "scheduled_action_readiness",
+      "label": "Scheduled action readiness (placeholder)",
+      "status": "unknown",
+      "severity": "info"
+    },
+    {
+      "id": "background_job_readiness",
+      "label": "Background job readiness (placeholder)",
+      "status": "unknown",
+      "severity": "info"
+    }
+  ]
+}

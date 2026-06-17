@@ -1,0 +1,42 @@
+{
+  "_comment": "EXAMPLE ONLY — plugin → backend handshake request. No secrets, no PII, fake domain.",
+  "intentId": "intent_demo_0001",
+  "pluginVersion": "0.0.0-contract",
+  "requestedAt": "2026-06-17T08:00:00.000Z",
+  "siteIdentity": {
+    "siteUrl": "https://example-store.test",
+    "homeUrl": "https://example-store.test",
+    "verificationStatus": "pending",
+    "wordpress": {
+      "wpVersion": "6.5",
+      "phpVersion": "8.2",
+      "timezone": "Asia/Tehran",
+      "locale": "fa_IR",
+      "multisite": false,
+      "httpsEnabled": true,
+      "permalinkStructurePresent": true,
+      "restApiAvailable": true
+    },
+    "woocommerce": {
+      "active": true,
+      "wooCommerceVersion": "8.9"
+    }
+  },
+  "capabilitySnapshot": {
+    "detectedAt": "2026-06-17T08:00:00.000Z",
+    "capabilities": [
+      { "capability": "read_products", "available": true },
+      { "capability": "read_orders", "available": true },
+      { "capability": "read_customers", "available": true },
+      { "capability": "read_reports", "available": true },
+      { "capability": "receive_webhooks", "available": true },
+      { "capability": "site_health", "available": true },
+      { "capability": "sync_events", "available": true },
+      {
+        "capability": "mutate_products_later",
+        "available": false,
+        "note": "Reserved; disabled until a later phase."
+      }
+    ]
+  }
+}

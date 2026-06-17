@@ -77,7 +77,7 @@ Sales reports · product performance · customer segments · search-demand repor
 performance · conversion funnel (mock). Progress rows via existing UI primitives; no heavy
 chart libs.
 
-### Phase 8 — Backend/proxy skeleton (`apps/api`) 🚧 (current)
+### Phase 8 — Backend/proxy skeleton (`apps/api`) ✅ (shipped)
 Tenant/site model · auth boundary · credential vault placeholder · per-site isolation ·
 WooCommerce proxy interfaces · audit log model. No real secrets initially.
 **Interface-first, dependency-free skeleton only** — domain types (tenant/user/site/
@@ -86,9 +86,12 @@ rejects raw secrets, safe errors), proxy/bridge/webhook **contracts** with not-i
 stubs, route contracts, and secret-free mocks. No server runtime, no real credentials, no
 network calls, no database.
 
-### Phase 9 — WordPress companion plugin contract
+### Phase 9 — WordPress companion plugin contract 🚧 (current)
 Handshake design · site identity · event bridge · webhook configuration · health check ·
-connection verification. Contract/spec only unless full plugin is separately scoped.
+connection verification. **Contract/spec/skeleton only** — TypeScript contracts + Markdown
+docs + safe JSON/PHP examples under `wordpress-plugin/`, name-compatible with `apps/api`
+(no import coupling). No real plugin runtime, no activation/REST/DB/cron, no real
+credentials, no real backend/webhook calls, no crypto, no dependencies.
 
 ### Phase 10 — Real WooCommerce read-only integration
 Read products/orders/customers/reports · error handling · retry/rate-limit strategy. No
@@ -133,13 +136,14 @@ Real SMS provider · real billing provider · real AI provider · advanced autom
 - Advanced automation
 
 ## Next implementation PR (recommended)
-Phases 1–7 are shipped, and Phase 8 (Backend/proxy skeleton, `apps/api`) has landed as an
-interface-first, dependency-free skeleton (tenant/site/user/credential-metadata/audit/
-permission models, security redaction + credential policy + safe errors, WooCommerce proxy /
-WordPress bridge / webhook contracts with not-implemented stubs, route contracts, secret-free
-mocks). The recommended next PR is **`WordPress companion plugin contract`** (Phase 9): the
-handshake design, site identity, event bridge, webhook configuration, health check, and
-connection verification — contract/spec only unless a full plugin is separately scoped.
+Phases 1–8 are shipped, and Phase 9 (WordPress companion plugin contract) has landed as a
+contract/skeleton under `wordpress-plugin/` (plugin metadata, site identity, secure handshake,
+health check, event bridge, WooCommerce webhook configuration, capability/permission model,
+disconnect/revoke, and redaction/diagnostics — TypeScript contracts + docs + safe examples,
+name-compatible with `apps/api` and dependency-free). The recommended next PR is
+**`Real WooCommerce read-only integration`** (Phase 10): read products/orders/customers/
+reports through `apps/api`, with error handling and a retry/rate-limit strategy, flipping the
+existing client adapters from `mock` to backend-backed `http`. No mutations.
 
 Constraints (unchanged): **no real credentials, no real billing, no real provisioning, no
 real AI/media generation, no real tracking/PII pipeline, no real SMS/email send, and no real
