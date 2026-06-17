@@ -239,3 +239,179 @@ export interface WorkflowBoardKpis {
   waitingCustomer: number;
   doneThisWeek: number;
 }
+
+
+// ---------------------------------------------------------------------------------------------
+// Support Inbox (internal) — our team supporting SaaS customers, with customer context beside
+// the conversation. MOCK-ONLY: no real chat/email/WhatsApp/phone provider, no message sending,
+// no PII, no secrets, no billing IDs, no WooCommerce/plugin credentials, no customer DB access.
+// ---------------------------------------------------------------------------------------------
+export type SupportChannel = 'chat' | 'email' | 'phone_note' | 'whatsapp_later' | 'system_note';
+
+export type SupportConversationStatus =
+  | 'open'
+  | 'pending'
+  | 'waiting_customer'
+  | 'waiting_internal'
+  | 'resolved'
+  | 'closed';
+
+export type SupportConversationPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export type SupportSlaStatus = 'on_track' | 'due_soon' | 'overdue' | 'paused' | 'no_sla';
+
+/**
+ * Data-visibility level for a context section. Drives the (future) RBAC gate: agents see safe
+ * summaries by default; billing/security need extra permission; secrets are never exposed.
+ */
+export type SupportVisibilityLevel =
+  | 'safe_summary'
+  | 'support_context'
+  | 'restricted_billing'
+  | 'restricted_security'
+  | 'never_expose_secret';
+
+export type SupportMessageAuthor = 'customer' | 'agent' | 'system';
+
+export interface SupportAssignee {
+  id: string;
+  /** Fake demo agent label (never real PII). */
+  label: string;
+  role?: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  author: SupportMessageAuthor;
+  /** Display-only author label (fake). */
+  authorLabel: string;
+  at: ISODate;
+  /** Frontend-safe message body (no PII/secrets/order details). */
+  body: string;
+}
+
+export interface SupportInternalNote {
+  id: string;
+  authorLabel: string;
+  at: ISODate;
+  body: string;
+}
+
+export interface SupportCannedReply {
+  id: string;
+  title: string;
+  body: string;
+  tags?: string[];
+}
+
+/** A workflow item linked to a conversation (resolved by the service from the workflow mock). */
+export interface SupportLinkedWorkflowItem {
+  id: string;
+  title: string;
+  status: WorkflowStatus;
+}
+
+/** A security/audit signal linked to a conversation (resolved from the platform mock). */
+export interface SupportRelatedSignal {
+  id: string;
+  type: PlatformSecuritySignalType;
+  severity: PlatformSecuritySeverity;
+  message: string;
+}
+
+/**
+ * The Customer Context Panel projection — a safe, read-only summary the support agent sees
+ * beside the conversation. Built by the service from platform data; never includes raw PII or
+ * secrets. Restricted sections (billing/security) are flagged for future RBAC, not hidden data.
+ */
+export interface SupportConversationContext {
+  tenantId: string;
+  tenantName: string;
+  tenantStatus: PlatformTenantStatus;
+  plan: PlatformPlanTier;
+  subscriptionState: PlatformSubscriptionState;
+  mrr: Money;
+  currency: CurrencyCode;
+  renewsAt?: ISODate;
+  trialEndsAt?: ISODate;
+  supportOwner?: string;
+  sitesCount: number;
+  tenantHealthScore: number;
+  onboardingComplete: boolean;
+  openWorkflowTasks: number;
+  openSupportCount: number;
+  // Active/related site (when the conversation references one)
+  siteId?: string;
+  siteName?: string;
+  siteHealthScore?: number;
+  connection?: PlatformSiteConnectionStatus;
+  pluginVersion?: string;
+  latestPluginVersion?: string;
+  wooCommerceActive?: boolean;
+  syncState?: PlatformSyncState;
+  signedSync?: PlatformSignedSyncState;
+  lastSyncAt?: ISODate;
+  queuedEvents?: number;
+  // Usage / limits summary
+  apiCalls?: number;
+  apiLimit?: number;
+  ordersSynced?: number;
+  usageNearLimit?: boolean;
+  /** Recent security/audit signal ids for this tenant (resolved for display in the panel). */
+  recentSecuritySignalIds: string[];
+}
+
+/** One row of the data-access policy shown in the detail screen (future RBAC). */
+export interface SupportDataAccessPolicy {
+  level: SupportVisibilityLevel;
+  /** Whether a default support agent may see this section without extra permission. */
+  allowedByDefault: boolean;
+}
+
+/** A conversation as authored in the mock fixtures (before the service attaches context). */
+export interface SupportConversationSeed {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  siteId?: string;
+  siteName?: string;
+  channel: SupportChannel;
+  status: SupportConversationStatus;
+  priority: SupportConversationPriority;
+  assignee: SupportAssignee | null;
+  sla: SupportSlaStatus;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+  subject: string;
+  lastMessagePreview: string;
+  unreadCount: number;
+  tags: string[];
+  relatedWorkflowIds: string[];
+  relatedSecuritySignalIds: string[];
+  relatedSiteSignalNote?: string;
+  messages: SupportMessage[];
+  internalNotes: SupportInternalNote[];
+}
+
+/** A conversation as returned by the service (seed + resolved context/links/signals). */
+export interface SupportConversation extends SupportConversationSeed {
+  context: SupportConversationContext;
+  linkedWorkflows: SupportLinkedWorkflowItem[];
+  relatedSignals: SupportRelatedSignal[];
+}
+
+export interface SupportOverviewKpis {
+  open: number;
+  urgent: number;
+  overdueSla: number;
+  waitingCustomer: number;
+  unassigned: number;
+  resolvedThisWeek: number;
+}
+
+/** Result of a mock action (no persistence, no provider call). */
+export interface SupportMockActionResult {
+  ok: true;
+  conversationId: string;
+  message: string;
+}

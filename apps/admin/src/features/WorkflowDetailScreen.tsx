@@ -106,12 +106,18 @@ export function WorkflowDetailScreen({ workflowId }: { workflowId: string }): Re
           <DetailRow label={t('platformAdmin.owner')} value={wf.tenantName} />
           {wf.siteName ? <DetailRow label={t('platformAdmin.site.plugin')} value={wf.siteName} /> : null}
           {wf.tenantId ? (
-            <View style={{ flexDirection: rowDirection, marginTop: tokens.spacing.xs }}>
+            <View style={{ flexDirection: rowDirection, gap: tokens.spacing.sm, marginTop: tokens.spacing.xs, flexWrap: 'wrap' }}>
               <Button
                 label={t('platformAdmin.viewCustomer')}
                 variant="secondary"
                 size="sm"
                 onPress={() => router.navigate(`/customers/${wf.tenantId}` as Href)}
+              />
+              <Button
+                label={t('support.viewConversation')}
+                variant="secondary"
+                size="sm"
+                onPress={() => router.navigate('/support' as Href)}
               />
             </View>
           ) : null}

@@ -19,6 +19,11 @@ import type {
   WorkflowSla,
   WorkflowStatus,
   WorkflowType,
+  SupportChannel,
+  SupportConversationPriority,
+  SupportConversationStatus,
+  SupportSlaStatus,
+  SupportVisibilityLevel,
 } from '@/domain/types';
 
 export interface Meta {
@@ -199,4 +204,67 @@ export function columnForStatus(status: WorkflowStatus): BoardColumnKey | null {
     return 'waitingBlocked';
   if (status === 'review') return 'review';
   return 'done';
+}
+
+
+// --- Support inbox ---
+export function supportStatusMeta(status: SupportConversationStatus): Meta {
+  const map: Record<SupportConversationStatus, Meta> = {
+    open: { tone: 'info', labelKey: 'support.status.open' },
+    pending: { tone: 'neutral', labelKey: 'support.status.pending' },
+    waiting_customer: { tone: 'warning', labelKey: 'support.status.waiting_customer' },
+    waiting_internal: { tone: 'warning', labelKey: 'support.status.waiting_internal' },
+    resolved: { tone: 'success', labelKey: 'support.status.resolved' },
+    closed: { tone: 'neutral', labelKey: 'support.status.closed' },
+  };
+  return map[status];
+}
+
+export function supportPriorityMeta(priority: SupportConversationPriority): Meta {
+  const map: Record<SupportConversationPriority, Meta> = {
+    low: { tone: 'neutral', labelKey: 'support.priority.low' },
+    normal: { tone: 'info', labelKey: 'support.priority.normal' },
+    high: { tone: 'warning', labelKey: 'support.priority.high' },
+    urgent: { tone: 'danger', labelKey: 'support.priority.urgent' },
+  };
+  return map[priority];
+}
+
+export function supportSlaMeta(sla: SupportSlaStatus): Meta {
+  const map: Record<SupportSlaStatus, Meta> = {
+    on_track: { tone: 'success', labelKey: 'support.sla.on_track' },
+    due_soon: { tone: 'warning', labelKey: 'support.sla.due_soon' },
+    overdue: { tone: 'danger', labelKey: 'support.sla.overdue' },
+    paused: { tone: 'neutral', labelKey: 'support.sla.paused' },
+    no_sla: { tone: 'neutral', labelKey: 'support.sla.no_sla' },
+  };
+  return map[sla];
+}
+
+export function supportChannelLabelKey(channel: SupportChannel): LabelKey {
+  const map: Record<SupportChannel, LabelKey> = {
+    chat: 'support.channel.chat',
+    email: 'support.channel.email',
+    phone_note: 'support.channel.phone_note',
+    whatsapp_later: 'support.channel.whatsapp_later',
+    system_note: 'support.channel.system_note',
+  };
+  return map[channel];
+}
+
+export interface VisibilityMeta {
+  tone: BadgeTone;
+  labelKey: LabelKey;
+  descKey: LabelKey;
+}
+
+export function visibilityMeta(level: SupportVisibilityLevel): VisibilityMeta {
+  const map: Record<SupportVisibilityLevel, VisibilityMeta> = {
+    safe_summary: { tone: 'success', labelKey: 'support.visibility.safe_summary', descKey: 'support.visibility.safe_summary.desc' },
+    support_context: { tone: 'info', labelKey: 'support.visibility.support_context', descKey: 'support.visibility.support_context.desc' },
+    restricted_billing: { tone: 'warning', labelKey: 'support.visibility.restricted_billing', descKey: 'support.visibility.restricted_billing.desc' },
+    restricted_security: { tone: 'warning', labelKey: 'support.visibility.restricted_security', descKey: 'support.visibility.restricted_security.desc' },
+    never_expose_secret: { tone: 'danger', labelKey: 'support.visibility.never_expose_secret', descKey: 'support.visibility.never_expose_secret.desc' },
+  };
+  return map[level];
 }

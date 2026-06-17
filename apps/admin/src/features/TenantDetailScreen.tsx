@@ -100,8 +100,14 @@ export function TenantDetailScreen({ tenantId }: { tenantId: string }): React.JS
 
   return (
     <Screen testID="tenant-detail-screen">
-      <View style={{ alignItems: 'flex-start' }}>
+      <View style={{ flexDirection: rowDirection, alignItems: 'center', justifyContent: 'space-between', gap: tokens.spacing.sm }}>
         <Button label={t('platformAdmin.detail.back')} variant="ghost" size="sm" onPress={back} />
+        <Button
+          label={t('support.history')}
+          variant="secondary"
+          size="sm"
+          onPress={() => router.navigate('/support' as Href)}
+        />
       </View>
 
       <Card title={t('platformAdmin.detail.profile')}>

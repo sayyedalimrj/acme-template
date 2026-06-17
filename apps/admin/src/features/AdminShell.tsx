@@ -38,7 +38,8 @@ export function AdminShell({ children }: { children: ReactNode }): React.JSX.Ele
   const { locale, setLocale } = useLocale();
 
   const isWorkflows = pathname.startsWith('/workflows');
-  const isOverview = !isWorkflows;
+  const isSupport = pathname.startsWith('/support');
+  const isOverview = !isWorkflows && !isSupport;
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
@@ -74,6 +75,7 @@ export function AdminShell({ children }: { children: ReactNode }): React.JSX.Ele
         <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, marginHorizontal: tokens.spacing.md }}>
           <NavLink label={t('nav.overview')} href="/" active={isOverview} />
           <NavLink label={t('nav.workflows')} href="/workflows" active={isWorkflows} />
+          <NavLink label={t('nav.support')} href="/support" active={isSupport} />
         </View>
         <View style={{ flex: 1 }} />
         <Pressable
