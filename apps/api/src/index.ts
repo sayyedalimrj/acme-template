@@ -187,3 +187,52 @@ export {
   resetPluginConnectionRegistry,
 } from './plugin/pluginConnectionRegistry';
 export type { RegisterPluginConnectionInput } from './plugin/pluginConnectionRegistry';
+
+// Controlled DEV read-only sync persistence (in-memory only; no DB, no network, no mutation)
+export type { PluginSyncPersistenceStatus, PluginDeliveryMode } from './plugin/pluginSyncState';
+export {
+  DEFAULT_PLUGIN_DELIVERY_MODE,
+  isPersistMode,
+  classifyValidationIssues,
+  mapDeliveryErrorCodeToStatus,
+} from './plugin/pluginSyncState';
+export type {
+  SyncSource,
+  SyncRunStatus,
+  SyncedStoreSummary,
+  SyncedProductSummary,
+  SyncedOrderSummary,
+  SyncedCustomerSummary,
+  SyncedEventSummary,
+  SyncedSnapshotCounts,
+  SyncedSiteSnapshot,
+  SyncRun,
+  SyncPersistenceWarning,
+  SyncAuditEntry,
+  SyncPersistenceResult,
+} from './plugin/pluginReadModels';
+export type { InMemoryPluginSyncRepository } from './plugin/pluginSyncRepository';
+export {
+  DEV_REPOSITORY_MAX_SNAPSHOTS,
+  DEV_REPOSITORY_MAX_SYNC_RUNS,
+  DEV_REPOSITORY_MAX_AUDIT_ENTRIES,
+  createInMemoryPluginSyncRepository,
+} from './plugin/pluginSyncRepository';
+export type { BuildSyncAuditEntryInput } from './plugin/pluginSyncAudit';
+export {
+  SYNC_AUDIT_ACTIONS,
+  auditActionForStatus,
+  buildSyncAuditEntry,
+} from './plugin/pluginSyncAudit';
+export type {
+  PluginSyncPersistenceContext,
+  BuildReadModelsOptions,
+  BuildSyncRunFromDeliveryOptions,
+} from './plugin/pluginSyncPersistence';
+export {
+  buildReadModelsFromSnapshot,
+  persistValidatedPluginSync,
+  persistPluginEventBatch,
+  buildSyncRunFromDeliveryResult,
+} from './plugin/pluginSyncPersistence';
+export type { PluginDeliveryPersistenceContext } from './plugin/pluginDeliveryResponse';

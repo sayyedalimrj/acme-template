@@ -118,6 +118,40 @@ persistence, and no delivery** — ingestion returns normalized **in-memory** re
 database**. The plugin's package shape (snake_case PHP) maps onto these camelCase contracts; a
 mapping/transport layer arrives with real signed delivery (next phase).
 
+### Controlled DEV read-only sync persistence (in-memory only; no DB)
+
+A controlled, **development-only** persistence foundation for already-validated signed sync
+data. It is still **not** production sync, **not** mutation, **not** a real database, **not** a
+credential vault, and **not** a public deployment. Accepted snapshots are normalized to
+summary-only read models and stored **only** in an in-memory dev repository.
+
+- `pluginSyncState.ts` — the safe status union (`accepted_not_persisted`,
+  `accepted_persisted_dev`, `rejected_invalid_signature`, `rejected_replay`,
+  `rejected_validation`, `rejected_secret_detected`, `rejected_pii_detected`,
+  `rejected_oversized`, `not_configured`), the two delivery modes (`validate_only` default,
+  `validate_and_persist_dev`), and pure classification helpers.
+- `pluginReadModels.ts` — normalized, summary-only read models: `SyncedSiteSnapshot`,
+  `SyncedStoreSummary`, `SyncedProductSummary`, `SyncedOrderSummary`, `SyncedCustomerSummary`,
+  `SyncedEventSummary`, `SyncRun`, `SyncRunStatus`, `SyncSource`, `SyncPersistenceResult`,
+  `SyncPersistenceWarning`, `SyncAuditEntry`. No raw WooCommerce objects, no addresses, no
+  phone, no raw email, no payment details, no order notes, no raw meta, no secrets.
+- `pluginSyncRepository.ts` — `createInMemoryPluginSyncRepository()` with
+  `saveSiteSnapshot` / `getSiteSnapshot` / `listSiteSnapshots` / `saveSyncRun` /
+  `listSyncRuns` / `saveAuditEntry` / `listAuditEntries` / `clearDevRepository`. In-memory
+  only, with safe caps; **no database, no filesystem, no localStorage, no external service**.
+- `pluginSyncAudit.ts` — pure builders for summary-only `SyncAuditEntry` records.
+- `pluginSyncPersistence.ts` — pure pipeline: `persistValidatedPluginSync(envelope, context)`,
+  `persistPluginEventBatch(events, context)`, `buildReadModelsFromSnapshot(snapshot)`,
+  `buildSyncRunFromDeliveryResult(result)`. Validation runs **before** any store, so raw PII /
+  secrets / oversized payloads are rejected and never persisted.
+- `pluginDeliveryEndpoint.ts` — `handlePluginSyncDelivery` now accepts an OPTIONAL persistence
+  context. Default stays safe: with no context (or `validate_only`) it **never persists**;
+  only `validate_and_persist_dev` with a provided repository persists to the in-memory dev
+  store.
+
+**Future next step:** a production database schema with per-tenant isolation (encrypted at
+rest, retention/export/delete paths) — designed and built in a later phase, after review.
+
 ## Hard rules for this package
 
 - **No secrets** in code, mocks, tests, docs, config, or env — ever. Raw secret-like input

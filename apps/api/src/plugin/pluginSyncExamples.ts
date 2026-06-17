@@ -34,6 +34,8 @@ import {
 } from './pluginSyncFixtures';
 import { ingestPluginSyncEnvelope } from './pluginSyncIngestor';
 import { validatePluginSyncEnvelope } from './pluginSyncValidator';
+import { createInMemoryPluginSyncRepository } from './pluginSyncRepository';
+import { persistPluginEventBatch, persistValidatedPluginSync } from './pluginSyncPersistence';
 
 export interface ExampleResult {
   name: string;
@@ -367,8 +369,221 @@ export function collectSignedDeliveryExampleResults(): ExampleResult[] {
 export const SIGNED_DELIVERY_EXAMPLE_RESULTS: ExampleResult[] =
   collectSignedDeliveryExampleResults();
 
+// ---------------------------------------------------------------------------
+// Controlled DEV read-only sync persistence example checks (in-memory only).
+// ---------------------------------------------------------------------------
+
+/** Build a handler context wired for controlled dev persistence (in-memory repository). */
+function persistContext(
+  provider: PluginSigningSecretProvider,
+  repository: ReturnType<typeof createInMemoryPluginSyncRepository>,
+  mode: 'validate_only' | 'validate_and_persist_dev',
+): PluginDeliveryHandlerContext {
+  return {
+    security: {
+      signatureProvider: provider,
+      replayGuard: createInMemoryReplayGuard(),
+      now: BASE_NOW,
+      maxSkewSeconds: 300,
+    },
+    persistence: { mode, repository, source: 'signed_delivery_dev' },
+  };
+}
+
+/** Run controlled dev persistence example checks (all in-memory; nothing is stored to disk). */
+export function collectDevPersistenceExampleResults(): ExampleResult[] {
+  const results: ExampleResult[] = [];
+  const siteId = 'site_local_demo';
+
+  // 1. Valid signed delivery accepted WITHOUT persistence (no persistence context).
+  {
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL);
+    const result = handlePluginSyncDelivery(req, freshContext(testSigningProvider));
+    results.push({
+      name: 'valid signed delivery accepted without persistence',
+      passed:
+        result.accepted &&
+        result.persisted === false &&
+        result.persistenceStatus === 'accepted_not_persisted',
+      note: 'With no persistence context the handler validates but never persists.',
+    });
+  }
+
+  // 2. Valid signed delivery persisted in dev mode + 3/4/5 repository reads.
+  {
+    const repository = createInMemoryPluginSyncRepository();
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL);
+    const result = handlePluginSyncDelivery(
+      req,
+      persistContext(testSigningProvider, repository, 'validate_and_persist_dev'),
+    );
+    const snapshot = repository.getSiteSnapshot(siteId);
+    const runs = repository.listSyncRuns(siteId);
+    const audit = repository.listAuditEntries(siteId);
+
+    results.push({
+      name: 'valid signed delivery persisted in dev mode',
+      passed:
+        result.accepted &&
+        result.persisted === true &&
+        result.persistenceStatus === 'accepted_persisted_dev',
+      note: 'validate_and_persist_dev stores a normalized snapshot in the in-memory repo.',
+    });
+    results.push({
+      name: 'repository returns site snapshot',
+      passed:
+        !!snapshot &&
+        snapshot.siteId === siteId &&
+        snapshot.counts.products === 2 &&
+        snapshot.counts.orders === 1 &&
+        snapshot.counts.customers === 1 &&
+        snapshot.products.every((p) => !('email' in p)),
+      note: 'getSiteSnapshot returns the normalized, summary-only snapshot.',
+    });
+    results.push({
+      name: 'sync run recorded',
+      passed: runs.length === 1 && runs[0].status === 'accepted_persisted_dev' && runs[0].persisted,
+      note: 'A persisted sync run is recorded for the site.',
+    });
+    results.push({
+      name: 'audit entry recorded',
+      passed:
+        audit.length === 1 &&
+        audit[0].status === 'accepted_persisted_dev' &&
+        audit[0].action === 'plugin.sync.persisted.dev',
+      note: 'A summary-only audit entry is recorded for the persisted run.',
+    });
+  }
+
+  // 6. validate_only mode never persists (even with a repository).
+  {
+    const repository = createInMemoryPluginSyncRepository();
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL);
+    const result = handlePluginSyncDelivery(
+      req,
+      persistContext(testSigningProvider, repository, 'validate_only'),
+    );
+    results.push({
+      name: 'validate_only mode never persists',
+      passed:
+        result.accepted &&
+        result.persisted === false &&
+        repository.listSiteSnapshots().length === 0 &&
+        repository.listSyncRuns().length === 0,
+      note: 'validate_only never writes to the repository, even when one is provided.',
+    });
+  }
+
+  // 7. Raw PII rejected before persistence.
+  {
+    const repository = createInMemoryPluginSyncRepository();
+    const result = persistValidatedPluginSync(buildSyncEnvelopeWithRawEmail(), {
+      repository,
+      mode: 'validate_and_persist_dev',
+      now: BASE_NOW,
+    });
+    results.push({
+      name: 'raw PII rejected before persistence',
+      passed:
+        result.persisted === false &&
+        result.status === 'rejected_pii_detected' &&
+        repository.listSiteSnapshots().length === 0,
+      note: 'A PII-bearing envelope is rejected and nothing is stored.',
+    });
+  }
+
+  // 8. Secret-looking payload rejected before persistence.
+  {
+    const repository = createInMemoryPluginSyncRepository();
+    const result = persistValidatedPluginSync(buildSyncEnvelopeWithSecret(), {
+      repository,
+      mode: 'validate_and_persist_dev',
+      now: BASE_NOW,
+    });
+    results.push({
+      name: 'secret-looking payload rejected before persistence',
+      passed:
+        result.persisted === false &&
+        result.status === 'rejected_secret_detected' &&
+        repository.listSiteSnapshots().length === 0,
+      note: 'A secret-bearing envelope is rejected and nothing is stored.',
+    });
+  }
+
+  // 9. Invalid signature not persisted.
+  {
+    const repository = createInMemoryPluginSyncRepository();
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL, {
+      signature: 'deadbeef'.repeat(8),
+    });
+    const result = handlePluginSyncDelivery(
+      req,
+      persistContext(testSigningProvider, repository, 'validate_and_persist_dev'),
+    );
+    results.push({
+      name: 'invalid signature not persisted',
+      passed:
+        !result.accepted &&
+        result.errorCode === 'invalid_signature' &&
+        result.persistenceStatus === 'rejected_invalid_signature' &&
+        repository.listSiteSnapshots().length === 0,
+      note: 'A tampered signature is rejected and nothing is stored.',
+    });
+  }
+
+  // 10. Replayed nonce not persisted twice.
+  {
+    const repository = createInMemoryPluginSyncRepository();
+    const ctx = persistContext(testSigningProvider, repository, 'validate_and_persist_dev');
+    const req = buildSignedRequest(buildValidSyncEnvelope(), TEST_SIGNING_MATERIAL);
+    const first = handlePluginSyncDelivery(req, ctx);
+    const second = handlePluginSyncDelivery(req, ctx);
+    results.push({
+      name: 'replayed nonce not persisted',
+      passed:
+        first.persisted === true &&
+        !second.accepted &&
+        second.persistenceStatus === 'rejected_replay' &&
+        repository.listSyncRuns().length === 1,
+      note: 'A replayed request is rejected; only the first delivery is persisted.',
+    });
+  }
+
+  // 11. Event batch persisted in dev mode; secret event rejected.
+  {
+    const repository = createInMemoryPluginSyncRepository();
+    const ok = persistPluginEventBatch(buildValidEventBatch(), {
+      repository,
+      mode: 'validate_and_persist_dev',
+      siteId,
+      now: BASE_NOW,
+    });
+    const bad = persistPluginEventBatch(
+      [{ event_type: 'order.created', consumerSecret: 'placeholder-value' }],
+      { repository, mode: 'validate_and_persist_dev', siteId, now: BASE_NOW },
+    );
+    results.push({
+      name: 'event batch persistence',
+      passed:
+        ok.status === 'accepted_persisted_dev' &&
+        ok.persisted &&
+        bad.status === 'rejected_secret_detected' &&
+        !bad.persisted &&
+        repository.listSyncRuns(siteId).length === 1,
+      note: 'A safe event batch persists a run; a secret-bearing batch is rejected.',
+    });
+  }
+
+  return results;
+}
+
+/** Eagerly computed controlled-dev-persistence results. */
+export const DEV_PERSISTENCE_EXAMPLE_RESULTS: ExampleResult[] =
+  collectDevPersistenceExampleResults();
+
 /** True only if every example check passes. */
 export const ALL_PLUGIN_SYNC_EXAMPLES_PASS: boolean = [
   ...PLUGIN_SYNC_EXAMPLE_RESULTS,
   ...SIGNED_DELIVERY_EXAMPLE_RESULTS,
+  ...DEV_PERSISTENCE_EXAMPLE_RESULTS,
 ].every((r) => r.passed);

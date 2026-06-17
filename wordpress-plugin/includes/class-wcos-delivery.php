@@ -109,9 +109,10 @@ if (!class_exists('WCOS_Delivery')) {
                 'signing_status'    => self::get_signature_status(),
                 'algorithm'         => 'hmac-sha256',
                 'replay_protection' => 'backend_in_memory_later',
+                'backend_persistence' => 'dev_in_memory_only',
                 'external_delivery' => false,
                 'has_signing_key'   => false,
-                'note'              => 'Signed delivery requires backend-provisioned signing material later. The plugin stores no signing secret, exposes no signing field, and sends nothing.',
+                'note'              => 'Signed delivery requires backend-provisioned signing material later. The plugin stores no signing secret, exposes no signing field, and sends nothing. The backend only persists accepted snapshots to a development-only in-memory store (no production database); the plugin has no knowledge of backend persistence.',
             );
         }
 

@@ -7,9 +7,12 @@
  * `security-model.md`.
  */
 import type { SafeApiError } from '../security/errors';
+import type { SyncPersistenceResult, SyncSource } from './pluginReadModels';
 import type { ReplayGuard } from './pluginReplayGuard';
 import type { PluginSigningSecretProvider } from './pluginSigningSecret';
 import type { PluginSyncIssue, SiteSyncSnapshot } from './pluginSyncEnvelope';
+import type { InMemoryPluginSyncRepository } from './pluginSyncRepository';
+import type { PluginDeliveryMode, PluginSyncPersistenceStatus } from './pluginSyncState';
 
 /** Stable, safe delivery error codes. */
 export type PluginDeliveryErrorCode =
@@ -36,6 +39,27 @@ export interface PluginDeliverySecurityContext {
 /** Context passed to the delivery handler. */
 export interface PluginDeliveryHandlerContext {
   security: PluginDeliverySecurityContext;
+  /**
+   * OPTIONAL controlled DEV persistence. When omitted, the handler validates only and NEVER
+   * persists. When present with mode `validate_and_persist_dev` AND a repository, an accepted
+   * delivery is persisted to the in-memory dev repository only (never a database/network).
+   */
+  persistence?: PluginDeliveryPersistenceContext;
+}
+
+/** Injected controlled DEV persistence dependencies for the delivery handler. */
+export interface PluginDeliveryPersistenceContext {
+  /**
+   * Delivery mode. `validate_only` (default) never persists; `validate_and_persist_dev`
+   * persists an accepted snapshot to the in-memory dev repository only.
+   */
+  mode: PluginDeliveryMode;
+  /** In-memory dev repository. When absent, nothing is persisted even in dev mode. */
+  repository?: InMemoryPluginSyncRepository;
+  /** Origin label for persisted runs/snapshots. Defaults to `signed_delivery_dev`. */
+  source?: SyncSource;
+  /** Optional id factory (injectable for deterministic tests). */
+  generateId?: (prefix: string) => string;
 }
 
 /** Result of handling a signed delivery request. Framework-agnostic; no HTTP performed. */
@@ -47,8 +71,14 @@ export interface PluginDeliveryResult {
   errorCode?: PluginDeliveryErrorCode;
   error?: SafeApiError;
   warnings: PluginSyncIssue[];
-  /** Present when accepted (in-memory read model; never persisted). */
+  /** Present when accepted (in-memory read model; never persisted to a database). */
   snapshot?: SiteSyncSnapshot;
   /** Suggested audit action a caller should record. */
   auditActionSuggestion: string;
+  /** Safe persistence status for this delivery (accepted/persisted or precise rejection). */
+  persistenceStatus?: PluginSyncPersistenceStatus;
+  /** True only when a snapshot was stored in the in-memory dev repository. */
+  persisted?: boolean;
+  /** Present when controlled dev persistence ran (in-memory only). */
+  persistence?: SyncPersistenceResult;
 }

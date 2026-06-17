@@ -113,8 +113,9 @@ Test as a logged-in admin, e.g. in the browser console:
   is delivered anywhere.
 - The **read-only sync package** is built locally and redacted; **delivery is disabled by
   default** and there is no network code. The backend (`apps/api`) validates/ingests packages
-  **in-memory only** (no persistence). Real signed delivery to a backend endpoint is the next
-  phase.
+  and may persist accepted snapshots to a **development-only in-memory store** (no production
+  database, no filesystem, no network). The plugin has **no knowledge of backend persistence**.
+  Real signed delivery to a backend endpoint is the next phase.
 - The webhook config is a **placeholder**: no destination URL and no secret are stored.
 - Controlled actions are **disabled**: requests always return `disabled` and never mutate.
 - Customer/order summaries never include raw PII (no email/phone/address) — labels are generic

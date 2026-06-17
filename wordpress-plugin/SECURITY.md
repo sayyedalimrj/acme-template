@@ -145,6 +145,16 @@ The signed-preview + backend signed-delivery handler are bound by these addition
 - Signed-delivery REST routes (`/sync/signed-preview`, `/signature/status`) are **admin-only**
   and redacted. No new persistent options are stored by this phase.
 
+## Backend dev persistence note (no plugin change)
+
+- **The plugin has no knowledge of backend persistence.** The backend (`apps/api`) may, in a
+  controlled **development-only** mode, persist an accepted, validated snapshot to an
+  **in-memory** repository — there is **no production database, no filesystem write, and no
+  network**. The plugin still stores no signing secret, sends nothing, and exposes no backend
+  URL. `WCOS_Delivery::get_delivery_security_summary()` reports `backend_persistence:
+dev_in_memory_only` purely as a non-secret status label. The signed preview remains
+  local/admin-only.
+
 ## Handshake security (designed, not implemented here)
 
 - A **short-lived challenge** issued by the backend; the plugin responds (signed) later.
