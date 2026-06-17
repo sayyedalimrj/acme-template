@@ -182,8 +182,30 @@ lands. See `src/database/README.md` for the full detail.
 sync-derived → `syncRunId`); raw secrets are never stored (credentials are metadata + an
 opaque vault reference); raw PII lives only in explicitly gated `*Restricted` columns; billing
 rows hold provider metadata only (no card data); the backend never touches a WordPress
-database directly. **Future next step:** a production database **implementation plan +
-migration scaffold** (engine, DDL/migrations, row-level isolation, encryption at rest, DSAR).
+database directly.
+
+### Migration scaffold (`src/database/migrations/`)
+
+A **scaffold-only** production migration plan — inert TypeScript **descriptors**, no SQL
+runner, no ORM, no DB connection, no env values. Importing it executes nothing.
+
+- `migrationTypes.ts` — descriptor types (`DatabaseMigration`, `MigrationTable`,
+  `MigrationColumn`, `MigrationIndex`, `MigrationConstraint`, `MigrationOperation`,
+  `MigrationRollbackPlan`, `MigrationSafetyCheck`, …) + pure column/index factories.
+- `migrationManifest.ts` — the ordered `MIGRATION_MANIFEST` (001–004) + lookup/validation.
+- `001_initial_platform_schema.ts` … `004_security_audit_usage.ts` — per-migration
+  descriptors (tables, columns, indexes, constraints, tenant-scoping impact, rollback, safety
+  checks).
+- `migrationExamples.ts` — dependency-free checks (`ALL_MIGRATION_EXAMPLES_PASS`).
+- Design docs: `dbProviderDecision.md`, `environmentContract.md` (names only, no values),
+  `tenantIsolationChecklist.md`, `seedStrategy.md`, `rollbackStrategy.md`.
+
+The scaffold enforces (via example checks): manifest ordering, `tenantId` on every
+tenant-scoped table, `siteId`+`tenantId` on site-scoped tables, `syncRunId` on sync tables, no
+raw-secret columns, no raw payload/meta columns in sync tables, rollback plans + safety checks
+present, and an environment contract of NAMES only. **Next step:** a **database adapter
+boundary and dev storage implementation**, then a real provider decision and the first applied
+migration — built later, after review (not production mutation).
 
 ## Hard rules for this package
 

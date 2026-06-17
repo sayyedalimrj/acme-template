@@ -62,8 +62,17 @@ All synced data arrives via the validated, summary-only plugin sync path and is 
 the owning `tenantId` + `siteId` + `syncRunId` only after passing signature/PII/secret/cap
 validation.
 
+## Migration scaffold (`migrations/`)
+
+A **scaffold-only** plan for the production migrations lives in `migrations/` — inert
+TypeScript descriptors (`DatabaseMigration`), an ordered `MIGRATION_MANIFEST` (001–004),
+sibling design docs (`dbProviderDecision.md`, `environmentContract.md`,
+`tenantIsolationChecklist.md`, `seedStrategy.md`, `rollbackStrategy.md`), and example checks.
+There is **no migration runner, no SQL, no ORM, and no database connection**.
+
 ## Future recommended implementation step
 
-A **production database implementation plan and migration scaffold** (engine choice, schema
-DDL/migrations, per-tenant isolation enforcement such as row-level security, encryption at
-rest, and DSAR export/delete flows) — designed and built in a later phase, after review.
+A **database adapter boundary and dev storage implementation** (a typed repository/adapter
+seam with an in-memory/dev implementation first), then a final provider decision, encryption
+at rest, row-level isolation enforcement, and the first applied migration — built later, after
+review. This must not jump straight into production mutation.

@@ -126,8 +126,14 @@ memberships, sites, connections, credential metadata, sync runs, synced product/
 summaries, plugin events, support conversations/messages, workflow items, subscriptions, usage
 limits, audit logs, security signals, and future AI/SMS/media/campaign usage), a default-deny
 tenant-isolation contract, a field-visibility model (`public_safe` … `secret_never_expose`),
-and a retention/deletion policy. Next: a **production database implementation plan + migration
-scaffold**, then flipping client adapters to backend-backed reads.
+and a retention/deletion policy. A **production database implementation plan + migration
+scaffold** (scaffold/descriptors only — no ORM/SQL/migration runner/DB client/env values) now
+adds an ordered migration manifest (`001` core platform schema · `002` sync read models ·
+`003` support/workflows/billing · `004` security/audit/usage), a DB provider decision record
+(managed Postgres-compatible direction), an environment contract (names only), a tenant
+isolation enforcement checklist, and seed/rollback strategies. Next: a **database adapter
+boundary + dev storage implementation**, then flipping client adapters to backend-backed
+reads.
 
 ### Phase 11 — Webhook ingestion
 Order/product/customer/coupon events · signature verification · idempotency · event log ·
