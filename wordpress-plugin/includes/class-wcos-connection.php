@@ -72,6 +72,21 @@ if (!class_exists('WCOS_Connection')) {
         }
 
         /**
+         * Non-secret sync identifiers used when composing a read-only sync package. Contains
+         * only opaque local references and status — never secrets.
+         *
+         * @return array<string,string>
+         */
+        public static function get_sync_identifiers() {
+            return array(
+                'site_id'   => (string) get_option('wcos_connection_site_id', ''),
+                'tenant_id' => (string) get_option('wcos_connection_tenant_id', ''),
+                'status'    => self::get_status(),
+                'mode'      => (string) get_option('wcos_connection_mode', 'local'),
+            );
+        }
+
+        /**
          * Generate a LOCAL, non-secret placeholder identifier (not an external ID).
          *
          * @param string $prefix Id prefix.

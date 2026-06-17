@@ -55,6 +55,16 @@ if (!class_exists('WCOS_Webhook_Config')) {
         }
 
         /**
+         * Whether real external webhook delivery is enabled. Always false in this phase — the
+         * webhook config is a non-secret placeholder and never enables delivery here.
+         *
+         * @return bool
+         */
+        public static function is_external_delivery_enabled() {
+            return false;
+        }
+
+        /**
          * Non-secret config summary. There is intentionally no destination URL and no secret.
          *
          * @return array<string,mixed>

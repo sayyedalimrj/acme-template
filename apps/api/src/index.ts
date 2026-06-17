@@ -105,3 +105,52 @@ export { ROUTE_CONTRACTS } from './routes/contracts';
 // Secret-free mocks
 export { mockTenants, mockApiUsers } from './mock/mockTenants';
 export { mockSites } from './mock/mockSites';
+
+// Plugin read-only sync foundation (contracts + pure validators/ingestors; no persistence)
+export type {
+  PluginSyncEnvelope,
+  PluginSyncSource,
+  PluginSyncConnection,
+  PluginSyncPayload,
+  PluginSyncResourceSummary,
+  PluginSyncIssue,
+  PluginSyncValidationResult,
+  PluginSyncIngestResult,
+  PluginEventIngestResult,
+  PluginConnectionRecord,
+  PluginDeliveryStatus,
+  PluginSignatureBlock,
+  PluginSignatureVerificationResult,
+  SiteSyncSnapshot,
+} from './plugin/pluginSyncEnvelope';
+export {
+  PLUGIN_SYNC_SCHEMA_VERSION,
+  MAX_SYNC_RESOURCE_RECORDS,
+  MAX_SYNC_EVENT_RECORDS,
+} from './plugin/pluginSyncEnvelope';
+export {
+  validatePluginSyncEnvelope,
+  validateNoRawPII,
+  validateNoRawSecrets,
+  validateResourceCaps,
+  normalizePluginSyncPayload,
+} from './plugin/pluginSyncValidator';
+export {
+  ingestPluginSyncEnvelope,
+  buildSiteSyncSnapshot,
+  mapPluginProductsToReadModel,
+  mapPluginOrdersToReadModel,
+  mapPluginCustomersToReadModel,
+} from './plugin/pluginSyncIngestor';
+export { ingestPluginEventBatch } from './plugin/pluginEventIngestor';
+export {
+  buildSignatureBaseString,
+  verifyPluginSignaturePlaceholder,
+} from './plugin/pluginSignature';
+export {
+  registerPluginConnectionPlaceholder,
+  getPluginConnectionStatus,
+  disconnectPluginConnectionPlaceholder,
+  resetPluginConnectionRegistry,
+} from './plugin/pluginConnectionRegistry';
+export type { RegisterPluginConnectionInput } from './plugin/pluginConnectionRegistry';

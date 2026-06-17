@@ -16,6 +16,8 @@
  *   - wcos_audit_log
  *   - wcos_webhook_delivery_status
  *   - wcos_webhook_destination_label
+ *   - wcos_delivery_status
+ *   - wcos_delivery_destination_label
  *   - wcos_plugin_version
  *
  * @package WordPress_Commerce_OS_Companion
@@ -33,6 +35,8 @@ $wcos_options = array(
     'wcos_audit_log',
     'wcos_webhook_delivery_status',
     'wcos_webhook_destination_label',
+    'wcos_delivery_status',
+    'wcos_delivery_destination_label',
     'wcos_plugin_version',
 );
 

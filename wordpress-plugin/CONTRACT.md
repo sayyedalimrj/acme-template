@@ -3,15 +3,16 @@
 > Contract overview only. The data flow below is **not** implemented yet; it describes the
 > intended, security-reviewed flow so `apps/api`, `apps/client`, and the plugin stay aligned.
 >
-> **Implementation status:** the installable PHP runtime now includes (Plugin PR 1) the
-> skeleton + admin status page + health + admin-only status/health endpoints + internal
-> WooCommerce detection, (Plugin PR 2) non-secret local connection state + a read-only,
-> summarized, admin-only WooCommerce bridge, and (Plugin PR 3) a **local-only summary event
-> bridge** (capped queue), a **webhook delivery placeholder** (no URL/secret/delivery), a
-> **controlled-actions foundation** (all intents disabled, no mutation), and a **local audit
-> log**. It still performs **no** backend connection, handshake, credential handling,
-> WooCommerce REST/API-key calls, real webhooks/delivery, or mutations. The recommended next
-> phase is real backend delivery + read-only sync integration.
+> **Implementation status:** the installable PHP runtime now includes the skeleton + admin
+> status page + health + internal WooCommerce detection (PR 1), non-secret local connection
+> state + a read-only summarized WooCommerce bridge (PR 2), and a local-only summary event
+> bridge + webhook delivery placeholder + disabled controlled-actions + local audit (PR 3).
+> A **read-only sync foundation** now builds a redacted, summary-only **sync package** with a
+> **local delivery preview** (delivery disabled by default, no network), and the backend
+> (`apps/api`) provides pure **validators/ingestors** that turn a package into an in-memory
+> read-model snapshot (no persistence). It still performs **no** backend delivery, real
+> handshake, credential handling, WooCommerce REST/API-key calls, real webhooks, or mutations.
+> The recommended next step is a **secure backend delivery endpoint + signed plugin sync**.
 
 ## Actors
 

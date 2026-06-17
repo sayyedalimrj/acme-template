@@ -37,6 +37,9 @@ if (!class_exists('WCOS_Admin')) {
             add_action('admin_post_wcos_webhook_local_queue', array(__CLASS__, 'handle_webhook_local_queue'));
             add_action('admin_post_wcos_webhook_disable', array(__CLASS__, 'handle_webhook_disable'));
             add_action('admin_post_wcos_clear_audit', array(__CLASS__, 'handle_clear_audit'));
+            add_action('admin_post_wcos_build_preview', array(__CLASS__, 'handle_build_preview'));
+            add_action('admin_post_wcos_delivery_local_preview', array(__CLASS__, 'handle_delivery_local_preview'));
+            add_action('admin_post_wcos_delivery_disable', array(__CLASS__, 'handle_delivery_disable'));
         }
 
         /**
@@ -158,6 +161,48 @@ if (!class_exists('WCOS_Admin')) {
         }
 
         /**
+         * Handle "Build / refresh preview" (purely local; builds nothing persistent).
+         *
+         * @return void
+         */
+        public static function handle_build_preview() {
+            if (!WCOS_Capabilities::current_user_can_manage()) {
+                wp_die(esc_html__('You do not have permission to perform this action.', 'wordpress-commerce-os-companion'));
+            }
+            check_admin_referer('wcos_build_preview');
+            // Nothing to persist — the preview is rebuilt on render. This just refreshes.
+            self::redirect_with_notice('preview_built');
+        }
+
+        /**
+         * Handle "Set local preview only" (delivery placeholder; no network).
+         *
+         * @return void
+         */
+        public static function handle_delivery_local_preview() {
+            if (!WCOS_Capabilities::current_user_can('manage_webhook_config')) {
+                wp_die(esc_html__('You do not have permission to perform this action.', 'wordpress-commerce-os-companion'));
+            }
+            check_admin_referer('wcos_delivery_local_preview');
+            WCOS_Delivery::mark_local_preview_only();
+            self::redirect_with_notice('delivery_updated');
+        }
+
+        /**
+         * Handle "Disable delivery" (delivery placeholder; no network).
+         *
+         * @return void
+         */
+        public static function handle_delivery_disable() {
+            if (!WCOS_Capabilities::current_user_can('manage_webhook_config')) {
+                wp_die(esc_html__('You do not have permission to perform this action.', 'wordpress-commerce-os-companion'));
+            }
+            check_admin_referer('wcos_delivery_disable');
+            WCOS_Delivery::disable_delivery();
+            self::redirect_with_notice('delivery_updated');
+        }
+
+        /**
          * Register the top-level menu page.
          *
          * @return void
@@ -270,6 +315,16 @@ if (!class_exists('WCOS_Admin')) {
                     . esc_html__('Audit log cleared.', 'wordpress-commerce-os-companion')
                     . '</strong>' . esc_html__('All local audit entries were removed.', 'wordpress-commerce-os-companion')
                     . '</div>';
+            } elseif ('preview_built' === $notice) {
+                echo '<div class="wcos-notice wcos-notice-success"><strong>'
+                    . esc_html__('Sync preview refreshed.', 'wordpress-commerce-os-companion')
+                    . '</strong>' . esc_html__('The read-only package was rebuilt locally. No data was sent anywhere.', 'wordpress-commerce-os-companion')
+                    . '</div>';
+            } elseif ('delivery_updated' === $notice) {
+                echo '<div class="wcos-notice wcos-notice-success"><strong>'
+                    . esc_html__('Delivery setting updated.', 'wordpress-commerce-os-companion')
+                    . '</strong>' . esc_html__('Delivery remains local/disabled. No destination URL or secret is stored and nothing is sent.', 'wordpress-commerce-os-companion')
+                    . '</div>';
             }
         }
 
@@ -292,6 +347,8 @@ if (!class_exists('WCOS_Admin')) {
             $webhook_config    = WCOS_Webhook_Config::get_config_summary();
             $actions           = WCOS_Controlled_Actions::list_supported_actions();
             $audit_entries     = WCOS_Audit::list_entries(10);
+            $package_summary   = WCOS_Sync_Package::get_package_summary();
+            $delivery          = WCOS_Delivery::get_delivery_summary();
             $health            = WCOS_Health::run();
             list($conn_label, $conn_class) = self::connection_label($connection['status']);
             $wc_version        = isset($wc['version']) && $wc['version'] ? $wc['version'] : esc_html__('Unknown', 'wordpress-commerce-os-companion');
@@ -391,6 +448,60 @@ if (!class_exists('WCOS_Admin')) {
                         <?php echo esc_html__('The companion plugin still runs, but WooCommerce read summaries will be unavailable until WooCommerce is installed and active. This is a warning, not an error.', 'wordpress-commerce-os-companion'); ?>
                     </div>
                 <?php endif; ?>
+
+                <div class="wcos-card">
+                    <h2><?php echo esc_html__('Read-only sync preview', 'wordpress-commerce-os-companion'); ?></h2>
+                    <div class="wcos-notice wcos-notice-warning">
+                        <strong><?php echo esc_html__('No data is sent externally yet.', 'wordpress-commerce-os-companion'); ?></strong>
+                        <?php echo esc_html__('This builds a redacted, summary-only package locally for preview. Backend delivery is disabled by default.', 'wordpress-commerce-os-companion'); ?>
+                    </div>
+                    <table class="wcos-table">
+                        <tbody>
+                            <tr>
+                                <th><?php echo esc_html__('Sync status', 'wordpress-commerce-os-companion'); ?></th>
+                                <td><span class="wcos-badge wcos-status-ok"><?php echo esc_html__('Local preview', 'wordpress-commerce-os-companion'); ?></span></td>
+                            </tr>
+                            <tr>
+                                <th><?php echo esc_html__('Package timestamp', 'wordpress-commerce-os-companion'); ?></th>
+                                <td class="wcos-hint"><?php echo esc_html($package_summary['generated_at']); ?></td>
+                            </tr>
+                            <tr>
+                                <th><?php echo esc_html__('Products / Orders / Customers', 'wordpress-commerce-os-companion'); ?></th>
+                                <td>
+                                    <?php echo esc_html(null === $package_summary['product_count'] ? $dash : (string) $package_summary['product_count']); ?> /
+                                    <?php echo esc_html(null === $package_summary['order_count'] ? $dash : (string) $package_summary['order_count']); ?> /
+                                    <?php echo esc_html(null === $package_summary['customer_count'] ? $dash : (string) $package_summary['customer_count']); ?>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><?php echo esc_html__('Event queue', 'wordpress-commerce-os-companion'); ?></th>
+                                <td><?php echo esc_html((string) $package_summary['event_count']); ?></td>
+                            </tr>
+                            <tr>
+                                <th><?php echo esc_html__('Delivery status', 'wordpress-commerce-os-companion'); ?></th>
+                                <td><span class="wcos-badge wcos-badge-muted"><?php echo esc_html($delivery['delivery_status']); ?></span> <span class="wcos-hint"><?php echo esc_html($delivery['destination_label']); ?></span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="wcos-actions">
+                        <form method="post" action="<?php echo esc_url($action_url); ?>">
+                            <input type="hidden" name="action" value="wcos_build_preview" />
+                            <?php wp_nonce_field('wcos_build_preview'); ?>
+                            <button type="submit" class="button button-primary"><?php echo esc_html__('Build / refresh preview', 'wordpress-commerce-os-companion'); ?></button>
+                        </form>
+                        <form method="post" action="<?php echo esc_url($action_url); ?>">
+                            <input type="hidden" name="action" value="wcos_delivery_local_preview" />
+                            <?php wp_nonce_field('wcos_delivery_local_preview'); ?>
+                            <button type="submit" class="button"><?php echo esc_html__('Set local preview only', 'wordpress-commerce-os-companion'); ?></button>
+                        </form>
+                        <form method="post" action="<?php echo esc_url($action_url); ?>">
+                            <input type="hidden" name="action" value="wcos_delivery_disable" />
+                            <?php wp_nonce_field('wcos_delivery_disable'); ?>
+                            <button type="submit" class="button"><?php echo esc_html__('Disable delivery', 'wordpress-commerce-os-companion'); ?></button>
+                        </form>
+                    </div>
+                    <p class="wcos-hint"><?php echo esc_html__('The full package is available to admins at /wp-json/wcos/v1/sync/package and /wp-json/wcos/v1/sync/preview. No destination URL or secret is stored.', 'wordpress-commerce-os-companion'); ?></p>
+                </div>
 
                 <div class="wcos-card">
                     <h2><?php echo esc_html__('Event bridge', 'wordpress-commerce-os-companion'); ?></h2>
@@ -573,7 +684,7 @@ if (!class_exists('WCOS_Admin')) {
                 <div class="wcos-card">
                     <h2><?php echo esc_html__('Next steps', 'wordpress-commerce-os-companion'); ?></h2>
                     <p><?php echo esc_html__('Secure backend connection will be handled later via the backend/proxy handshake. No credentials are collected or stored by this plugin, and it makes no network requests.', 'wordpress-commerce-os-companion'); ?></p>
-                    <p class="wcos-hint"><?php echo esc_html__('Admin-only REST endpoints: /wp-json/wcos/v1/status, /health, /connection, /woocommerce/*, /events, /webhook-config, /actions, /audit.', 'wordpress-commerce-os-companion'); ?></p>
+                    <p class="wcos-hint"><?php echo esc_html__('Admin-only REST endpoints: /wp-json/wcos/v1/status, /health, /connection, /woocommerce/*, /events, /webhook-config, /actions, /audit, /sync/*, /delivery.', 'wordpress-commerce-os-companion'); ?></p>
                 </div>
             </div>
             <?php

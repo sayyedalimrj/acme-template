@@ -21,6 +21,11 @@
  *   - GET  /wp-json/wcos/v1/actions
  *   - POST /wp-json/wcos/v1/actions/request
  *   - GET  /wp-json/wcos/v1/audit
+ *   - GET  /wp-json/wcos/v1/sync/package
+ *   - GET  /wp-json/wcos/v1/sync/preview
+ *   - GET  /wp-json/wcos/v1/delivery
+ *   - POST /wp-json/wcos/v1/delivery/local-preview-only
+ *   - POST /wp-json/wcos/v1/delivery/disable
  *
  * ALL routes require the `manage_options` capability (no public/unauthenticated access). The
  * POST routes mutate only non-secret local options/queue (no network, no credentials, no
@@ -256,6 +261,57 @@ if (!class_exists('WCOS_REST')) {
                     'callback'            => array(__CLASS__, 'get_audit'),
                     'permission_callback' => array(__CLASS__, 'permission_check'),
                     'args'                => self::limit_arg(),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/sync/package',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array(__CLASS__, 'get_sync_package'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                    'args'                => self::limit_arg(),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/sync/preview',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array(__CLASS__, 'get_sync_preview'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/delivery',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array(__CLASS__, 'get_delivery'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/delivery/local-preview-only',
+                array(
+                    'methods'             => 'POST',
+                    'callback'            => array(__CLASS__, 'post_delivery_local_preview_only'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/delivery/disable',
+                array(
+                    'methods'             => 'POST',
+                    'callback'            => array(__CLASS__, 'post_delivery_disable'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
                 )
             );
         }
@@ -546,6 +602,64 @@ if (!class_exists('WCOS_REST')) {
             );
 
             return rest_ensure_response(WCOS_Redaction::redact_array($data));
+        }
+
+        /**
+         * GET /wcos/v1/sync/package — the redacted, summary-only read-only sync package.
+         *
+         * @param mixed $request REST request.
+         * @return mixed REST response.
+         */
+        public static function get_sync_package($request) {
+            $limit = self::read_limit($request);
+
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(WCOS_Sync_Package::build_package($limit))
+            );
+        }
+
+        /**
+         * GET /wcos/v1/sync/preview — local delivery preview (nothing is sent).
+         *
+         * @return mixed REST response.
+         */
+        public static function get_sync_preview() {
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(WCOS_Delivery::build_preview_payload())
+            );
+        }
+
+        /**
+         * GET /wcos/v1/delivery — non-secret delivery summary (no URL, no secret).
+         *
+         * @return mixed REST response.
+         */
+        public static function get_delivery() {
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(WCOS_Delivery::get_delivery_summary())
+            );
+        }
+
+        /**
+         * POST /wcos/v1/delivery/local-preview-only.
+         *
+         * @return mixed REST response.
+         */
+        public static function post_delivery_local_preview_only() {
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(WCOS_Delivery::mark_local_preview_only())
+            );
+        }
+
+        /**
+         * POST /wcos/v1/delivery/disable.
+         *
+         * @return mixed REST response.
+         */
+        public static function post_delivery_disable() {
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(WCOS_Delivery::disable_delivery())
+            );
         }
 
         /**

@@ -1,18 +1,20 @@
 # wordpress-plugin — WordPress Commerce OS Companion
 
-> **Status: event bridge + controlled actions foundation (Plugin PR 3 of 3).** This is **one
-> plugin** — _WordPress Commerce OS Companion_ — with WooCommerce, events, webhook config,
-> controlled actions, and diagnostics all as **internal modules**. It is an **installable,
-> non-production** WordPress plugin that adds a **local-only** summary event bridge (capped
-> queue + admin/REST controls), a **webhook delivery placeholder** (no URL, no secret, no
-> delivery), a **controlled-actions foundation** (every action **disabled**, no mutation), and
-> a **local audit log** — on top of the existing connection state and read-only WooCommerce
-> bridge. It still **collects no credentials, makes no network calls, calls no
-> WooCommerce/WordPress REST API, creates no API keys, registers no real webhooks, delivers
-> nothing externally, and performs no mutations.**
+> **Status: read-only sync foundation (post Plugin PR 3).** This is **one plugin** — _WordPress
+> Commerce OS Companion_ — with WooCommerce, events, webhook config, controlled actions, sync,
+> and diagnostics all as **internal modules**. On top of the connection state, read-only
+> WooCommerce bridge, local event bridge, and controlled-actions foundation, it now builds a
+> **redacted, summary-only read-only sync package** and exposes a **local delivery preview**.
+> **Backend delivery is disabled by default** and there is still **no network code**: the
+> plugin **collects no credentials, makes no external requests, calls no WooCommerce/WordPress
+> REST API, creates no API keys, registers no real webhooks, and performs no mutations.** The
+> backend (`apps/api`) provides pure, dependency-free **validators/ingestors** for the package
+> (in-memory only; no persistence).
 >
-> Plugin PR plan: 1) runtime skeleton + admin UI + health/WooCommerce detection (shipped), 2) secure connection state + read-only WooCommerce bridge (shipped), **3) event/webhook
-> bridge + controlled actions foundation (this PR)**.
+> Plugin PR plan: 1) runtime skeleton + admin UI + health/WooCommerce detection (shipped), 2) secure connection state + read-only WooCommerce bridge (shipped), 3) event/webhook bridge
+>
+> - controlled actions foundation (shipped). This change adds the **backend + plugin read-only
+>   sync foundation** that connects them.
 
 ## Purpose
 
@@ -61,6 +63,9 @@ This is a manual, local-only install for development:
    - **Webhook delivery (placeholder)** — delivery status, destination = not configured,
      secret = not configured, plus **Set local queue only** / **Disable delivery**.
    - **Controlled actions** — the future action intents, all **disabled** (no mutation).
+   - **Read-only sync preview** — sync status, package timestamp, product/order/customer
+     counts, event-queue count, delivery status (disabled / local preview only), and
+     **Build / refresh preview**, **Set local preview only**, **Disable delivery** buttons.
    - **Audit (local)** — recent summary-only audit entries + **Clear audit log**.
    - **Health checks**, a **security notice**, and **next steps**.
 
@@ -88,6 +93,11 @@ No public/unauthenticated access. Responses are summary-only and redacted.
 | GET    | `/wp-json/wcos/v1/actions`                         | controlled-action intents (all disabled)                                  |
 | POST   | `/wp-json/wcos/v1/actions/request`                 | placeholder — always disabled, never mutates                              |
 | GET    | `/wp-json/wcos/v1/audit?limit=20`                  | recent local audit entries (summary-only)                                 |
+| GET    | `/wp-json/wcos/v1/sync/package?limit=10`           | redacted, summary-only read-only sync package                             |
+| GET    | `/wp-json/wcos/v1/sync/preview`                    | local delivery preview (nothing is sent)                                  |
+| GET    | `/wp-json/wcos/v1/delivery`                        | non-secret delivery summary (disabled by default; no URL/secret)          |
+| POST   | `/wp-json/wcos/v1/delivery/local-preview-only`     | set delivery = local preview only (still no network)                      |
+| POST   | `/wp-json/wcos/v1/delivery/disable`                | set delivery = disabled                                                   |
 
 Test as a logged-in admin, e.g. in the browser console:
 `fetch('/wp-json/wcos/v1/events', { headers: { 'X-WP-Nonce': wpApiSettings.nonce } }).then(r => r.json())`.
@@ -99,6 +109,10 @@ Test as a logged-in admin, e.g. in the browser console:
   no writes.
 - The event bridge is **local-only**: a capped queue (max 50) of summary-only events; nothing
   is delivered anywhere.
+- The **read-only sync package** is built locally and redacted; **delivery is disabled by
+  default** and there is no network code. The backend (`apps/api`) validates/ingests packages
+  **in-memory only** (no persistence). Real signed delivery to a backend endpoint is the next
+  phase.
 - The webhook config is a **placeholder**: no destination URL and no secret are stored.
 - Controlled actions are **disabled**: requests always return `disabled` and never mutate.
 - Customer/order summaries never include raw PII (no email/phone/address) — labels are generic
@@ -138,6 +152,8 @@ wordpress-plugin/
 │   ├── class-wcos-event-store.php        capped local event queue (max 50, no delivery)
 │   ├── class-wcos-webhook-config.php     webhook delivery placeholder (no URL, no secret)
 │   ├── class-wcos-controlled-actions.php disabled-by-default action intents (no mutation)
+│   ├── class-wcos-sync-package.php        builds the redacted, summary-only read-only package
+│   ├── class-wcos-delivery.php            backend delivery placeholder (disabled; no network)
 │   ├── class-wcos-audit.php              capped local audit log (summary-only)
 │   ├── class-wcos-health.php             local health checks (no network)
 │   ├── class-wcos-rest.php               admin-only /wcos/v1/* (status/health/connection/woocommerce/events/webhook-config/actions/audit)
