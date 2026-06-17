@@ -42,4 +42,10 @@ describe('navigation grouping', () => {
     const keys = navItems.map((i) => i.key);
     expect(new Set(keys).size).toBe(keys.length);
   });
+
+  it('does not expose the internal Platform Admin as a merchant route', () => {
+    // Platform Admin is internal-only and must live in a separate app (apps/admin),
+    // never in the merchant navigation. Guards against regressions.
+    expect(navItems.some((i) => i.href.startsWith('/platform-admin'))).toBe(false);
+  });
 });
