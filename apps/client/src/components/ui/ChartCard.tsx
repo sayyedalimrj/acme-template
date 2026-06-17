@@ -82,7 +82,14 @@ export function ChartCard({
               style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.xs }}
             >
               <View
-                style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: item.color }}
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 3,
+                  backgroundColor: item.color,
+                  borderWidth: tokens.borderWidth.hairline,
+                  borderColor: tokens.color.border,
+                }}
               />
               <Text variant="caption" tone="muted">
                 {item.label}

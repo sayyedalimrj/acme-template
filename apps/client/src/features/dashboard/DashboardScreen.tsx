@@ -17,22 +17,29 @@ import { Pressable, useWindowDimensions, View } from 'react-native';
 import {
   Badge,
   Card,
+  ChartCard,
   DataList,
   Divider,
   EmptyState,
   ErrorState,
+  HealthScoreBadge,
   LoadingState,
   MetricCard,
+  MiniBars,
   Screen,
+  StatusBadge,
   Text,
+  type BadgeTone,
   type Column,
+  type MiniBarDatum,
 } from '@/components/ui';
 import { stockBadge } from '@/features/products/productHelpers';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme, type ColorTokens } from '@/theme';
 import { formatCurrency, formatDate, formatNumber } from '@/utils/format';
-import type { ActionItem, ActionSeverity, Order } from '@/domain/types';
+import type { ActionItem, ActionSeverity, Order, SiteConnection, SiteStatus } from '@/domain/types';
+import type { StringKey } from '@/i18n/strings';
 
 import { orderStatusLabel, orderStatusTone } from './status';
 import { useDashboard } from './useDashboard';
@@ -247,6 +254,136 @@ function ListRow({
   );
 }
 
+const SITE_STATUS_META: Record<SiteStatus, { tone: BadgeTone; labelKey: StringKey; tint: Tint }> = {
+  connected: { tone: 'success', labelKey: 'dashboard.storeStatus.connected', tint: 'success' },
+  disconnected: {
+    tone: 'neutral',
+    labelKey: 'dashboard.storeStatus.disconnected',
+    tint: 'warning',
+  },
+  pending: { tone: 'warning', labelKey: 'dashboard.storeStatus.pending', tint: 'warning' },
+  error: { tone: 'danger', labelKey: 'dashboard.storeStatus.error', tint: 'danger' },
+};
+
+/**
+ * Mock operational health score (0–100), derived deterministically from existing mock signals
+ * (connection state, stock, fulfillment backlog). Presentation-only — there is no live backend.
+ */
+function computeStoreHealth(status: SiteStatus, outOfStock: number, low: number, unfulfilled: number): number {
+  if (status === 'error') return 16;
+  if (status === 'disconnected') return 34;
+  let score = 100 - outOfStock * 5 - low * 1.5 - unfulfilled * 2;
+  if (status === 'pending') score -= 18;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+/** A compact labelled stat used in the store-status hero. */
+function MiniStat({ label, children }: { label: string; children: ReactNode }): React.JSX.Element {
+  const { tokens } = useTheme();
+  return (
+    <View style={{ gap: tokens.spacing.xs, flexGrow: 1, flexBasis: 150, minWidth: 130 }}>
+      <Text variant="caption" tone="muted" style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        {label}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+/**
+ * Store status / connection + plugin & sync health hero. Answers the first dashboard questions:
+ * is the store connected, and is sync/plugin health okay — using the active SiteConnection.
+ */
+function StoreStatusHero({
+  site,
+  outOfStock,
+  low,
+  unfulfilled,
+}: {
+  site: SiteConnection;
+  outOfStock: number;
+  low: number;
+  unfulfilled: number;
+}): React.JSX.Element {
+  const { tokens, rowDirection } = useTheme();
+  const t = useT();
+  const meta = SITE_STATUS_META[site.status];
+  const health = computeStoreHealth(site.status, outOfStock, low, unfulfilled);
+  const lastSync = site.lastSyncedAt
+    ? formatDate(site.lastSyncedAt)
+    : t('dashboard.storeStatus.never');
+  const platform =
+    [site.wooVersion ? `Woo ${site.wooVersion}` : null, site.wpVersion ? `WP ${site.wpVersion}` : null]
+      .filter(Boolean)
+      .join(' · ') || '—';
+
+  return (
+    <Card contentStyle={{ gap: tokens.spacing.md }}>
+      <View
+        style={{
+          flexDirection: rowDirection,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: tokens.spacing.md,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: rowDirection,
+            alignItems: 'center',
+            gap: tokens.spacing.md,
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          <IconChip icon="globe-outline" tint={meta.tint} />
+          <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+            <Text variant="subheading" numberOfLines={1}>
+              {site.name}
+            </Text>
+            <Text variant="caption" tone="muted" numberOfLines={1}>
+              {site.url}
+            </Text>
+          </View>
+        </View>
+        <StatusBadge tone={meta.tone} label={t(meta.labelKey)} />
+      </View>
+
+      <Divider />
+
+      <View
+        style={{
+          flexDirection: rowDirection,
+          flexWrap: 'wrap',
+          gap: tokens.spacing.md,
+          alignItems: 'flex-start',
+        }}
+      >
+        <MiniStat label={t('dashboard.storeStatus.syncHealth')}>
+          <HealthScoreBadge
+            score={health}
+            labels={{
+              healthy: t('health.healthy'),
+              degraded: t('health.degraded'),
+              critical: t('health.critical'),
+            }}
+          />
+        </MiniStat>
+        <MiniStat label={t('dashboard.storeStatus.lastSync')}>
+          <Text variant="label">{lastSync}</Text>
+        </MiniStat>
+        <MiniStat label={t('dashboard.storeStatus.platform')}>
+          <Text variant="label">{platform}</Text>
+        </MiniStat>
+      </View>
+
+      <Text variant="caption" tone="muted">
+        {t('dashboard.storeStatus.mockNote')}
+      </Text>
+    </Card>
+  );
+}
+
 export function DashboardScreen(): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
@@ -291,11 +428,6 @@ export function DashboardScreen(): React.JSX.Element {
       </Screen>
     );
   }
-
-  const aov =
-    data.ordersCount > 0
-      ? (Number.parseFloat(data.salesTotal) / data.ordersCount).toFixed(2)
-      : '0.00';
 
   const sortedActions = [...data.actionItems].sort(
     (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
@@ -344,11 +476,26 @@ export function DashboardScreen(): React.JSX.Element {
     },
   ];
 
-  const actionCenter = (
+  const fulfillmentBars: MiniBarDatum[] = [
+    {
+      label: t('dashboard.snapshot.unfulfilled'),
+      value: data.fulfillment.unfulfilled,
+      highlight: data.fulfillment.unfulfilled > 0,
+    },
+    { label: t('dashboard.snapshot.partial'), value: data.fulfillment.partial },
+    { label: t('dashboard.snapshot.fulfilled'), value: data.fulfillment.fulfilled },
+  ];
+
+  // 4. Needs attention — the operating queue (what to handle today; deep-links to modules).
+  const attention = (
     <Card
       title={t('dashboard.actionCenter')}
       headerAction={<Badge tone="neutral" label={formatNumber(sortedActions.length)} />}
+      contentStyle={{ gap: 0 }}
     >
+      <Text variant="caption" tone="muted" style={{ marginBottom: tokens.spacing.sm }}>
+        {t('dashboard.attention.subtitle')}
+      </Text>
       {sortedActions.length === 0 ? (
         <Text tone="muted">{t('dashboard.actionCenter.empty')}</Text>
       ) : (
@@ -381,10 +528,24 @@ export function DashboardScreen(): React.JSX.Element {
     </Card>
   );
 
+  // 5. Fulfillment snapshot — a compact Ecme-style chart card from real fulfillment counts.
+  const snapshot = (
+    <ChartCard
+      title={t('dashboard.snapshot.title')}
+      subtitle={t('dashboard.snapshot.caption')}
+      headerAction={
+        <SectionLink label={t('fulfillment.title')} onPress={() => go('/fulfillment')} />
+      }
+    >
+      <MiniBars height={116} data={fulfillmentBars} />
+    </ChartCard>
+  );
+
   const inventoryAlerts = (
     <Card
       title={t('dashboard.inventoryAlerts')}
       headerAction={<SectionLink label={t('nav.inventory')} onPress={() => go('/inventory')} />}
+      contentStyle={{ gap: 0 }}
     >
       {data.inventoryAlerts.length === 0 ? (
         <Text tone="muted">{t('dashboard.inventory.empty')}</Text>
@@ -398,13 +559,13 @@ export function DashboardScreen(): React.JSX.Element {
                 <IconChip
                   icon="cube-outline"
                   tint={product.stockStatus === 'outofstock' ? 'danger' : 'warning'}
-                  size={40}
+                  size={36}
                 />
-                <View style={{ flex: 1, gap: 2 }}>
+                <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
                   <Text variant="label" numberOfLines={1}>
                     {product.name}
                   </Text>
-                  <Text variant="caption" tone="muted">
+                  <Text variant="caption" tone="muted" numberOfLines={1}>
                     {product.sku}
                   </Text>
                 </View>
@@ -423,17 +584,18 @@ export function DashboardScreen(): React.JSX.Element {
       headerAction={
         <SectionLink label={t('dashboard.viewAllProducts')} onPress={() => go('/products')} />
       }
+      contentStyle={{ gap: 0 }}
     >
       {data.topProducts.map((entry, index) => (
         <View key={entry.product.id}>
           {index > 0 ? <Divider /> : null}
           <ListRow onPress={() => go(`/products/${entry.product.id}`)}>
             <RankChip rank={index + 1} />
-            <View style={{ flex: 1, gap: 2 }}>
+            <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
               <Text variant="label" numberOfLines={1}>
                 {entry.product.name}
               </Text>
-              <Text variant="caption" tone="muted">
+              <Text variant="caption" tone="muted" numberOfLines={1}>
                 {entry.product.sku} · {formatNumber(entry.unitsSold)} {t('orders.items')}
               </Text>
             </View>
@@ -444,46 +606,9 @@ export function DashboardScreen(): React.JSX.Element {
     </Card>
   );
 
-  const customerSignal = (
-    <Card
-      title={t('dashboard.customers.title')}
-      headerAction={
-        <SectionLink label={t('dashboard.viewAllCustomers')} onPress={() => go('/customers')} />
-      }
-    >
-      <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.md }}>
-        <IconChip icon="people-outline" tint="warning" size={40} />
-        <View style={{ flex: 1 }}>
-          <Text variant="caption" tone="muted">
-            {t('dashboard.customers.total')}
-          </Text>
-          <Text variant="heading">{formatNumber(data.customersCount)}</Text>
-        </View>
-      </View>
-      {data.abandonedCarts ? (
-        <>
-          <Divider />
-          <View
-            style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.md }}
-          >
-            <IconChip icon="cart-outline" tint="info" size={40} />
-            <View style={{ flex: 1 }}>
-              <Text variant="caption" tone="muted">
-                {t('dashboard.customers.abandoned')}
-              </Text>
-              <Text variant="heading">
-                {formatNumber(data.abandonedCarts.count)} ·{' '}
-                {formatCurrency(data.abandonedCarts.recoverableValue, data.abandonedCarts.currency)}
-              </Text>
-            </View>
-          </View>
-        </>
-      ) : null}
-    </Card>
-  );
-
   return (
     <Screen testID="dashboard-screen">
+      {/* Page header */}
       <View
         style={{
           flexDirection: rowDirection,
@@ -501,7 +626,17 @@ export function DashboardScreen(): React.JSX.Element {
         <SectionLink label={t('dashboard.reports')} onPress={() => go('/reports')} />
       </View>
 
-      {/* A. Store pulse / KPIs */}
+      {/* 1. Store status / connection + plugin & sync health */}
+      {activeSite.data ? (
+        <StoreStatusHero
+          site={activeSite.data}
+          outOfStock={data.outOfStockCount}
+          low={data.lowStockCount}
+          unfulfilled={data.fulfillment.unfulfilled}
+        />
+      ) : null}
+
+      {/* 2. KPI strip (4 compact stat cards) */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.md }}>
         <KpiCard
           label={t('dashboard.metric.sales')}
@@ -530,15 +665,9 @@ export function DashboardScreen(): React.JSX.Element {
           tint="warning"
           onPress={() => go('/customers')}
         />
-        <KpiCard
-          label={t('dashboard.metric.aov')}
-          value={formatCurrency(aov, data.currency)}
-          icon="trending-up-outline"
-          tint="primary"
-        />
       </View>
 
-      {/* Two-column admin grid (main + right rail) on wide; stacked on narrow. */}
+      {/* 3. Operating workflow: attention + orders (main) beside snapshot + lists (rail). */}
       <View
         style={{
           flexDirection: twoCol ? rowDirection : 'column',
@@ -547,15 +676,16 @@ export function DashboardScreen(): React.JSX.Element {
         }}
       >
         <View style={{ flex: twoCol ? 2 : undefined, gap: tokens.spacing.lg, minWidth: 0 }}>
-          {actionCenter}
+          {attention}
           {recentOrders}
         </View>
         <View style={{ flex: twoCol ? 1 : undefined, gap: tokens.spacing.lg, minWidth: 0 }}>
+          {snapshot}
           {inventoryAlerts}
           {topProducts}
-          {customerSignal}
         </View>
       </View>
     </Screen>
   );
 }
+

@@ -400,20 +400,21 @@ export function ReportsScreen(): React.JSX.Element {
           <ChartCard
             title={t('reports.chart.salesTrend')}
             subtitle={t('reports.chart.salesTrendCaption')}
-            headerAction={<Badge tone="neutral" label={t('reports.chart.period')} />}
             legend={[
-              { label: t('reports.chart.legendSales'), color: tokens.color.borderStrong },
+              { label: t('reports.chart.legendSales'), color: tokens.color.primarySoft },
               { label: t('reports.chart.legendBest'), color: tokens.color.primary },
             ]}
           >
             {query.data.sales.trendPoints.length === 0 ? (
-              <Text tone="muted">{t('reports.chart.empty')}</Text>
+              <EmptyState title={t('reports.chart.empty')} icon="bar-chart-outline" fill={false} />
             ) : (
               <MiniBars
-                height={120}
+                height={150}
+                showValues={false}
                 data={query.data.sales.trendPoints.map<MiniBarDatum>((point) => ({
                   label: point.label,
                   value: Number.parseFloat(point.value),
+                  valueLabel: money(point.value),
                   highlight: point.label === query.data.sales.bestDayLabel,
                 }))}
               />

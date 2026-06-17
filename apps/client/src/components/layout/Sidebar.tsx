@@ -17,7 +17,7 @@ import { ActiveSiteIndicator } from './ActiveSiteIndicator';
 import { NavLink } from './NavLink';
 import { navSections } from './navigation';
 
-export const SIDEBAR_WIDTH = 280;
+export const SIDEBAR_WIDTH = 248;
 
 export function Sidebar(): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
@@ -65,9 +65,9 @@ export function Sidebar(): React.JSX.Element {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingHorizontal: tokens.spacing.md,
-          paddingVertical: tokens.spacing.lg,
-          gap: tokens.spacing.lg,
+          paddingHorizontal: tokens.spacing.sm,
+          paddingVertical: tokens.spacing.md,
+          gap: tokens.spacing.md,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -76,10 +76,10 @@ export function Sidebar(): React.JSX.Element {
 
         {/* Grouped sections: Store Operations / Growth / Platform / System. */}
         {navSections.map((section) => (
-          <View key={section.key} style={{ gap: tokens.spacing.xs }}>
+          <View key={section.key} style={{ gap: 2 }}>
             <SectionHeader
               label={t(section.labelKey)}
-              style={{ paddingHorizontal: tokens.spacing.sm, marginBottom: tokens.spacing.xs }}
+              style={{ paddingHorizontal: tokens.spacing.sm, marginBottom: 2 }}
             />
             {section.items.map((item) => (
               <NavLink key={item.key} item={item} />
