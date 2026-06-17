@@ -36,8 +36,8 @@ import {
 import { stockBadge } from '@/features/products/productHelpers';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme, type ColorTokens } from '@/theme';
-import { formatCurrency, formatDate, formatNumber } from '@/utils/format';
 import type { ActionItem, ActionSeverity, Order, SiteConnection, SiteStatus } from '@/domain/types';
 import type { StringKey } from '@/i18n/strings';
 
@@ -307,10 +307,11 @@ function StoreStatusHero({
 }): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const { date } = useFormatters();
   const meta = SITE_STATUS_META[site.status];
   const health = computeStoreHealth(site.status, outOfStock, low, unfulfilled);
   const lastSync = site.lastSyncedAt
-    ? formatDate(site.lastSyncedAt)
+    ? date(site.lastSyncedAt)
     : t('dashboard.storeStatus.never');
   const platform =
     [site.wooVersion ? `Woo ${site.wooVersion}` : null, site.wpVersion ? `WP ${site.wpVersion}` : null]
@@ -387,6 +388,7 @@ function StoreStatusHero({
 export function DashboardScreen(): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const { money, num, date } = useFormatters();
   const router = useRouter();
   const go = (href: string) => router.navigate(href as never);
   const { width } = useWindowDimensions();
@@ -461,7 +463,7 @@ export function DashboardScreen(): React.JSX.Element {
       header: t('dashboard.col.total'),
       flex: 1,
       align: 'end',
-      render: (o) => <Text variant="label">{formatCurrency(o.total, o.currency)}</Text>,
+      render: (o) => <Text variant="label">{money(o.total, o.currency)}</Text>,
     },
     {
       key: 'date',
@@ -470,7 +472,7 @@ export function DashboardScreen(): React.JSX.Element {
       align: 'end',
       render: (o) => (
         <Text variant="caption" tone="muted">
-          {formatDate(o.dateCreated)}
+          {date(o.dateCreated)}
         </Text>
       ),
     },
@@ -490,7 +492,7 @@ export function DashboardScreen(): React.JSX.Element {
   const attention = (
     <Card
       title={t('dashboard.actionCenter')}
-      headerAction={<Badge tone="neutral" label={formatNumber(sortedActions.length)} />}
+      headerAction={<Badge tone="neutral" label={num(sortedActions.length)} />}
       contentStyle={{ gap: 0 }}
     >
       <Text variant="caption" tone="muted" style={{ marginBottom: tokens.spacing.sm }}>
@@ -596,10 +598,10 @@ export function DashboardScreen(): React.JSX.Element {
                 {entry.product.name}
               </Text>
               <Text variant="caption" tone="muted" numberOfLines={1}>
-                {entry.product.sku} · {formatNumber(entry.unitsSold)} {t('orders.items')}
+                {entry.product.sku} · {num(entry.unitsSold)} {t('orders.items')}
               </Text>
             </View>
-            <Text variant="label">{formatCurrency(entry.revenue, data.currency)}</Text>
+            <Text variant="label">{money(entry.revenue, data.currency)}</Text>
           </ListRow>
         </View>
       ))}
@@ -640,27 +642,27 @@ export function DashboardScreen(): React.JSX.Element {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.md }}>
         <KpiCard
           label={t('dashboard.metric.sales')}
-          value={formatCurrency(data.salesTotal, data.currency)}
+          value={money(data.salesTotal, data.currency)}
           icon="cash-outline"
           tint="success"
         />
         <KpiCard
           label={t('dashboard.metric.orders')}
-          value={formatNumber(data.ordersCount)}
+          value={num(data.ordersCount)}
           icon="receipt-outline"
           tint="info"
           onPress={() => go('/orders')}
         />
         <KpiCard
           label={t('dashboard.metric.products')}
-          value={formatNumber(data.productsCount)}
+          value={num(data.productsCount)}
           icon="pricetags-outline"
           tint="primary"
           onPress={() => go('/products')}
         />
         <KpiCard
           label={t('dashboard.metric.customers')}
-          value={formatNumber(data.customersCount)}
+          value={num(data.customersCount)}
           icon="people-outline"
           tint="warning"
           onPress={() => go('/customers')}

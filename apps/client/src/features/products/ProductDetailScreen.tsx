@@ -22,8 +22,8 @@ import {
 } from '@/components/ui';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
-import { formatCurrency, formatNumber } from '@/utils/format';
 
 import { statusBadge, stockBadge } from './productHelpers';
 import { useProduct } from './useProducts';
@@ -66,6 +66,7 @@ export interface ProductDetailScreenProps {
 export function ProductDetailScreen({ productId }: ProductDetailScreenProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
 
   const activeSite = useActiveSite();
@@ -153,15 +154,15 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
       <Card title={t('product.section.pricing')}>
         <DetailRow
           label={t('product.label.price')}
-          value={formatCurrency(product.price, product.currency)}
+          value={fmt.money(product.price, product.currency)}
         />
         <DetailRow
           label={t('product.label.regularPrice')}
-          value={formatCurrency(product.regularPrice, product.currency)}
+          value={fmt.money(product.regularPrice, product.currency)}
         />
         <DetailRow
           label={t('product.label.salePrice')}
-          value={product.salePrice ? formatCurrency(product.salePrice, product.currency) : none}
+          value={product.salePrice ? fmt.money(product.salePrice, product.currency) : none}
         />
       </Card>
 
@@ -173,7 +174,7 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
         <DetailRow
           label={t('product.label.stockQty')}
           value={
-            typeof product.stockQuantity === 'number' ? formatNumber(product.stockQuantity) : none
+            typeof product.stockQuantity === 'number' ? fmt.num(product.stockQuantity) : none
           }
         />
       </Card>
@@ -190,7 +191,7 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
       <Card title={t('product.section.performance')}>
         <DetailRow
           label={t('product.label.unitsSold')}
-          value={typeof product.totalSales === 'number' ? formatNumber(product.totalSales) : none}
+          value={typeof product.totalSales === 'number' ? fmt.num(product.totalSales) : none}
         />
       </Card>
 

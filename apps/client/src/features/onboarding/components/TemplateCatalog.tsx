@@ -12,6 +12,7 @@ import { View } from 'react-native';
 
 import { Badge, Button, Surface, Text } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme, type ColorTokens } from '@/theme';
 import type { StoreTemplate, SubscriptionPlan } from '@/domain/types';
 
@@ -49,8 +50,11 @@ function TemplateCard({
 }: TemplateCardProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const accent: Accent = template.accent ?? 'primary';
   const comingSoon = template.availability === 'coming_soon';
+  const accentFg = tokens.color[ACCENT_FG[accent]];
+  const accentBg = tokens.color[ACCENT_BG[accent]];
 
   return (
     <Surface
@@ -60,29 +64,77 @@ function TemplateCard({
         flexGrow: 1,
         flexBasis: 300,
         minWidth: 260,
+        maxWidth: 420,
         overflow: 'hidden',
         borderColor: selected ? tokens.color.primary : tokens.color.border,
         borderWidth: selected ? tokens.borderWidth.thick : tokens.borderWidth.hairline,
-        opacity: comingSoon ? 0.8 : 1,
+        opacity: comingSoon ? 0.85 : 1,
       }}
     >
-      {/* Placeholder preview band — no real asset, just a tinted label. */}
-      <View
-        style={{
-          height: 96,
-          backgroundColor: tokens.color[ACCENT_BG[accent]],
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: tokens.spacing.md,
-        }}
-      >
-        <Ionicons name="image-outline" size={22} color={tokens.color[ACCENT_FG[accent]]} />
-        <Text variant="caption" style={{ color: tokens.color[ACCENT_FG[accent]], marginTop: 4 }}>
-          {template.previewLabel}
-        </Text>
+      {/* Thumbnail: a small mock "site preview" composed from Views (no real asset). */}
+      <View style={{ height: 132, backgroundColor: accentBg, padding: tokens.spacing.md, gap: 6 }}>
+        {/* Browser chrome bar */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+          <View style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: accentFg, opacity: 0.5 }} />
+          <View style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: accentFg, opacity: 0.35 }} />
+          <View style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: accentFg, opacity: 0.2 }} />
+          <View
+            style={{
+              flex: 1,
+              height: 10,
+              marginLeft: 6,
+              borderRadius: 999,
+              backgroundColor: tokens.color.surface,
+              opacity: 0.7,
+            }}
+          />
+        </View>
+        {/* Hero + content blocks (suggest a storefront layout) */}
+        <View style={{ flex: 1, flexDirection: rowDirection, gap: 6 }}>
+          <View
+            style={{
+              flex: 1,
+              borderRadius: tokens.radius.sm,
+              backgroundColor: tokens.color.surface,
+              opacity: 0.92,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="storefront-outline" size={26} color={accentFg} />
+          </View>
+          <View style={{ width: 64, gap: 6 }}>
+            <View style={{ height: 10, borderRadius: 999, backgroundColor: tokens.color.surface, opacity: 0.85 }} />
+            <View style={{ height: 10, borderRadius: 999, backgroundColor: tokens.color.surface, opacity: 0.6 }} />
+            <View style={{ flex: 1, borderRadius: tokens.radius.sm, backgroundColor: tokens.color.surface, opacity: 0.5 }} />
+          </View>
+        </View>
       </View>
 
       <View style={{ padding: tokens.spacing.lg, gap: tokens.spacing.sm }}>
+        <View
+          style={{
+            flexDirection: rowDirection,
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: tokens.spacing.sm,
+          }}
+        >
+          <Text variant="subheading" numberOfLines={1} style={{ flex: 1, fontWeight: '700' }}>
+            {template.name}
+          </Text>
+          {template.recommended ? (
+            <Badge tone="primary" label={t('onboarding.template.recommended')} />
+          ) : comingSoon ? (
+            <Badge tone="warning" label={t('onboarding.template.comingSoon')} />
+          ) : null}
+        </View>
+
+        <Text tone="muted" variant="caption" numberOfLines={2}>
+          {template.description}
+        </Text>
+
+        {/* Compact meta row: category · pages · setup time */}
         <View
           style={{
             flexDirection: rowDirection,
@@ -91,56 +143,51 @@ function TemplateCard({
             flexWrap: 'wrap',
           }}
         >
-          <Text variant="subheading" style={{ flexShrink: 1 }}>
-            {template.name}
-          </Text>
           <Badge tone="neutral" label={template.category} />
-          {template.recommended ? (
-            <Badge tone="primary" label={t('onboarding.template.recommended')} />
-          ) : null}
-          {comingSoon ? <Badge tone="warning" label={t('onboarding.template.comingSoon')} /> : null}
-        </View>
-
-        <Text tone="muted" variant="body">
-          {template.description}
-        </Text>
-
-        <View style={{ gap: 2 }}>
-          <Text variant="caption" tone="muted">
-            {t('onboarding.template.recommendedFor')}: {template.recommendedFor}
-          </Text>
-          <Text variant="caption" tone="muted">
-            {t('onboarding.template.setupTime')}: {template.setupTimeLabel}
-          </Text>
-          <Text variant="caption" tone="muted">
-            {t('onboarding.template.includedPages')}: {template.includedPages.join('، ')}
-          </Text>
-          {planName ? (
+          <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 4 }}>
+            <Ionicons name="document-outline" size={13} color={tokens.color.textMuted} />
             <Text variant="caption" tone="muted">
-              {t('onboarding.template.requiredPlan')}: {planName}
+              {fmt.num(template.includedPages.length)} {t('onboarding.template.pages')}
             </Text>
+          </View>
+          <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 4 }}>
+            <Ionicons name="time-outline" size={13} color={tokens.color.textMuted} />
+            <Text variant="caption" tone="muted" numberOfLines={1}>
+              {template.setupTimeLabel}
+            </Text>
+          </View>
+        </View>
+
+        {/* Actions: secondary Preview (mock) + primary Select. */}
+        <View style={{ flexDirection: rowDirection, gap: tokens.spacing.sm, marginTop: 2 }}>
+          <Button
+            label={t('onboarding.template.preview')}
+            variant="secondary"
+            size="sm"
+            disabled
+            style={{ flex: 1 }}
+            leading={<Ionicons name="eye-outline" size={15} color={tokens.color.textMuted} />}
+          />
+          {selectable ? (
+            <Button
+              label={selected ? t('onboarding.template.selected') : t('onboarding.template.select')}
+              variant={selected ? 'primary' : 'secondary'}
+              size="sm"
+              disabled={comingSoon}
+              onPress={() => onSelect?.(template.id)}
+              style={{ flex: 1 }}
+              leading={
+                selected ? (
+                  <Ionicons name="checkmark" size={16} color={tokens.color.onPrimary} />
+                ) : undefined
+              }
+            />
           ) : null}
         </View>
-
-        <View style={{ flexDirection: rowDirection, flexWrap: 'wrap', gap: tokens.spacing.xs }}>
-          {template.highlights.map((h) => (
-            <Badge key={h} tone="info" label={h} />
-          ))}
-        </View>
-
-        {selectable ? (
-          <Button
-            label={selected ? t('onboarding.template.selected') : t('onboarding.template.select')}
-            variant={selected ? 'primary' : 'secondary'}
-            size="sm"
-            disabled={comingSoon}
-            onPress={() => onSelect?.(template.id)}
-            leading={
-              selected ? (
-                <Ionicons name="checkmark" size={16} color={tokens.color.onPrimary} />
-              ) : undefined
-            }
-          />
+        {planName ? (
+          <Text variant="caption" tone="muted">
+            {t('onboarding.template.requiredPlan')}: {planName}
+          </Text>
         ) : null}
       </View>
     </Surface>

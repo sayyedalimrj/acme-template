@@ -3,8 +3,20 @@ import { describe, expect, it } from '@jest/globals';
 import { navItems, navSections } from '@/components/layout/navigation';
 
 describe('navigation grouping', () => {
-  it('exposes the four IA sections in order', () => {
-    expect(navSections.map((s) => s.key)).toEqual(['store-ops', 'growth', 'platform', 'system']);
+  it('exposes the six workflow sections in order', () => {
+    expect(navSections.map((s) => s.key)).toEqual([
+      'setup',
+      'store-ops',
+      'growth',
+      'support-ops',
+      'platform',
+      'system',
+    ]);
+  });
+
+  it('opens Setup and Store Operations by default', () => {
+    const open = navSections.filter((s) => s.defaultOpen).map((s) => s.key);
+    expect(open).toEqual(['setup', 'store-ops']);
   });
 
   it('labels every section with an i18n key', () => {

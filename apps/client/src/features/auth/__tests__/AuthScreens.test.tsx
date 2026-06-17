@@ -11,6 +11,7 @@ import { ThemeProvider } from '@/theme';
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ navigate: () => {}, replace: () => {}, back: () => {} }),
+  useLocalSearchParams: () => ({}),
 }));
 
 const metrics: Metrics = {
@@ -34,13 +35,15 @@ function renderAuth(ui: ReactElement): RenderResult {
 }
 
 describe('SignInScreen', () => {
-  it('renders the sign-in card, mock note and the verify-code link', () => {
+  it('renders the sign-in card with password + SMS-code methods', () => {
     renderAuth(<SignInScreen />);
     expect(screen.getByTestId('sign-in-screen')).toBeTruthy();
     expect(screen.getByText('Welcome back!')).toBeTruthy();
+    // Password method is the default → its CTA is visible.
     expect(screen.getByText('Sign in to continue')).toBeTruthy();
-    // Secondary action linking to the mock verification screen.
-    expect(screen.getByText('Enter a code')).toBeTruthy();
+    // Both sign-in methods are offered via the segmented switch.
+    expect(screen.getByText('Password')).toBeTruthy();
+    expect(screen.getByText('SMS code')).toBeTruthy();
   });
 });
 

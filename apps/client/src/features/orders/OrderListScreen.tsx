@@ -20,12 +20,13 @@ import {
   Input,
   LoadingState,
   Screen,
+  SegmentedControl,
   Text,
 } from '@/components/ui';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
-import { formatCurrency, formatDate, formatNumber } from '@/utils/format';
 import type { Order } from '@/domain/types';
 import type { StringKey } from '@/i18n/strings';
 
@@ -41,38 +42,6 @@ import {
 } from './orderHelpers';
 import { useOrders } from './useOrders';
 
-interface ChipProps {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}
-
-function FilterChip({ label, active, onPress }: ChipProps): React.JSX.Element {
-  const { tokens } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={{
-        paddingVertical: tokens.spacing.xs + 2,
-        paddingHorizontal: tokens.spacing.md,
-        borderRadius: tokens.radius.pill,
-        borderWidth: tokens.borderWidth.thin,
-        borderColor: active ? tokens.color.primary : tokens.color.border,
-        backgroundColor: active ? tokens.color.primarySoft : tokens.color.surface,
-      }}
-    >
-      <Text
-        variant="caption"
-        style={{ color: active ? tokens.color.primary : tokens.color.textMuted }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 interface OrderRowProps {
   order: Order;
   onPress: () => void;
@@ -81,6 +50,7 @@ interface OrderRowProps {
 function OrderRow({ order, onPress }: OrderRowProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const status = orderStatusBadge(order.status);
   const payment = paymentBadge(order.status);
   const fulfillment = fulfillmentBadge(order.fulfillment);
@@ -116,7 +86,7 @@ function OrderRow({ order, onPress }: OrderRowProps): React.JSX.Element {
           {order.billing.firstName} {order.billing.lastName} · {order.billing.email}
         </Text>
         <Text variant="caption" tone="muted">
-          {formatDate(order.dateCreated)} · {formatNumber(orderItemCount(order))}{' '}
+          {fmt.date(order.dateCreated)} · {fmt.num(orderItemCount(order))}{' '}
           {t('orders.items')}
         </Text>
         <View
@@ -134,9 +104,8 @@ function OrderRow({ order, onPress }: OrderRowProps): React.JSX.Element {
       </View>
 
       <View style={{ alignItems: 'flex-end', gap: 2 }}>
-        <Text variant="label">{formatCurrency(order.total, order.currency)}</Text>
-        <Text variant="caption" tone="muted">
-          {order.currency}
+        <Text variant="label" style={{ fontWeight: '700' }}>
+          {fmt.money(order.total, order.currency)}
         </Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={tokens.color.textMuted} />
@@ -161,8 +130,9 @@ const FULFILLMENT_FILTERS: { value: FulfillmentFilter; labelKey: StringKey }[] =
 ];
 
 export function OrderListScreen(): React.JSX.Element {
-  const { tokens, rowDirection } = useTheme();
+  const { tokens } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
 
   const activeSite = useActiveSite();
@@ -195,12 +165,6 @@ export function OrderListScreen(): React.JSX.Element {
     );
   }
 
-  const chipRow: ViewStyle = {
-    flexDirection: rowDirection,
-    flexWrap: 'wrap',
-    gap: tokens.spacing.xs,
-  };
-
   return (
     <Screen testID="order-list-screen">
       <View style={{ gap: tokens.spacing.xs }}>
@@ -208,7 +172,7 @@ export function OrderListScreen(): React.JSX.Element {
         <Text tone="muted">{t('orders.subtitle')}</Text>
       </View>
 
-      <Card>
+      <Card padding="md" contentStyle={{ gap: tokens.spacing.sm }}>
         <Input
           value={search}
           onChangeText={setSearch}
@@ -216,26 +180,16 @@ export function OrderListScreen(): React.JSX.Element {
           autoCapitalize="none"
           testID="order-search"
         />
-        <View style={chipRow}>
-          {STATUS_FILTERS.map((f) => (
-            <FilterChip
-              key={f.value}
-              label={t(f.labelKey)}
-              active={status === f.value}
-              onPress={() => setStatus(f.value)}
-            />
-          ))}
-        </View>
-        <View style={chipRow}>
-          {FULFILLMENT_FILTERS.map((f) => (
-            <FilterChip
-              key={f.value}
-              label={t(f.labelKey)}
-              active={fulfillment === f.value}
-              onPress={() => setFulfillment(f.value)}
-            />
-          ))}
-        </View>
+        <SegmentedControl
+          options={STATUS_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+          value={status}
+          onChange={setStatus}
+        />
+        <SegmentedControl
+          options={FULFILLMENT_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+          value={fulfillment}
+          onChange={setFulfillment}
+        />
       </Card>
 
       {ordersQuery.isPending ? (
@@ -251,7 +205,7 @@ export function OrderListScreen(): React.JSX.Element {
       ) : (
         <View style={{ gap: tokens.spacing.sm }} testID="order-list">
           <Text variant="caption" tone="muted">
-            {formatNumber(filtered.length)} / {formatNumber(total)}
+            {fmt.num(filtered.length)} / {fmt.num(total)}
           </Text>
           {filtered.map((order) => (
             <OrderRow

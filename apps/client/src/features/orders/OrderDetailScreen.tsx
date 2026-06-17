@@ -24,8 +24,8 @@ import {
 } from '@/components/ui';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
-import { formatCurrency, formatDate, formatNumber } from '@/utils/format';
 import type { Order } from '@/domain/types';
 
 import { fulfillmentBadge, needsAttention, orderStatusBadge, paymentBadge } from './orderHelpers';
@@ -65,6 +65,7 @@ function DetailRow({ label, value }: DetailRowProps): React.JSX.Element {
 function LineItems({ order }: { order: Order }): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   return (
     <View style={{ gap: tokens.spacing.sm }}>
       {order.lineItems.map((item, index) => (
@@ -76,11 +77,11 @@ function LineItems({ order }: { order: Order }): React.JSX.Element {
                 {item.name}
               </Text>
               <Text variant="caption" tone="muted">
-                {item.sku} · {t('order.label.qty')} {formatNumber(item.quantity)} ×{' '}
-                {formatCurrency(item.price, order.currency)}
+                {item.sku} · {t('order.label.qty')} {fmt.num(item.quantity)} ×{' '}
+                {fmt.money(item.price, order.currency)}
               </Text>
             </View>
-            <Text variant="label">{formatCurrency(item.total, order.currency)}</Text>
+            <Text variant="label">{fmt.money(item.total, order.currency)}</Text>
           </View>
         </View>
       ))}
@@ -95,6 +96,7 @@ export interface OrderDetailScreenProps {
 export function OrderDetailScreen({ orderId }: OrderDetailScreenProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
 
   const activeSite = useActiveSite();
@@ -174,7 +176,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps): React.JS
       <View style={{ gap: tokens.spacing.xs }}>
         <Text variant="title">#{order.number}</Text>
         <Text variant="caption" tone="muted">
-          {formatDate(order.dateCreated)}
+          {fmt.date(order.dateCreated)}
         </Text>
         <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
           <Badge tone={status.tone} label={t(status.labelKey)} />
@@ -223,11 +225,11 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps): React.JS
         <DetailRow label={t('order.label.tracking')} value={shipping?.trackingNumber ?? none} />
         <DetailRow
           label={t('order.label.shippedAt')}
-          value={shipping?.shippedAt ? formatDate(shipping.shippedAt) : none}
+          value={shipping?.shippedAt ? fmt.date(shipping.shippedAt) : none}
         />
         <DetailRow
           label={t('order.label.eta')}
-          value={shipping?.estimatedDelivery ? formatDate(shipping.estimatedDelivery) : none}
+          value={shipping?.estimatedDelivery ? fmt.date(shipping.estimatedDelivery) : none}
         />
       </Card>
 
@@ -238,19 +240,19 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps): React.JS
       <Card title={t('order.section.totals')}>
         <DetailRow
           label={t('order.label.subtotal')}
-          value={formatCurrency(order.subtotal, order.currency)}
+          value={fmt.money(order.subtotal, order.currency)}
         />
         <DetailRow
           label={t('order.label.shippingTotal')}
-          value={formatCurrency(order.shippingTotal, order.currency)}
+          value={fmt.money(order.shippingTotal, order.currency)}
         />
         <DetailRow
           label={t('order.label.tax')}
-          value={formatCurrency(order.totalTax, order.currency)}
+          value={fmt.money(order.totalTax, order.currency)}
         />
         <DetailRow
           label={t('order.label.discount')}
-          value={formatCurrency(order.discountTotal, order.currency)}
+          value={fmt.money(order.discountTotal, order.currency)}
         />
         {order.couponCodes && order.couponCodes.length > 0 ? (
           <DetailRow label={t('order.label.coupons')} value={order.couponCodes.join(', ')} />
@@ -258,7 +260,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps): React.JS
         <Divider spacing="xs" />
         <DetailRow
           label={t('order.label.total')}
-          value={<Text variant="subheading">{formatCurrency(order.total, order.currency)}</Text>}
+          value={<Text variant="subheading">{fmt.money(order.total, order.currency)}</Text>}
         />
       </Card>
     </Screen>

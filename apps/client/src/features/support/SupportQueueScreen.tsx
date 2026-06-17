@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from '@/components/ui';
+import { Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from '@/components/ui';
 import { SecurityNote } from '@/features/onboarding/components/SecurityNote';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
@@ -34,10 +34,22 @@ export function SupportQueueScreen(): React.JSX.Element {
 
   const queueQuery = useSupportQueue();
   const [filters, setFilters] = useState<Filters>(DEFAULT_SUPPORT_FILTERS);
+  const [search, setSearch] = useState('');
 
   const items = useMemo(() => queueQuery.data ?? [], [queueQuery.data]);
   const summary = useMemo(() => computeSummary(items), [items]);
-  const visible = useMemo(() => sortQueue(filterQueue(items, filters)), [items, filters]);
+  const visible = useMemo(() => {
+    const byFilters = filterQueue(items, filters);
+    const q = search.trim().toLowerCase();
+    const bySearch = q
+      ? byFilters.filter((item) =>
+          [item.storeName, item.siteUrl, item.domain, item.templateName, item.assignee?.name]
+            .filter(Boolean)
+            .some((field) => (field as string).toLowerCase().includes(q)),
+        )
+      : byFilters;
+    return sortQueue(bySearch);
+  }, [items, filters, search]);
 
   return (
     <Screen testID="support-queue-screen">
@@ -50,7 +62,14 @@ export function SupportQueueScreen(): React.JSX.Element {
 
       <SupportSummaryCards summary={summary} />
 
-      <Card title={t('support.title')}>
+      <Card padding="md" contentStyle={{ gap: tokens.spacing.md }}>
+        <Input
+          value={search}
+          onChangeText={setSearch}
+          placeholder={t('support.searchPlaceholder')}
+          autoCapitalize="none"
+          testID="support-search"
+        />
         <SupportFilters filters={filters} onChange={setFilters} />
       </Card>
 

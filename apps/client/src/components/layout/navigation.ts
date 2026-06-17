@@ -32,24 +32,39 @@ export interface NavSection {
   /** i18n key for the section header label. */
   labelKey: StringKey;
   items: NavItem[];
+  /** Whether the group starts expanded (workflow-first defaults). */
+  defaultOpen?: boolean;
 }
 
 /**
- * Grouped navigation. Section labels are localized (English + Persian) via i18n keys:
- * Store Operations (عملیات فروشگاه), Growth (رشد), Platform (پلتفرم), System (سیستم).
+ * Grouped navigation, ordered as a commerce operating workflow:
+ * Setup & Connection (شروع و اتصال) → Store Operations (عملیات فروشگاه) →
+ * Growth & Marketing (رشد و بازاریابی) → Support Operations (پشتیبانی و عملیات) →
+ * Platform Admin (مدیریت پلتفرم) → System (سیستم). Section labels are localized via i18n.
+ * Setup and Store Operations start expanded; the rest collapse by default (the group holding
+ * the active route auto-opens — see Sidebar).
  */
 export const navSections: NavSection[] = [
   {
-    key: 'store-ops',
-    labelKey: 'nav.section.storeOps',
+    key: 'setup',
+    labelKey: 'nav.section.setup',
+    defaultOpen: true,
     items: [
-      { key: 'dashboard', labelKey: 'nav.dashboard', href: '/', icon: 'grid-outline' },
       {
         key: 'connect-site',
         labelKey: 'nav.connectSite',
         href: '/connect-site',
         icon: 'link-outline',
       },
+      { key: 'onboarding', labelKey: 'nav.onboarding', href: '/onboarding', icon: 'rocket-outline' },
+    ],
+  },
+  {
+    key: 'store-ops',
+    labelKey: 'nav.section.storeOps',
+    defaultOpen: true,
+    items: [
+      { key: 'dashboard', labelKey: 'nav.dashboard', href: '/', icon: 'grid-outline' },
       { key: 'products', labelKey: 'nav.products', href: '/products', icon: 'pricetags-outline' },
       { key: 'inventory', labelKey: 'nav.inventory', href: '/inventory', icon: 'cube-outline' },
       { key: 'orders', labelKey: 'nav.orders', href: '/orders', icon: 'receipt-outline' },
@@ -89,13 +104,14 @@ export const navSections: NavSection[] = [
     ],
   },
   {
+    key: 'support-ops',
+    labelKey: 'nav.section.supportOps',
+    items: [{ key: 'support', labelKey: 'nav.support', href: '/support', icon: 'headset-outline' }],
+  },
+  {
     key: 'platform',
     labelKey: 'nav.section.platform',
-    items: [
-      { key: 'onboarding', labelKey: 'nav.onboarding', href: '/onboarding', icon: 'rocket-outline' },
-      { key: 'support', labelKey: 'nav.support', href: '/support', icon: 'headset-outline' },
-      { key: 'plans', labelKey: 'nav.plans', href: '/plans', icon: 'pricetags-outline' },
-    ],
+    items: [{ key: 'plans', labelKey: 'nav.plans', href: '/plans', icon: 'pricetags-outline' }],
   },
   {
     key: 'system',

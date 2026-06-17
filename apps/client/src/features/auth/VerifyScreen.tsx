@@ -1,20 +1,19 @@
 /**
- * Verification screen (MOCK / UI-ONLY) — Ecme-style auth.
+ * Verification screen (MOCK / UI-ONLY) — Ecme-style SMS OTP step.
  *
- * A polished OTP/verification layout (shares AuthScaffold's split layout with sign-in). It is
- * deliberately non-functional:
+ * Reached from the sign-in "SMS code" method. It shows the (masked) destination mobile, a
+ * 6-cell LTR code input, a mock resend countdown, and mock verify/change-number actions. It
+ * is deliberately non-functional:
  *  - No code is sent, generated, stored, or validated.
- *  - "Resend" is disabled (nothing is delivered).
- *  - "Verify" is a mock action (it never authenticates or contacts a backend).
+ *  - "Resend" stays disabled (nothing is delivered); the timer is cosmetic.
+ *  - "Verify" is a mock action (never authenticates or contacts a backend).
  *  - Only the locally-typed digits live in component state; nothing is persisted.
- *
- * Real OTP generation/delivery/validation and auth state arrive later behind the
- * AuthService/adapter boundary and a security review.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, type Href } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Pressable,
   TextInput,
   View,
   type NativeSyntheticEvent,
@@ -28,6 +27,7 @@ import { useTheme } from '@/theme';
 import { AuthScaffold } from './AuthScaffold';
 
 const CODE_LENGTH = 6;
+const RESEND_SECONDS = 30;
 
 /** A row of single-digit code boxes (UI-only). */
 function CodeInput({
@@ -61,14 +61,9 @@ function CodeInput({
   };
 
   return (
-    // OTP digits always read left-to-right, even in the RTL (Persian) app — this mirrors
-    // Ecme's OtpVerificationForm which wraps the OTP field in dir="ltr".
+    // OTP digits always read left-to-right, even in the RTL (Persian) app — mirroring Ecme.
     <View
-      style={{
-        flexDirection: 'row',
-        gap: tokens.spacing.sm,
-        justifyContent: 'space-between',
-      }}
+      style={{ flexDirection: 'row', gap: tokens.spacing.sm, justifyContent: 'space-between' }}
       accessibilityLabel={`${CODE_LENGTH}-digit verification code`}
     >
       {Array.from({ length: CODE_LENGTH }).map((_, index) => {
@@ -118,14 +113,56 @@ export function VerifyScreen(): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
   const router = useRouter();
+  const params = useLocalSearchParams<{ mobile?: string }>();
+  const mobile = Array.isArray(params.mobile) ? params.mobile[0] : params.mobile;
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''));
+  const [seconds, setSeconds] = useState(RESEND_SECONDS);
+
+  // Cosmetic countdown only — resend stays disabled regardless (nothing is delivered).
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const id = setInterval(() => setSeconds((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, [seconds]);
 
   const goToSignIn = () => router.replace('/sign-in' as Href);
+  const mmss = `0:${String(seconds).padStart(2, '0')}`;
 
   return (
     <AuthScaffold testID="verify-screen" heading={t('verify.title')} subheading={t('verify.subtitle')}>
       <Card elevation="md" padding="lg" contentStyle={{ gap: tokens.spacing.md }}>
+        {/* Destination summary + change-number action. */}
+        {mobile ? (
+          <View
+            style={{
+              flexDirection: rowDirection,
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: tokens.spacing.sm,
+              backgroundColor: tokens.color.surfaceAlt,
+              borderRadius: tokens.radius.md,
+              paddingVertical: tokens.spacing.sm,
+              paddingHorizontal: tokens.spacing.md,
+            }}
+          >
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text variant="caption" tone="muted">
+                {t('verify.sentTo')}
+              </Text>
+              {/* Phone numbers read LTR even in RTL UI. */}
+              <Text variant="label" style={{ writingDirection: 'ltr', fontWeight: '700' }}>
+                {mobile}
+              </Text>
+            </View>
+            <Pressable accessibilityRole="link" onPress={goToSignIn}>
+              <Text variant="caption" tone="primary" style={{ fontWeight: '600' }}>
+                {t('verify.editMobile')}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         <Text variant="label" tone="muted">
           {t('verify.codeLabel')}
         </Text>
@@ -152,8 +189,14 @@ export function VerifyScreen(): React.JSX.Element {
           <Text variant="caption" tone="muted">
             {t('verify.help')}
           </Text>
-          {/* Resend is intentionally disabled in this mock — nothing is delivered. */}
-          <Button label={t('verify.resend')} variant="ghost" size="sm" disabled />
+          {seconds > 0 ? (
+            <Text variant="caption" tone="muted">
+              {t('verify.resendIn')} {mmss}
+            </Text>
+          ) : (
+            // Resend is intentionally disabled in this mock — nothing is delivered.
+            <Button label={t('verify.resend')} variant="ghost" size="sm" disabled />
+          )}
         </View>
 
         <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>

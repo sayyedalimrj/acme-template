@@ -26,7 +26,7 @@ function renderWithProviders(ui: ReactElement): RenderResult {
       <SafeAreaProvider initialMetrics={metrics}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <I18nProvider>{children}</I18nProvider>
+            <I18nProvider locale="en">{children}</I18nProvider>
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

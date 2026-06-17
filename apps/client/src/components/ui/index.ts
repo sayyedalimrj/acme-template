@@ -15,6 +15,7 @@ export * from './TrendPill';
 export * from './MetricCard';
 export * from './MiniBars';
 export * from './SectionHeader';
+export * from './SegmentedControl';
 export * from './Divider';
 export * from './DataList';
 export * from './DataListRow';
