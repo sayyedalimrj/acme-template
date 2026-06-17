@@ -121,3 +121,22 @@ merchant domain. This is a separate internal admin app — it is **not** a route
 cd apps/admin
 npm run typecheck && npm run lint && npm run format && npm run test:ci && npm run export:web
 ```
+
+
+## Support Inbox (internal, mock-only)
+
+Routes: `/support` (inbox) and `/support/[id]` (conversation). Our team triages SaaS-customer
+conversations with the **Customer Context Panel** beside each thread (plan, sites, plugin/sync
+health, open workflow tasks, subscription, usage, recent security signals).
+
+**Data access policy (future RBAC):**
+
+- Support agents see **safe summaries** by default.
+- **Billing** details require billing permission later (shown flagged, not exposed).
+- **Security/audit** details require security permission later (shown flagged, not exposed).
+- **Secrets** and signing material are **never** shown.
+- Raw synced customer **PII is not shown**.
+- **Direct WordPress database access is forbidden.**
+
+Mock-only: no real chat/email/WhatsApp/phone provider, no message sending, no persistence, no
+notifications, no external APIs. All reply/assign/resolve/escalate actions are disabled mocks.
