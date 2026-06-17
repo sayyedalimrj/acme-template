@@ -12,13 +12,23 @@
  *   - GET  /wp-json/wcos/v1/woocommerce/products
  *   - GET  /wp-json/wcos/v1/woocommerce/orders
  *   - GET  /wp-json/wcos/v1/woocommerce/customers
+ *   - GET  /wp-json/wcos/v1/events
+ *   - POST /wp-json/wcos/v1/events/test
+ *   - POST /wp-json/wcos/v1/events/clear
+ *   - GET  /wp-json/wcos/v1/webhook-config
+ *   - POST /wp-json/wcos/v1/webhook-config/local-queue-only
+ *   - POST /wp-json/wcos/v1/webhook-config/disable
+ *   - GET  /wp-json/wcos/v1/actions
+ *   - POST /wp-json/wcos/v1/actions/request
+ *   - GET  /wp-json/wcos/v1/audit
  *
  * ALL routes require the `manage_options` capability (no public/unauthenticated access). The
- * connection POST routes only mutate non-secret local options (no network, no credentials).
- * Responses are summary-only, PII-minimized, and passed through WCOS_Redaction as
- * defense-in-depth. They NEVER expose admin email, usernames, raw customer/order/product
- * records, addresses, phones, raw emails, full server environment, secrets, tokens, cookies,
- * nonces, or raw headers.
+ * POST routes mutate only non-secret local options/queue (no network, no credentials, no
+ * WooCommerce writes). The controlled-actions request route is a placeholder that ALWAYS
+ * returns disabled and performs no mutation. Responses are summary-only, PII-minimized, and
+ * passed through WCOS_Redaction as defense-in-depth. They NEVER expose admin email,
+ * usernames, raw customer/order/product records, addresses, phones, raw emails, full server
+ * environment, secrets, tokens, cookies, nonces, or raw headers.
  *
  * Hardening note: these routes rely on a capability permission_callback (consistent with the
  * existing skeleton). A future PR should add nonce/session hardening (e.g. `X-WP-Nonce` +
@@ -138,6 +148,112 @@ if (!class_exists('WCOS_REST')) {
                 array(
                     'methods'             => 'GET',
                     'callback'            => array(__CLASS__, 'get_woocommerce_customers'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                    'args'                => self::limit_arg(),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/events',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array(__CLASS__, 'get_events'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                    'args'                => self::limit_arg(),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/events/test',
+                array(
+                    'methods'             => 'POST',
+                    'callback'            => array(__CLASS__, 'post_event_test'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                    'args'                => array(
+                        'event_type' => array(
+                            'required'          => false,
+                            'type'              => 'string',
+                            'sanitize_callback' => 'sanitize_text_field',
+                        ),
+                    ),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/events/clear',
+                array(
+                    'methods'             => 'POST',
+                    'callback'            => array(__CLASS__, 'post_event_clear'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/webhook-config',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array(__CLASS__, 'get_webhook_config'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/webhook-config/local-queue-only',
+                array(
+                    'methods'             => 'POST',
+                    'callback'            => array(__CLASS__, 'post_webhook_local_queue_only'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/webhook-config/disable',
+                array(
+                    'methods'             => 'POST',
+                    'callback'            => array(__CLASS__, 'post_webhook_disable'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/actions',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array(__CLASS__, 'get_actions'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/actions/request',
+                array(
+                    'methods'             => 'POST',
+                    'callback'            => array(__CLASS__, 'post_action_request'),
+                    'permission_callback' => array(__CLASS__, 'permission_check'),
+                    'args'                => array(
+                        'action' => array(
+                            'required'          => false,
+                            'type'              => 'string',
+                            'sanitize_callback' => 'sanitize_text_field',
+                        ),
+                    ),
+                )
+            );
+
+            register_rest_route(
+                WCOS_REST_NAMESPACE,
+                '/audit',
+                array(
+                    'methods'             => 'GET',
+                    'callback'            => array(__CLASS__, 'get_audit'),
                     'permission_callback' => array(__CLASS__, 'permission_check'),
                     'args'                => self::limit_arg(),
                 )
@@ -289,6 +405,144 @@ if (!class_exists('WCOS_REST')) {
             $data  = array(
                 'limit' => $limit,
                 'items' => WCOS_Read_Bridge::get_customers_summary($limit),
+            );
+
+            return rest_ensure_response(WCOS_Redaction::redact_array($data));
+        }
+
+        /**
+         * GET /wcos/v1/events — recent local event queue (summary-only).
+         *
+         * @param mixed $request REST request.
+         * @return mixed REST response.
+         */
+        public static function get_events($request) {
+            $limit = self::read_limit($request);
+            $data  = array(
+                'bridge' => WCOS_Event_Bridge::get_event_bridge_status(),
+                'events' => WCOS_Event_Store::list_events($limit),
+            );
+
+            return rest_ensure_response(WCOS_Redaction::redact_array($data));
+        }
+
+        /**
+         * POST /wcos/v1/events/test — enqueue a synthetic, PII-free test event locally.
+         *
+         * @param mixed $request REST request.
+         * @return mixed REST response.
+         */
+        public static function post_event_test($request) {
+            $event_type = 'order.created';
+            if (is_object($request) && method_exists($request, 'get_param')) {
+                $param = $request->get_param('event_type');
+                if (is_string($param) && $param !== '') {
+                    $event_type = $param;
+                }
+            }
+            $envelope = WCOS_Event_Bridge::record_test_event($event_type);
+            $data     = array(
+                'queued' => true,
+                'event'  => $envelope,
+                'queue'  => WCOS_Event_Store::get_queue_summary(),
+            );
+
+            return rest_ensure_response(WCOS_Redaction::redact_array($data));
+        }
+
+        /**
+         * POST /wcos/v1/events/clear — clear the local event queue.
+         *
+         * @return mixed REST response.
+         */
+        public static function post_event_clear() {
+            WCOS_Event_Store::clear_events();
+            WCOS_Audit::add_entry('event.queue_cleared', 'event', null, array('source' => 'rest'));
+
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(array('cleared' => true, 'queue' => WCOS_Event_Store::get_queue_summary()))
+            );
+        }
+
+        /**
+         * GET /wcos/v1/webhook-config — non-secret webhook delivery placeholder summary.
+         *
+         * @return mixed REST response.
+         */
+        public static function get_webhook_config() {
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(WCOS_Webhook_Config::get_config_summary())
+            );
+        }
+
+        /**
+         * POST /wcos/v1/webhook-config/local-queue-only.
+         *
+         * @return mixed REST response.
+         */
+        public static function post_webhook_local_queue_only() {
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(WCOS_Webhook_Config::mark_local_queue_only())
+            );
+        }
+
+        /**
+         * POST /wcos/v1/webhook-config/disable.
+         *
+         * @return mixed REST response.
+         */
+        public static function post_webhook_disable() {
+            return rest_ensure_response(
+                WCOS_Redaction::redact_array(WCOS_Webhook_Config::disable_delivery())
+            );
+        }
+
+        /**
+         * GET /wcos/v1/actions — list controlled-action intents (all disabled).
+         *
+         * @return mixed REST response.
+         */
+        public static function get_actions() {
+            $data = array(
+                'mutations_enabled' => false,
+                'actions'           => WCOS_Controlled_Actions::list_supported_actions(),
+            );
+
+            return rest_ensure_response(WCOS_Redaction::redact_array($data));
+        }
+
+        /**
+         * POST /wcos/v1/actions/request — placeholder; always disabled, never mutates.
+         *
+         * @param mixed $request REST request.
+         * @return mixed REST response.
+         */
+        public static function post_action_request($request) {
+            $action = '';
+            if (is_object($request) && method_exists($request, 'get_param')) {
+                $param = $request->get_param('action');
+                if (is_string($param)) {
+                    $action = $param;
+                }
+            }
+            WCOS_Audit::add_entry('controlled_action.requested', 'controlled_action', $action, array('action' => $action));
+            $result = WCOS_Controlled_Actions::request_action_placeholder($action, array());
+            WCOS_Audit::add_entry('controlled_action.rejected', 'controlled_action', $action, array('action' => $action, 'reason' => $result['reason']));
+
+            return rest_ensure_response(WCOS_Redaction::redact_array($result));
+        }
+
+        /**
+         * GET /wcos/v1/audit — recent local audit entries (summary-only).
+         *
+         * @param mixed $request REST request.
+         * @return mixed REST response.
+         */
+        public static function get_audit($request) {
+            $limit = self::read_limit($request);
+            $data  = array(
+                'summary' => WCOS_Audit::get_summary(),
+                'entries' => WCOS_Audit::list_entries($limit),
             );
 
             return rest_ensure_response(WCOS_Redaction::redact_array($data));

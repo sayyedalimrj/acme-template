@@ -66,6 +66,39 @@ The installable PHP runtime in this package is bound by these additional rules:
   never deletes merchant content, WooCommerce data, products, orders, or customers, and makes
   no external calls.
 
+## Runtime security (Plugin PR 3 — event bridge + controlled actions foundation)
+
+The event/webhook/actions/audit modules are bound by these additional rules:
+
+- **Local-only event bridge.** `WCOS_Event_Bridge` builds **summary-only** event envelopes
+  and stores them in a capped local queue (`WCOS_Event_Store`, max 50, autoload disabled).
+  Events are NEVER delivered anywhere (`delivery_status = local_only`). Optional WooCommerce
+  hooks (`woocommerce_new_order`, `woocommerce_order_status_changed`,
+  `woocommerce_product_set_stock`, `user_register`) capture summary-only events; every
+  callback checks WooCommerce is active, is wrapped in try/catch, performs no mutation, makes
+  no network call, and stores no raw payload.
+- **Event payloads are summary-only.** `WCOS_Event_Sanitizer` strips secret/PII-named keys and
+  email/phone/address fields, drops nested objects, redacts strings, and caps key count. No
+  full order payloads, no full customer PII, no raw meta, no line items.
+- **Idempotency/signature are non-secret placeholders.** The idempotency key is a hash of
+  public, non-secret inputs; there is NO real signature, signing secret, or verification.
+- **Webhook config stores no secret or URL.** `WCOS_Webhook_Config` persists only a non-secret
+  status (`wcos_webhook_delivery_status`) and a generic label (`wcos_webhook_destination_label`).
+  There is no destination URL and no webhook/signing secret — `secret_configured` is always
+  `false` and `external_delivery` is always `false`.
+- **Controlled actions are disabled by default.** `WCOS_Controlled_Actions` defines `*_later`
+  intents that always return `status = disabled`, `reason = backend_permission_audit_required`,
+  `mutation_performed = false`. It NEVER calls `save()`, `update_status()`,
+  `set_stock_quantity()`, `wc_update_product_stock()`, `update_post_meta()`, `wp_insert_post()`,
+  `wp_delete_post()`, `set_regular_price()`, `set_sale_price()`, `set_status()`, or any setter.
+- **Audit is local + summary-only.** `WCOS_Audit` stores a capped (max 100, autoload disabled)
+  list of summary-only entries; summaries are reduced to scalars and run through
+  `WCOS_Redaction`. No raw request bodies, no credentials, no PII.
+- **All new REST routes are admin-only** (`manage_options`), summary-only, and redacted; the
+  actions request route is a placeholder that never mutates.
+- **Uninstall** also removes `wcos_event_queue`, `wcos_audit_log`,
+  `wcos_webhook_delivery_status`, and `wcos_webhook_destination_label` — all non-secret.
+
 ## Handshake security (designed, not implemented here)
 
 - A **short-lived challenge** issued by the backend; the plugin responds (signed) later.

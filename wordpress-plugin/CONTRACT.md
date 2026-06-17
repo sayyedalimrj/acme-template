@@ -5,11 +5,13 @@
 >
 > **Implementation status:** the installable PHP runtime now includes (Plugin PR 1) the
 > skeleton + admin status page + health + admin-only status/health endpoints + internal
-> WooCommerce detection, and (Plugin PR 2) **non-secret local connection state** plus a
-> **read-only, summarized, admin-only WooCommerce bridge** (products/orders/customers/store
-> summaries via redacted, PII-minimized data). It still performs **no** backend connection,
-> handshake, credential handling, WooCommerce REST/API-key calls, webhooks, or mutations —
-> those (event/webhook bridge + controlled actions) arrive in Plugin PR 3.
+> WooCommerce detection, (Plugin PR 2) non-secret local connection state + a read-only,
+> summarized, admin-only WooCommerce bridge, and (Plugin PR 3) a **local-only summary event
+> bridge** (capped queue), a **webhook delivery placeholder** (no URL/secret/delivery), a
+> **controlled-actions foundation** (all intents disabled, no mutation), and a **local audit
+> log**. It still performs **no** backend connection, handshake, credential handling,
+> WooCommerce REST/API-key calls, real webhooks/delivery, or mutations. The recommended next
+> phase is real backend delivery + read-only sync integration.
 
 ## Actors
 

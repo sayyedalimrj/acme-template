@@ -59,6 +59,10 @@ if (!class_exists('WCOS_Plugin')) {
 
             WCOS_Admin::init();
             WCOS_REST::init();
+
+            // Register optional, guarded local WooCommerce event hooks (summary-only capture;
+            // no mutation, no network, no raw payloads).
+            WCOS_Event_Bridge::register_hooks();
         }
 
         /**

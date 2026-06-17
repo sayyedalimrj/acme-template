@@ -52,6 +52,14 @@ if (!class_exists('WCOS_Capabilities')) {
                 'view_woocommerce_products_summary',
                 'view_woocommerce_orders_summary',
                 'view_woocommerce_customers_summary',
+                'view_event_queue',
+                'manage_event_queue',
+                'view_webhook_config',
+                'manage_webhook_config',
+                'view_controlled_actions',
+                'request_controlled_action_placeholder',
+                'view_audit_log',
+                'manage_audit_log',
             );
         }
 

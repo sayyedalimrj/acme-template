@@ -12,6 +12,10 @@
  *   - wcos_connection_tenant_id
  *   - wcos_connection_last_checked_at
  *   - wcos_connection_mode
+ *   - wcos_event_queue
+ *   - wcos_audit_log
+ *   - wcos_webhook_delivery_status
+ *   - wcos_webhook_destination_label
  *   - wcos_plugin_version
  *
  * @package WordPress_Commerce_OS_Companion
@@ -25,6 +29,10 @@ $wcos_options = array(
     'wcos_connection_tenant_id',
     'wcos_connection_last_checked_at',
     'wcos_connection_mode',
+    'wcos_event_queue',
+    'wcos_audit_log',
+    'wcos_webhook_delivery_status',
+    'wcos_webhook_destination_label',
     'wcos_plugin_version',
 );
 
