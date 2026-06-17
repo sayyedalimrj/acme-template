@@ -25,7 +25,7 @@ plugin. Binding for all current and future work in this package.
 7. **No real writes / mutations** to any store until the mock UI, adapter interfaces, and the
    platform security model are reviewed and approved.
 
-## Runtime skeleton security (Plugin PR 1 — implemented now)
+## Runtime security (Plugin PR 2 — secure connection state + read-only bridge)
 
 The installable PHP runtime in this package is bound by these additional rules:
 
@@ -33,25 +33,38 @@ The installable PHP runtime in this package is bound by these additional rules:
   admin/application passwords, WooCommerce consumer keys/secrets, hosting/FTP/cPanel
   credentials, or API secrets. The admin page shows an explicit warning telling operators not
   to paste any such values.
-- **No secrets stored.** Only two non-secret options are persisted: `wcos_connection_status`
-  (default `not_connected`) and `wcos_plugin_version`. No secret/credential/API-key options.
+- **No secrets stored.** Only NON-secret, plugin-owned options are persisted:
+  `wcos_connection_status`, `wcos_connection_site_id`, `wcos_connection_tenant_id`,
+  `wcos_connection_last_checked_at`, `wcos_connection_mode`, and `wcos_plugin_version`. The
+  site/tenant identifiers are **locally generated placeholders**, not external IDs. No
+  secret/credential/API-key/token options exist.
 - **No network calls.** The runtime uses no `wp_remote_post`, `wp_remote_get`, cURL, or any
-  outbound HTTP. There is no backend connection and no handshake yet.
-- **WooCommerce is detection-only.** The internal `WCOS_WooCommerce` module only checks
-  `class_exists('WooCommerce')` and the `WC_VERSION` constant. It never calls the WooCommerce
-  REST API, never creates API keys, never reads order/customer/product data, and never
-  registers webhooks. WooCommerce is optional (missing → warning, not fatal).
-- **REST endpoints are admin-only.** `/wcos/v1/status` and `/wcos/v1/health` require the
-  `manage_options` capability; there is no public/unauthenticated access. They return only
-  non-secret data (and run through `WCOS_Redaction` as defense-in-depth). They never expose
-  admin email, usernames, customer/order/product data, full server environment, secrets,
-  tokens, cookies, nonces, or raw headers.
-- **Redaction everywhere relevant.** `WCOS_Redaction` redacts passwords, application
-  passwords, consumer keys/secrets, API keys, tokens, authorization/bearer/basic headers,
-  cookies, nonces, webhook secrets, and `ck_`/`cs_` prefixes.
-- **Safe uninstall.** `uninstall.php` removes only the two plugin-owned non-secret options;
-  it never deletes merchant content, WooCommerce data, products, orders, or customers, and
-  makes no external calls.
+  outbound HTTP. There is no backend connection and no handshake yet; connection state is
+  local-only (`backend_connected` is always `false`).
+- **WooCommerce is read-only and local.** The internal `WCOS_WooCommerce` module +
+  `WCOS_Read_Bridge` only call read-only WordPress/WooCommerce helpers
+  (`wc_get_products`, `wc_get_orders`, `get_users`, `wp_count_posts`, `count_users`,
+  `WC_Customer`) to build **summaries**. They never call the WooCommerce REST API, never
+  create API keys, never register webhooks, and never write/mutate anything
+  (no `save()`, `update_status()`, `set_stock_quantity()`, `wp_insert_post()`, etc.).
+  WooCommerce is optional (missing → warning, not fatal).
+- **Summaries only — no raw PII.** Read summaries are produced by `WCOS_Data_Sanitizer` and
+  never include addresses, phone numbers, raw emails, IPs, user agents, payment details, order
+  notes, raw meta, or full line items. Customers are reduced to generic/masked labels; emails
+  and phones are masked when ever surfaced. A small max limit (20) is enforced on all lists.
+- **REST endpoints are admin-only.** Every `/wcos/v1/*` route requires the `manage_options`
+  capability; there is no public/unauthenticated access. Connection POST routes mutate only
+  non-secret local options. All responses run through `WCOS_Redaction` as defense-in-depth and
+  never expose admin email, usernames, raw customer/order/product records, full server
+  environment, secrets, tokens, cookies, nonces, or raw headers.
+- **Hardening note.** Routes rely on a capability `permission_callback` (consistent with the
+  skeleton). A future PR should add nonce/session hardening for browser-originated calls.
+- **Redaction.** `WCOS_Redaction` redacts passwords, application passwords, consumer
+  keys/secrets, API keys, tokens, authorization/bearer/basic headers, cookies, nonces, webhook
+  secrets, `ck_`/`cs_` prefixes, and (defense-in-depth) `ip_address`/`user_agent` fields.
+- **Safe uninstall.** `uninstall.php` removes only the plugin-owned non-secret options; it
+  never deletes merchant content, WooCommerce data, products, orders, or customers, and makes
+  no external calls.
 
 ## Handshake security (designed, not implemented here)
 

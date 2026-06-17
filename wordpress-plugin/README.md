@@ -1,14 +1,17 @@
 # wordpress-plugin — WordPress Commerce OS Companion
 
-> **Status: runtime skeleton (Plugin PR 1 of 3).** This is **one plugin** — _WordPress
-> Commerce OS Companion_ — with WooCommerce support as an **internal module**. It now contains
-> a minimal, **installable, non-production** WordPress plugin (PHP runtime) alongside the
-> original TypeScript contracts and safe examples. The plugin **collects no credentials, makes
-> no network calls, calls no WooCommerce/WordPress API, registers no webhooks, and performs no
-> mutations.** It exposes only an admin status page and two admin-authenticated local REST
-> endpoints (status/health).
+> **Status: secure connection state + read-only WooCommerce bridge (Plugin PR 2 of 3).** This
+> is **one plugin** — _WordPress Commerce OS Companion_ — with WooCommerce support as an
+> **internal module**. It is an **installable, non-production** WordPress plugin that now adds
+> non-secret local connection state and a **read-only, summarized, admin-only** WooCommerce
+> bridge. The plugin **collects no credentials, makes no network calls, calls no
+> WooCommerce/WordPress REST API, creates no API keys, registers no webhooks, and performs no
+> mutations.** WooCommerce data is read **locally** and returned only as redacted,
+> PII-minimized summaries — nothing is sent anywhere.
 >
-> Plugin PR plan: **1) runtime skeleton + admin UI + health/WooCommerce detection (this PR)**, 2) secure connection + read-only WooCommerce bridge, 3) webhooks + controlled actions.
+> Plugin PR plan: 1) runtime skeleton + admin UI + health/WooCommerce detection (shipped),
+> **2) secure connection state + read-only WooCommerce bridge (this PR)**, 3) event/webhook
+> bridge + controlled actions foundation.
 
 ## Purpose
 
@@ -21,20 +24,21 @@ and `security-model.md`.
 
 ## Not production-ready
 
-This plugin is a **runtime skeleton**. It is installable and safe, but it explicitly does
-**NOT** include, and must not gain here:
+This plugin is a **non-production read-only bridge foundation**. It is installable and safe,
+but it explicitly does **NOT** include, and must not gain here:
 
 - ❌ No real backend connection / handshake and no real credentials collected or stored
   (not WP application passwords, not WooCommerce consumer keys/secrets, not webhook secrets,
   not hosting/FTP/cPanel credentials).
 - ❌ No real backend calls and no real network requests (no `wp_remote_*`, no cURL).
-- ❌ No real WooCommerce or WordPress REST API calls and no WooCommerce API key creation.
-- ❌ No customer/order/product data access or exposure.
-- ❌ No real webhook registration or event delivery, and no mutations (writes).
+- ❌ No WooCommerce/WordPress **REST API** calls and no WooCommerce API key creation.
+- ❌ No data sent externally. WooCommerce data is read **locally** and only as redacted,
+  PII-minimized summaries (no addresses, phones, raw emails, payment details, or order notes).
+- ❌ No real webhook registration or event delivery, and no mutations/writes of any kind.
 - ❌ No real crypto / signature verification / KMS, no database tables, no cron/background jobs.
 - ❌ No new dependencies (no Composer, no npm runtime deps) and no production build/release.
 
-## Local installation (runtime skeleton)
+## Local installation
 
 This is a manual, local-only install for development:
 
@@ -42,25 +46,40 @@ This is a manual, local-only install for development:
    `wp-content/plugins/wordpress-commerce-os-companion`.
 2. In **wp-admin → Plugins**, activate **WordPress Commerce OS Companion**.
    WooCommerce is **optional** — the plugin activates with or without it.
-3. A top-level **WordPress Commerce OS** menu appears in the admin sidebar. Open it to see
-   plugin status, connection status (Not connected), WooCommerce status (Active / Missing /
-   Unknown), health checks, a security notice, and the next-steps note.
+3. Open the top-level **WordPress Commerce OS** admin menu. You'll see:
+   - **Connection** — status (Not connected / Local ready / …), local site/tenant identifiers,
+     and **Mark local readiness** / **Disconnect locally** buttons (these update only
+     non-secret local state; they make no network calls).
+   - **WooCommerce read-only bridge** — active/version, read-capability readiness, and
+     aggregate product/order/customer counts.
+   - **Health checks**, a **security notice**, and **next steps**.
 
-### Admin-only REST endpoints
+### Admin-only REST endpoints (require `manage_options`)
 
-Both require the `manage_options` capability (no public/unauthenticated access):
+No public/unauthenticated access. Responses are summary-only and redacted.
 
-- `GET /wp-json/wcos/v1/status` — plugin version, connection status, site/home URL,
-  WooCommerce active flag + version, and a capability summary.
-- `GET /wp-json/wcos/v1/health` — the health-check summary (ok / warning / error /
-  not_configured).
+| Method | Endpoint                                          | Returns                                                                   |
+| ------ | ------------------------------------------------- | ------------------------------------------------------------------------- |
+| GET    | `/wp-json/wcos/v1/status`                         | plugin/connection status, site/home URL, WooCommerce + capability summary |
+| GET    | `/wp-json/wcos/v1/health`                         | health-check summary (ok / warning / error / not_configured)              |
+| GET    | `/wp-json/wcos/v1/connection`                     | non-secret local connection summary + site identity                       |
+| POST   | `/wp-json/wcos/v1/connection/local-ready`         | mark local readiness (non-secret options only)                            |
+| POST   | `/wp-json/wcos/v1/connection/disconnect`          | clear local connection state                                              |
+| GET    | `/wp-json/wcos/v1/woocommerce/summary`            | counts + read-capability readiness                                        |
+| GET    | `/wp-json/wcos/v1/woocommerce/products?limit=10`  | product summaries (max 20)                                                |
+| GET    | `/wp-json/wcos/v1/woocommerce/orders?limit=10`    | order summaries (max 20, generic customer label)                          |
+| GET    | `/wp-json/wcos/v1/woocommerce/customers?limit=10` | customer summaries (max 20, masked label)                                 |
+
+Test as a logged-in admin, e.g. in the browser console:
+`fetch('/wp-json/wcos/v1/woocommerce/summary', { headers: { 'X-WP-Nonce': wpApiSettings.nonce } }).then(r => r.json())`.
 
 ### Current limitations / intentionally not implemented
 
-- No connection to the backend (`apps/api`) yet — connection status is always
-  `not_connected`.
-- No WooCommerce REST calls; the WooCommerce module is **passive detection only**.
-- No webhooks, no events, no mutations, no credential inputs, no settings forms for secrets.
+- No connection to the backend (`apps/api`) yet — `backend_connected` is always `false` and
+  connection state is local-only.
+- The bridge is **read-only**: no WooCommerce REST calls, no API keys, no webhooks, no writes.
+- Customer/order summaries never include raw PII (no email/phone/address) — labels are generic
+  or masked.
 
 ### Naming (unique prefix)
 
@@ -87,12 +106,15 @@ wordpress-plugin/
 ├── wordpress-commerce-os-companion.php   main plugin file (header, constants, bootstrap)
 ├── includes/                             PHP runtime (one plugin; WooCommerce is internal)
 │   ├── class-wcos-plugin.php             bootstrap singleton
-│   ├── class-wcos-admin.php              admin menu + read-only status page
+│   ├── class-wcos-admin.php              admin menu + connection + read-only bridge page
+│   ├── class-wcos-connection.php         non-secret local connection state
+│   ├── class-wcos-read-bridge.php        read-only, summarized WooCommerce reads
+│   ├── class-wcos-data-sanitizer.php     summarize + mask/redact WooCommerce data (PII-safe)
 │   ├── class-wcos-health.php             local health checks (no network)
-│   ├── class-wcos-rest.php               admin-only /wcos/v1/status + /health
-│   ├── class-wcos-woocommerce.php        internal WooCommerce detection module
-│   ├── class-wcos-capabilities.php       capability helper (manage_options + summaries)
-│   └── class-wcos-redaction.php          secret redaction for diagnostics/REST output
+│   ├── class-wcos-rest.php               admin-only /wcos/v1/* status/health/connection/woocommerce
+│   ├── class-wcos-woocommerce.php        internal WooCommerce detection + counts + read caps
+│   ├── class-wcos-capabilities.php       capability helper (manage_options + plugin caps)
+│   └── class-wcos-redaction.php          secret/PII redaction for diagnostics/REST output
 ├── assets/admin.css                      admin page styles
 ├── uninstall.php                         removes only plugin-owned non-secret options
 ├── README.md · CONTRACT.md · SECURITY.md

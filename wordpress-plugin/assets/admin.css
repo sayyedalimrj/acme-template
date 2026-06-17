@@ -101,3 +101,27 @@
   border-color: #e6a8a1;
   color: #8a1f11;
 }
+
+.wcos-notice-success {
+  background: #edfaef;
+  border-color: #68b984;
+  color: #00652b;
+}
+
+.wcos-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.wcos-actions form {
+  margin: 0;
+}
+
+.wcos-table code {
+  font-size: 12px;
+  background: #f6f7f7;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
