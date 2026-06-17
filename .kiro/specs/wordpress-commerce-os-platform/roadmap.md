@@ -93,11 +93,14 @@ WooCommerce as an internal module), max 3 plugin PRs:
 
 - **PR 1 (shipped)** — runtime skeleton: installable plugin, admin UI, health checks,
   WooCommerce detection, admin-only status/health REST. No credentials, no network.
-- **PR 2 (current)** — non-secret local connection state + a **read-only, summarized,
+- **PR 2 (shipped)** — non-secret local connection state + a **read-only, summarized,
   admin-only** WooCommerce bridge (products/orders/customers/store summaries, PII-minimized
   and redacted). Still no backend calls, no credentials, no WooCommerce REST/API keys, no
   webhooks, no mutations.
-- **PR 3 (next)** — event/webhook bridge + controlled-actions foundation (contract-first).
+- **PR 3 (shipped)** — **local-only** summary event bridge (capped queue + admin/REST
+  controls), a **webhook delivery placeholder** (no URL/secret/delivery), a
+  **controlled-actions foundation** (all intents disabled, no mutation), and a **local audit
+  log**. Still no backend delivery, no real webhooks, no mutations.
 
 The TypeScript contracts + safe examples remain the design source of truth. No real backend
 connection, no real credentials, no crypto, no dependencies yet.

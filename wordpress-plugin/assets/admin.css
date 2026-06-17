@@ -125,3 +125,7 @@
   padding: 1px 6px;
   border-radius: 4px;
 }
+
+.wcos-card .wcos-table + .wcos-table {
+  margin-top: 12px;
+}

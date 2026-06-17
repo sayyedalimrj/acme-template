@@ -206,6 +206,44 @@ if (!class_exists('WCOS_Health')) {
                 WCOS_WooCommerce::can_read_customers() ? 'Readable' : 'Unavailable (WooCommerce inactive)'
             );
 
+            // Event bridge local queue status.
+            $queue = WCOS_Event_Store::get_queue_summary();
+            $items[] = self::item(
+                'event_bridge_queue',
+                'Event bridge (local queue)',
+                'ok',
+                'info',
+                'local_queue_only · ' . (int) $queue['count'] . '/' . (int) $queue['max'] . ' events (no external delivery)'
+            );
+
+            // Webhook delivery placeholder status.
+            $items[] = self::item(
+                'webhook_delivery_placeholder',
+                'Webhook delivery',
+                'not_configured',
+                'info',
+                'Status: ' . WCOS_Webhook_Config::get_delivery_status() . ' (no URL, no secret, no delivery)'
+            );
+
+            // Controlled actions disabled.
+            $items[] = self::item(
+                'controlled_actions_disabled',
+                'Controlled actions',
+                'not_configured',
+                'info',
+                'All action intents disabled (backend permission/audit required); no mutations'
+            );
+
+            // Audit log status.
+            $audit = WCOS_Audit::get_summary();
+            $items[] = self::item(
+                'audit_log',
+                'Local audit log',
+                'ok',
+                'info',
+                (int) $audit['count'] . '/' . (int) $audit['max'] . ' summary-only entries'
+            );
+
             return array(
                 'overall'      => self::rollup($items),
                 'items'        => $items,

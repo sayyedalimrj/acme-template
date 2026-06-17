@@ -14,12 +14,15 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  *
  * ONE PLUGIN ONLY. WooCommerce support is an INTERNAL module (class WCOS_WooCommerce), not a
- * separate plugin. This plugin:
+ * separate plugin. Events, webhook config, controlled actions, and diagnostics are all
+ * INTERNAL modules of this same plugin. This plugin:
  *   - never asks for or stores credentials (no tokens, API keys, passwords, secrets),
- *   - never makes network requests (no wp_remote_*, no cURL),
+ *   - never makes network requests (no wp_remote_*, no cURL) and never delivers externally,
  *   - never calls the WooCommerce REST API and never creates API keys,
- *   - never writes/mutates WooCommerce data and never registers webhooks,
+ *   - never writes/mutates WooCommerce data and never registers real webhooks,
  *   - reads WooCommerce data LOCALLY in summarized, redacted, PII-minimized form only,
+ *   - captures summary-only events into a capped LOCAL queue (no delivery),
+ *   - exposes controlled-action intents that are DISABLED (no mutation),
  *   - exposes only admin-authenticated (manage_options) local REST endpoints.
  * See SECURITY.md.
  *
@@ -31,7 +34,7 @@ defined('ABSPATH') || exit;
 /* -------------------------------------------------------------------------
  * Constants (unique wcos_/WCOS_ prefix).
  * ---------------------------------------------------------------------- */
-define('WCOS_VERSION', '0.2.0');
+define('WCOS_VERSION', '0.3.0');
 define('WCOS_PLUGIN_FILE', __FILE__);
 define('WCOS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WCOS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -50,6 +53,12 @@ require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-data-sanitizer.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-woocommerce.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-connection.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-read-bridge.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-audit.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-event-sanitizer.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-event-store.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-event-bridge.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-webhook-config.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-controlled-actions.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-health.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-rest.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-admin.php';

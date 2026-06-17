@@ -103,6 +103,16 @@ if (!class_exists('WCOS_WooCommerce')) {
         }
 
         /**
+         * Whether the plugin can emit local WooCommerce events (WooCommerce active).
+         * Capture is summary-only and local; no delivery, no mutation.
+         *
+         * @return bool
+         */
+        public static function can_emit_events() {
+            return self::is_active();
+        }
+
+        /**
          * Alias of capability_summary().
          *
          * @return array<int,array<string,string>>
