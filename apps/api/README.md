@@ -64,6 +64,7 @@ apps/api/
     ├── security/                 redaction, credentialPolicy, errors (+ examples)
     ├── adapters/                 woocommerceProxy, wordpressBridge, webhookReceiver (interfaces + stubs)
     ├── plugin/                   read-only plugin sync foundation (validators/ingestors/registry; pure)
+    ├── database/                 production DB schema + tenant isolation DESIGN (types/contracts only)
     ├── routes/                   future HTTP route contracts (types only)
     └── mock/                     secret-free mock tenants + sites
 ```
@@ -151,6 +152,38 @@ summary-only read models and stored **only** in an in-memory dev repository.
 
 **Future next step:** a production database schema with per-tenant isolation (encrypted at
 rest, retention/export/delete paths) — designed and built in a later phase, after review.
+
+## Production database schema + tenant isolation DESIGN (`src/database/`)
+
+A **design/contracts-only** model of the future production database. There is **no ORM, no
+migration, no SQL, no database client, and no persistence** — only TypeScript types and pure
+helpers so the isolation/visibility/retention contracts are concrete before any real database
+lands. See `src/database/README.md` for the full detail.
+
+- `schemaDesign.ts` — record types for every planned table (`TenantRecord`,
+  `PlatformUserRecord`, `TenantMembershipRecord`, `SiteRecord`, `SiteConnectionRecord`,
+  `PluginConnectionRecord`, `CredentialMetadataRecord`, `SyncRunRecord`, `SyncedProductRecord`,
+  `SyncedOrderRecord`, `SyncedCustomerRecord`, `PluginEventRecord`, support/workflow/
+  subscription/usage/billing records, `AuditLogRecord`, `SecuritySignalRecord`, plus
+  future AI/SMS/media/campaign/automation usage records) + a table catalog with scoping
+  descriptors, `validateRecordScoping`, and the sync read-model → table mapping.
+- `accessPolicy.ts` — the `DataVisibilityLevel` model (`public_safe` … `secret_never_expose`),
+  the `PlatformRole` taxonomy, role→visibility profiles, a field-visibility map, and a
+  raw-secret-field guard. `secret_never_expose` is in **no** profile.
+- `tenantIsolation.ts` — `TenantIsolationMode`, `TenantScopedQueryContext`,
+  `TenantAccessDecision`, and `assertTenantScope` / `assertSiteScope` /
+  `canAccessTenantRecord` / `canAccessSiteRecord` / `buildTenantScopedWhereClauseDescription`.
+  **Default deny, least privilege, cross-tenant forbidden.**
+- `dataRetention.ts` — retention policy catalog, tenant-deletion + site-disconnect behavior,
+  audit-preservation rules, and a DSAR export/delete placeholder (design only).
+- `schemaExamples.ts` — dependency-free example checks (`ALL_SCHEMA_DESIGN_EXAMPLES_PASS`).
+
+**Design rules:** every tenant-scoped row carries `tenantId` (site-scoped → `siteId`,
+sync-derived → `syncRunId`); raw secrets are never stored (credentials are metadata + an
+opaque vault reference); raw PII lives only in explicitly gated `*Restricted` columns; billing
+rows hold provider metadata only (no card data); the backend never touches a WordPress
+database directly. **Future next step:** a production database **implementation plan +
+migration scaffold** (engine, DDL/migrations, row-level isolation, encryption at rest, DSAR).
 
 ## Hard rules for this package
 

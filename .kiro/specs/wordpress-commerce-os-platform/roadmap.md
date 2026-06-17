@@ -120,8 +120,14 @@ material) + replay/timestamp window before in-memory ingest, plus a plugin **sig
 signed-delivery handler optionally persist accepted, normalized, summary-only snapshots to an
 **in-memory dev repository** (modes: `validate_only` default / `validate_and_persist_dev`;
 no production DB, no filesystem, no network, no mutation, raw PII/secrets rejected before
-persistence). Next: a **production database schema + tenant isolation** design, then flipping
-client adapters to backend-backed reads.
+persistence). A **production database schema + tenant isolation design** (design/contracts
+only — no ORM/SQL/migration/DB client) now defines the future tables (tenants, users,
+memberships, sites, connections, credential metadata, sync runs, synced product/order/customer
+summaries, plugin events, support conversations/messages, workflow items, subscriptions, usage
+limits, audit logs, security signals, and future AI/SMS/media/campaign usage), a default-deny
+tenant-isolation contract, a field-visibility model (`public_safe` … `secret_never_expose`),
+and a retention/deletion policy. Next: a **production database implementation plan + migration
+scaffold**, then flipping client adapters to backend-backed reads.
 
 ### Phase 11 — Webhook ingestion
 Order/product/customer/coupon events · signature verification · idempotency · event log ·
