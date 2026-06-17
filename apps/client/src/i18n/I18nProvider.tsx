@@ -1,12 +1,23 @@
 /**
- * Minimal i18n placeholder provider.
+ * Minimal i18n provider with an in-memory, switchable locale.
  *
- * Exposes a `t(key)` translator backed by an in-memory catalog so the UI avoids hard-coded
- * strings from day one. This is intentionally tiny; it will be replaced by i18next +
- * react-i18next (with real locale loading and RTL validation) in the i18n hardening task.
- * It uses no browser globals and is safe on all platforms.
+ * Exposes a `t(key)` translator backed by an in-memory catalog plus `setLocale` so the UI can
+ * switch between Persian and English at runtime. This is intentionally tiny; it will be
+ * replaced by i18next + react-i18next (with real locale loading and RTL validation) in the
+ * i18n hardening task. It uses no browser globals and is safe on all platforms.
+ *
+ * Persistence note: the chosen locale is kept in memory only. Persisting the user's language
+ * requires a cross-platform secure/async storage layer (AsyncStorage / expo-secure-store) and
+ * is intentionally left as a TODO. We do NOT use `localStorage` (web-only) here.
  */
-import React, { createContext, useContext, useMemo, type ReactNode } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { appConfig } from '@/config/app.config';
 
@@ -15,6 +26,7 @@ import { catalog, en, type Locale, type StringKey } from './strings';
 export interface I18nContextValue {
   locale: Locale;
   t: (key: StringKey) => string;
+  setLocale: (locale: Locale) => void;
 }
 
 const I18nContext = createContext<I18nContextValue | undefined>(undefined);
@@ -25,6 +37,7 @@ function resolveLocale(input: string): Locale {
 
 export interface I18nProviderProps {
   children: ReactNode;
+  /** Initial locale (defaults to app config). Switchable at runtime via setLocale. */
   locale?: string;
 }
 
@@ -32,22 +45,38 @@ export function I18nProvider({
   children,
   locale = appConfig.defaultLocale,
 }: I18nProviderProps): React.JSX.Element {
+  const [activeLocale, setActiveLocale] = useState<Locale>(() => resolveLocale(locale));
+
+  const setLocale = useCallback((next: Locale) => {
+    setActiveLocale(resolveLocale(next));
+  }, []);
+
   const value = useMemo<I18nContextValue>(() => {
-    const resolved = resolveLocale(locale);
-    const dictionary = catalog[resolved] ?? en;
+    const dictionary = catalog[activeLocale] ?? en;
     return {
-      locale: resolved,
+      locale: activeLocale,
       t: (key: StringKey) => dictionary[key] ?? en[key] ?? key,
+      setLocale,
     };
-  }, [locale]);
+  }, [activeLocale, setLocale]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
-export function useT(): I18nContextValue['t'] {
+function useI18n(): I18nContextValue {
   const ctx = useContext(I18nContext);
   if (!ctx) {
     throw new Error('useT must be used within an I18nProvider');
   }
-  return ctx.t;
+  return ctx;
+}
+
+export function useT(): I18nContextValue['t'] {
+  return useI18n().t;
+}
+
+/** Access the active locale and a setter for runtime language switching. */
+export function useLocale(): { locale: Locale; setLocale: (locale: Locale) => void } {
+  const { locale, setLocale } = useI18n();
+  return { locale, setLocale };
 }

@@ -10,6 +10,7 @@
  * security review (see security steering).
  */
 import type {
+  AbandonedCartSignal,
   AddInternalNoteInput,
   AIAdvisorConversationMessage,
   AIAdvisorInsight,
@@ -17,15 +18,22 @@ import type {
   AIAdvisorRecommendation,
   AIAdvisorStoreContextSummary,
   AuthSession,
+  BackInStockInterest,
   BillingInterval,
   BillingProviderStatus,
+  CampaignConversionSignal,
+  CommerceEvent,
   ConnectSiteInput,
   CurrentSubscriptionSummary,
   Customer,
   CustomerListQuery,
   DashboardOverview,
+  EventProviderStatus,
+  EventTrackingReadiness,
   ExistingOnboardingInput,
   ExistingSiteOnboardingRequest,
+  IntelligenceRecommendation,
+  IntelligenceSummary,
   MediaStudioAnalyzeInput,
   MediaStudioAsset,
   MediaStudioGenerationInput,
@@ -46,7 +54,10 @@ import type {
   PlanFeature,
   PlanPricing,
   Product,
+  ProductInterestSignal,
   ProductListQuery,
+  RecordEventInput,
+  SearchDemandInsight,
   SiteConnection,
   StoreTemplate,
   SubscriptionPlan,
@@ -231,6 +242,33 @@ export interface MediaStudioAdapter {
   dismissVariantMock(id: string): Promise<MediaStudioOutputVariant[]>;
 }
 
+/**
+ * Customer Intelligence / Event Tracking adapter — the seam for the mock intelligence model
+ * (Phase 5). Serves a mock event stream + derived signals (search demand, product interest,
+ * back-in-stock, abandoned carts, campaign conversion) and review-only recommendations.
+ *
+ * SECURITY/PRIVACY (binding): MOCK-ONLY. NO real tracking, NO cookies/fingerprints, NO
+ * analytics provider, NO external send, NO tracking/provider IDs, NO PII beyond mock data.
+ * `recordEventMock` only appends to the in-memory stream. `siteId` is accepted for
+ * forward-compatibility but ignored by the mock. See security-model.md.
+ */
+export interface CustomerIntelligenceAdapter {
+  getProviderStatus(): Promise<EventProviderStatus>;
+  getReadiness(): Promise<EventTrackingReadiness>;
+  listEvents(siteId?: string): Promise<CommerceEvent[]>;
+  getIntelligenceSummary(siteId?: string): Promise<IntelligenceSummary>;
+  listSearchDemandInsights(siteId?: string): Promise<SearchDemandInsight[]>;
+  listProductInterestSignals(siteId?: string): Promise<ProductInterestSignal[]>;
+  listBackInStockInterests(siteId?: string): Promise<BackInStockInterest[]>;
+  listAbandonedCartSignals(siteId?: string): Promise<AbandonedCartSignal[]>;
+  listCampaignConversionSignals(siteId?: string): Promise<CampaignConversionSignal[]>;
+  listRecommendations(siteId?: string): Promise<IntelligenceRecommendation[]>;
+  /** Append a mock event to the in-memory stream (dev/mock only); returns the stream. */
+  recordEventMock(input: RecordEventInput): Promise<CommerceEvent[]>;
+  markRecommendationReviewed(id: string): Promise<IntelligenceRecommendation[]>;
+  dismissRecommendationMock(id: string): Promise<IntelligenceRecommendation[]>;
+}
+
 /** The full set of adapters resolved from configuration. */
 export interface Adapters {
   auth: AuthAdapter;
@@ -244,4 +282,5 @@ export interface Adapters {
   billing: BillingAdapter;
   advisor: AIAdvisorAdapter;
   mediaStudio: MediaStudioAdapter;
+  intelligence: CustomerIntelligenceAdapter;
 }

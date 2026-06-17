@@ -60,11 +60,13 @@ Architecture (documented now, built later):
   reference, approval state). Real image/video generation is **out of scope** until the
   provider integration phase and a content-safety review.
 
-### Phase 5 — Customer intelligence / event model (schema only)
-Event taxonomy + schema docs; no real tracking script yet. Taxonomy:
-`site_search · product_view · add_to_cart · abandoned_cart · purchase · product_interest ·
-back_in_stock_subscription · sms_click · campaign_conversion`. Each event: id, type, siteId,
-timestamp, anonymous/customer ref (consent-aware), and typed payload.
+### Phase 5 — Customer intelligence / event model (mock) ✅ (shipped)
+Mock event taxonomy + stream and derived signals (search demand, product interest,
+back-in-stock, abandoned carts, campaign conversion) + intelligence summary + review-only
+recommendations + a dev/mock event recorder. No real tracking/cookies/analytics provider.
+Taxonomy: `site_search · product_view · add_to_cart · remove_from_cart · begin_checkout ·
+purchase · abandoned_cart · product_interest · back_in_stock_subscribe · sms_click ·
+campaign_click · campaign_conversion · product_restocked · page_view · unknown`.
 
 ### Phase 6 — SMS / back-in-stock automation (mock)
 Restock interest list · consent model placeholder · mock campaign rules · mock SMS preview.
@@ -126,11 +128,12 @@ Real SMS provider · real billing provider · real AI provider · advanced autom
 
 ## Next implementation PR (recommended)
 Phases 1 (onboarding), 2 (support operations), 3 (subscription plans), 4 (AI Business
-Advisor), and 4b (AI Product Media Studio) are shipped. The recommended next PR is
-**`Customer Intelligence and Event Tracking model`** — a mock customer-intelligence layer
-and event taxonomy/schema (behavior/search/cart/purchase signals) feeding segments and
-the advisor, modeled client-side with no real tracking pipeline yet.
+Advisor), 4b (AI Product Media Studio), and 5 (Customer Intelligence / event model) are
+shipped. The recommended next PR is **`SMS and Back-in-stock automation mock`** — a mock
+opt-in/consent model, back-in-stock interest list, mock campaign rules, and an SMS preview,
+fed by the customer-intelligence signals. No real SMS sending.
 
 Constraints (unchanged): **no real credentials, no real billing, no real provisioning, no
-real AI/media generation, no real tracking/PII pipeline, no backend.** Mock-only, behind
-adapter boundaries, following `security-model.md`.
+real AI/media generation, no real tracking/PII pipeline, no real SMS/email send, no backend.**
+Mock-only, behind adapter boundaries, following `security-model.md`. Any messaging requires
+explicit opt-in/opt-out.

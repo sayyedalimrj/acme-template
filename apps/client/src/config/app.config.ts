@@ -31,6 +31,6 @@ export const appConfig: AppConfig = {
   apiBaseUrl: '',
   defaultLocale: 'fa',
   defaultDirection: 'rtl',
-  appName: 'WooCommerce Client Dashboard',
+  appName: 'WordPress Commerce OS',
   appVersion: '0.1.0',
 };

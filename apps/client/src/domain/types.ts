@@ -1145,3 +1145,208 @@ export interface MediaStudioAnalyzeInput {
   productId: string;
   preset: MediaStudioSourcePreset;
 }
+
+// ---------------------------------------------------------------------------
+// Customer Intelligence & Event Tracking (Phase 5) — mock-only model
+//
+// Prepares the platform for future search-behavior tracking, shopper analytics, SMS/
+// back-in-stock automation, reports, and AI recommendations. This is a MOCK model only.
+//
+// SECURITY/PRIVACY (binding — see security-model.md): MOCK-ONLY. NO real tracking script,
+// NO cookies, NO device fingerprinting, NO analytics provider (GA4/etc.), NO external send,
+// NO real tracking/provider IDs, NO secrets. Actor references use only mock-safe customer
+// labels or "anonymous" — no PII beyond existing mock data. Future real tracking must go
+// through a backend event pipeline + consent model + audit logs + WordPress companion plugin,
+// and any SMS/back-in-stock messaging requires explicit opt-in/opt-out.
+// ---------------------------------------------------------------------------
+
+/** Whether a real event/analytics provider is wired (it is not — mock only). */
+export type EventProviderStatus = 'not_connected' | 'mock';
+
+/** Readiness of a future tracking building block. */
+export type EventReadinessState = 'not_connected' | 'planned' | 'mock';
+
+/** Readiness snapshot for the future tracking stack. */
+export interface EventTrackingReadiness {
+  trackingProvider: EventReadinessState;
+  wordpressPlugin: EventReadinessState;
+  backendPipeline: EventReadinessState;
+  consentModel: EventReadinessState;
+  webhooks: EventReadinessState;
+}
+
+/** The taxonomy of commerce events. */
+export type CommerceEventType =
+  | 'site_search'
+  | 'product_view'
+  | 'add_to_cart'
+  | 'remove_from_cart'
+  | 'begin_checkout'
+  | 'purchase'
+  | 'abandoned_cart'
+  | 'product_interest'
+  | 'back_in_stock_subscribe'
+  | 'sms_click'
+  | 'campaign_click'
+  | 'campaign_conversion'
+  | 'product_restocked'
+  | 'page_view'
+  | 'unknown';
+
+/** Where an event originated. */
+export type CommerceEventSource =
+  | 'storefront'
+  | 'search'
+  | 'cart'
+  | 'checkout'
+  | 'campaign'
+  | 'sms'
+  | 'system'
+  | 'unknown';
+
+/** A frontend-safe actor reference (mock customer or anonymous — never real PII). */
+export interface CommerceEventActor {
+  kind: 'customer' | 'anonymous';
+  id?: string;
+  /** Display label, e.g. a mock name or "خریدار ناشناس". */
+  label: string;
+}
+
+/** A frontend-safe item/context attached to an event. */
+export interface CommerceEventItem {
+  productId?: string;
+  productName?: string;
+  sku?: string;
+  quantity?: number;
+  searchTerm?: string;
+}
+
+/** A single mock commerce event. */
+export interface CommerceEvent {
+  id: string;
+  type: CommerceEventType;
+  source: CommerceEventSource;
+  actor: CommerceEventActor;
+  item?: CommerceEventItem;
+  createdAt: ISODate;
+  /** Frontend-safe note. */
+  note?: string;
+}
+
+/** Strength of a shopper's purchase intent. */
+export type IntentStrength = 'high' | 'medium' | 'low';
+
+/** A derived intent signal for a shopper. */
+export interface CustomerIntentSignal {
+  id: string;
+  actorLabel: string;
+  intent: IntentStrength;
+  summary: string;
+  suggestedAction: string;
+}
+
+/** The opportunity type a search term reveals. */
+export type SearchOpportunity = 'add_product' | 'restock' | 'improve_naming' | 'campaign';
+
+/** Insight derived from site-search demand. */
+export interface SearchDemandInsight {
+  id: string;
+  term: string;
+  count: number;
+  /** Whether the term matched an existing product. */
+  matched: boolean;
+  matchedProductId?: string;
+  matchedProductName?: string;
+  opportunity: SearchOpportunity;
+  suggestedAction: string;
+}
+
+/** Conversion temperature for a product's interest. */
+export type ConversionSignal = 'hot' | 'warm' | 'cold';
+
+/** Interest signals aggregated per product. */
+export interface ProductInterestSignal {
+  id: string;
+  productId: string;
+  productName: string;
+  views: number;
+  cartAdds: number;
+  backInStockSubscribers: number;
+  conversionSignal: ConversionSignal;
+}
+
+/** Back-in-stock interest for an out-of-stock / low-stock product. */
+export interface BackInStockInterest {
+  id: string;
+  productId: string;
+  productName: string;
+  subscribers: number;
+  /** Mock stock status label, e.g. "ناموجود". */
+  stockStatus: string;
+}
+
+/** An abandoned-cart signal (mock; no real messaging). */
+export interface AbandonedCartSignal {
+  id: string;
+  actor: CommerceEventActor;
+  items: CommerceEventItem[];
+  estimatedValue: string;
+  currency: string;
+  lastActivity: ISODate;
+  recommendedFollowUp: string;
+}
+
+/** Conversion readiness of a campaign interaction. */
+export type CampaignReadiness = 'ready' | 'warming' | 'low';
+
+/** Campaign click/conversion signal (mock). */
+export interface CampaignConversionSignal {
+  id: string;
+  campaign: string;
+  clicks: number;
+  conversions: number;
+  readiness: CampaignReadiness;
+}
+
+/** Grouping for intelligence recommendations. */
+export type IntelligenceRecommendationCategory =
+  | 'search_demand'
+  | 'restock'
+  | 'abandoned_cart'
+  | 'retention'
+  | 'campaign'
+  | 'content'
+  | 'advisor';
+
+/** An actionable, review-only intelligence recommendation. */
+export interface IntelligenceRecommendation {
+  id: string;
+  category: IntelligenceRecommendationCategory;
+  title: string;
+  summary: string;
+  priority: IntentStrength;
+  status: 'suggested' | 'reviewed' | 'dismissed';
+  suggestedStep: string;
+  /** Optional in-app link for a read-only follow-up (e.g. /media-studio, /advisor). */
+  href?: string;
+}
+
+/** Aggregate intelligence shown in the summary cards. */
+export interface IntelligenceSummary {
+  totalEvents: number;
+  activeShoppers: number;
+  interestedShoppers: number;
+  topSearchTerms: { term: string; count: number }[];
+  topViewedProducts: { productName: string; views: number }[];
+  abandonedCarts: number;
+  backInStockInterests: number;
+  campaignInteractions: number;
+  conversionReady: number;
+}
+
+/** Input for recording a mock event from the dev/mock panel. */
+export interface RecordEventInput {
+  type: CommerceEventType;
+  productId?: string;
+  searchTerm?: string;
+}
