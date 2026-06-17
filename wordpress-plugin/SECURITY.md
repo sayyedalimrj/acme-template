@@ -99,6 +99,29 @@ The event/webhook/actions/audit modules are bound by these additional rules:
 - **Uninstall** also removes `wcos_event_queue`, `wcos_audit_log`,
   `wcos_webhook_delivery_status`, and `wcos_webhook_destination_label` — all non-secret.
 
+## Runtime security (read-only sync foundation)
+
+The read-only sync package + delivery placeholder are bound by these additional rules:
+
+- **Summary-only package.** `WCOS_Sync_Package::build_package()` composes only the existing
+  redacted summaries (site identity, connection, store summary, product/order/customer
+  summaries, event-queue summary, health) with small caps (max 10 records per list). The whole
+  package is passed through `WCOS_Redaction` as defense-in-depth — no raw Woo objects, no raw
+  email/phone/address, no billing/shipping, no payment data, no order notes, no raw meta, no
+  secrets, no mutation data.
+- **Delivery is disabled by default and has no network code.** `WCOS_Delivery` stores only a
+  non-secret status (`wcos_delivery_status`) + a generic label (`wcos_delivery_destination_label`).
+  There is **no destination URL, no secret, and no `wp_remote_*`/cURL anywhere**.
+  `build_preview_payload()` returns the locally-built package (`would_send: false`) — nothing
+  is ever sent.
+- **Admin-only sync/delivery REST routes** (`manage_options`), summary-only and redacted.
+- **The integrity/signature block is a non-secret placeholder** (`status: not_configured`,
+  `method: none`) — no signing secret or signature value exists.
+- **Uninstall** also removes `wcos_delivery_status` and `wcos_delivery_destination_label`.
+- **Backend ingestion is in-memory only.** `apps/api` validates packages (rejecting raw PII/
+  secrets/oversized lists) and builds normalized read-model snapshots — **no database, no
+  persistence, no network**. The plugin never imports from `apps/api` and vice versa.
+
 ## Handshake security (designed, not implemented here)
 
 - A **short-lived challenge** issued by the backend; the plugin responds (signed) later.

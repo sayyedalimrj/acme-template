@@ -23,6 +23,8 @@
  *   - reads WooCommerce data LOCALLY in summarized, redacted, PII-minimized form only,
  *   - captures summary-only events into a capped LOCAL queue (no delivery),
  *   - exposes controlled-action intents that are DISABLED (no mutation),
+ *   - builds a read-only, redacted sync PACKAGE locally and can PREVIEW it,
+ *   - keeps backend delivery DISABLED by default (no external requests),
  *   - exposes only admin-authenticated (manage_options) local REST endpoints.
  * See SECURITY.md.
  *
@@ -34,7 +36,7 @@ defined('ABSPATH') || exit;
 /* -------------------------------------------------------------------------
  * Constants (unique wcos_/WCOS_ prefix).
  * ---------------------------------------------------------------------- */
-define('WCOS_VERSION', '0.3.0');
+define('WCOS_VERSION', '0.4.0');
 define('WCOS_PLUGIN_FILE', __FILE__);
 define('WCOS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WCOS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -59,6 +61,8 @@ require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-event-store.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-event-bridge.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-webhook-config.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-controlled-actions.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-sync-package.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-delivery.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-health.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-rest.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-admin.php';

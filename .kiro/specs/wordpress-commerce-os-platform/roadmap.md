@@ -105,9 +105,16 @@ WooCommerce as an internal module), max 3 plugin PRs:
 The TypeScript contracts + safe examples remain the design source of truth. No real backend
 connection, no real credentials, no crypto, no dependencies yet.
 
-### Phase 10 — Real WooCommerce read-only integration
+### Phase 10 — Real WooCommerce read-only integration 🚧 (in progress)
 Read products/orders/customers/reports · error handling · retry/rate-limit strategy. No
 mutations. Flip the existing adapters from `mock` to `http` (backend-backed).
+
+**Foundation landed:** a backend + plugin **read-only sync foundation** — the plugin builds a
+redacted, summary-only **sync package** + event batch and exposes a **local delivery preview**
+(delivery disabled by default, no network); `apps/api` provides pure
+validators/ingestors/connection-registry that turn a package into an in-memory read-model
+snapshot (no persistence, no secrets, no PII). Next: a **secure backend delivery endpoint +
+signed plugin sync**, then flipping client adapters to backend-backed reads.
 
 ### Phase 11 — Webhook ingestion
 Order/product/customer/coupon events · signature verification · idempotency · event log ·

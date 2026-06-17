@@ -63,9 +63,39 @@ apps/api/
     ├── domain/                   tenant, user, site, credential, auditLog, permission
     ├── security/                 redaction, credentialPolicy, errors (+ examples)
     ├── adapters/                 woocommerceProxy, wordpressBridge, webhookReceiver (interfaces + stubs)
+    ├── plugin/                   read-only plugin sync foundation (validators/ingestors/registry; pure)
     ├── routes/                   future HTTP route contracts (types only)
     └── mock/                     secret-free mock tenants + sites
 ```
+
+## Plugin read-only sync foundation (`src/plugin/`)
+
+Pure, dependency-free contracts + validators + ingestors for the read-only sync package and
+event batch produced by the WordPress companion plugin. There is **no transport, no
+persistence, and no delivery** — ingestion returns normalized **in-memory** results only.
+
+- `pluginSyncEnvelope.ts` — `PluginSyncEnvelope`, `PluginSyncPayload`, `PluginSyncResourceSummary`,
+  validation/ingest result types, `PluginConnectionRecord`, `PluginDeliveryStatus`,
+  `PluginSignatureVerificationResult`, `SiteSyncSnapshot`.
+- `pluginSyncValidator.ts` — `validatePluginSyncEnvelope`, `validateNoRawPII`,
+  `validateNoRawSecrets`, `validateResourceCaps`, `normalizePluginSyncPayload`. Rejects raw
+  email/phone/address, authorization/bearer/basic, password, consumer key/secret, token,
+  secret, webhook secret, oversized arrays, and unsafe shapes.
+- `pluginSyncIngestor.ts` — `ingestPluginSyncEnvelope`, `buildSiteSyncSnapshot`,
+  `mapPluginProductsToReadModel`, `mapPluginOrdersToReadModel`, `mapPluginCustomersToReadModel`
+  (in-memory read models; no DB writes).
+- `pluginEventIngestor.ts` — `ingestPluginEventBatch` (validated, capped, in-memory).
+- `pluginSignature.ts` — `verifyPluginSignaturePlaceholder` (always `not_configured`) +
+  `buildSignatureBaseString` (non-secret). Future HMAC / asymmetric verification documented.
+- `pluginConnectionRegistry.ts` — `registerPluginConnectionPlaceholder` /
+  `getPluginConnectionStatus` / `disconnectPluginConnectionPlaceholder` (in-memory, metadata
+  only; rejects secret-bearing input).
+- `pluginSyncFixtures.ts` / `pluginSyncExamples.ts` — safe fixtures (reserved
+  `example-store.test` domain, no PII/secrets) and dependency-free example checks.
+
+**No external delivery by default**, **no secrets**, **no raw PII**, **no mutations**, and **no
+database**. The plugin's package shape (snake_case PHP) maps onto these camelCase contracts; a
+mapping/transport layer arrives with real signed delivery (next phase).
 
 ## Hard rules for this package
 
