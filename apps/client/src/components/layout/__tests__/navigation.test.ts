@@ -42,4 +42,11 @@ describe('navigation grouping', () => {
     const keys = navItems.map((i) => i.key);
     expect(new Set(keys).size).toBe(keys.length);
   });
+
+  it('includes the Platform Admin entry under the platform group', () => {
+    const platform = navSections.find((s) => s.key === 'platform');
+    expect(platform?.items.some((i) => i.key === 'platform-admin' && i.href === '/platform-admin')).toBe(
+      true,
+    );
+  });
 });

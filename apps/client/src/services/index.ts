@@ -19,4 +19,5 @@ export { notificationAutomationService } from './notificationAutomationService';
 export type { AutomationOverview } from './notificationAutomationService';
 export { reportsAnalyticsService } from './reportsAnalyticsService';
 export type { ReportsOverview } from './reportsAnalyticsService';
+export { platformAdminService } from './platformAdminService';
 export { queryKeys } from './queryKeys';

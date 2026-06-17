@@ -111,7 +111,15 @@ export const navSections: NavSection[] = [
   {
     key: 'platform',
     labelKey: 'nav.section.platform',
-    items: [{ key: 'plans', labelKey: 'nav.plans', href: '/plans', icon: 'pricetags-outline' }],
+    items: [
+      {
+        key: 'platform-admin',
+        labelKey: 'nav.platformAdmin',
+        href: '/platform-admin',
+        icon: 'shield-checkmark-outline',
+      },
+      { key: 'plans', labelKey: 'nav.plans', href: '/plans', icon: 'pricetags-outline' },
+    ],
   },
   {
     key: 'system',
