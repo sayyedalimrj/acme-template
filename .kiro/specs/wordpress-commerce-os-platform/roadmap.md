@@ -68,17 +68,23 @@ Taxonomy: `site_search · product_view · add_to_cart · remove_from_cart · beg
 purchase · abandoned_cart · product_interest · back_in_stock_subscribe · sms_click ·
 campaign_click · campaign_conversion · product_restocked · page_view · unknown`.
 
-### Phase 6 — SMS / back-in-stock automation (mock)
+### Phase 6 — SMS / back-in-stock automation (mock) ✅ (shipped)
 Restock interest list · consent model placeholder · mock campaign rules · mock SMS preview.
 Adapters later: mock → Kavenegar → Twilio; email provider later. Consent + opt-out required.
 
-### Phase 7 — Reports / analytics (lightweight)
+### Phase 7 — Reports / analytics (lightweight) ✅ (shipped)
 Sales reports · product performance · customer segments · search-demand report · campaign
-performance (mock). RN-svg charts behind a `Chart` wrapper; no heavy chart libs.
+performance · conversion funnel (mock). Progress rows via existing UI primitives; no heavy
+chart libs.
 
-### Phase 8 — Backend/proxy skeleton (`apps/api`)
+### Phase 8 — Backend/proxy skeleton (`apps/api`) 🚧 (current)
 Tenant/site model · auth boundary · credential vault placeholder · per-site isolation ·
 WooCommerce proxy interfaces · audit log model. No real secrets initially.
+**Interface-first, dependency-free skeleton only** — domain types (tenant/user/site/
+credential metadata/audit/permission), security helpers (redaction, credential policy that
+rejects raw secrets, safe errors), proxy/bridge/webhook **contracts** with not-implemented
+stubs, route contracts, and secret-free mocks. No server runtime, no real credentials, no
+network calls, no database.
 
 ### Phase 9 — WordPress companion plugin contract
 Handshake design · site identity · event bridge · webhook configuration · health check ·
@@ -127,13 +133,15 @@ Real SMS provider · real billing provider · real AI provider · advanced autom
 - Advanced automation
 
 ## Next implementation PR (recommended)
-Phases 1 (onboarding), 2 (support operations), 3 (subscription plans), 4 (AI Business
-Advisor), 4b (AI Product Media Studio), and 5 (Customer Intelligence / event model) are
-shipped. The recommended next PR is **`SMS and Back-in-stock automation mock`** — a mock
-opt-in/consent model, back-in-stock interest list, mock campaign rules, and an SMS preview,
-fed by the customer-intelligence signals. No real SMS sending.
+Phases 1–7 are shipped, and Phase 8 (Backend/proxy skeleton, `apps/api`) has landed as an
+interface-first, dependency-free skeleton (tenant/site/user/credential-metadata/audit/
+permission models, security redaction + credential policy + safe errors, WooCommerce proxy /
+WordPress bridge / webhook contracts with not-implemented stubs, route contracts, secret-free
+mocks). The recommended next PR is **`WordPress companion plugin contract`** (Phase 9): the
+handshake design, site identity, event bridge, webhook configuration, health check, and
+connection verification — contract/spec only unless a full plugin is separately scoped.
 
 Constraints (unchanged): **no real credentials, no real billing, no real provisioning, no
-real AI/media generation, no real tracking/PII pipeline, no real SMS/email send, no backend.**
-Mock-only, behind adapter boundaries, following `security-model.md`. Any messaging requires
-explicit opt-in/opt-out.
+real AI/media generation, no real tracking/PII pipeline, no real SMS/email send, and no real
+store reads/writes or network calls** until the relevant integration phase and a security
+review. Mock/contract-only, behind adapter boundaries, following `security-model.md`.
