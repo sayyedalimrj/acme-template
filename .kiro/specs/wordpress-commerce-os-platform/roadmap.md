@@ -86,12 +86,21 @@ rejects raw secrets, safe errors), proxy/bridge/webhook **contracts** with not-i
 stubs, route contracts, and secret-free mocks. No server runtime, no real credentials, no
 network calls, no database.
 
-### Phase 9 — WordPress companion plugin contract 🚧 (current)
+### Phase 9 — WordPress companion plugin (one plugin) 🚧 (current)
 Handshake design · site identity · event bridge · webhook configuration · health check ·
-connection verification. **Contract/spec/skeleton only** — TypeScript contracts + Markdown
-docs + safe JSON/PHP examples under `wordpress-plugin/`, name-compatible with `apps/api`
-(no import coupling). No real plugin runtime, no activation/REST/DB/cron, no real
-credentials, no real backend/webhook calls, no crypto, no dependencies.
+connection verification. Delivered incrementally as **one** plugin (`wordpress-plugin/`,
+WooCommerce as an internal module), max 3 plugin PRs:
+
+- **PR 1 (shipped)** — runtime skeleton: installable plugin, admin UI, health checks,
+  WooCommerce detection, admin-only status/health REST. No credentials, no network.
+- **PR 2 (current)** — non-secret local connection state + a **read-only, summarized,
+  admin-only** WooCommerce bridge (products/orders/customers/store summaries, PII-minimized
+  and redacted). Still no backend calls, no credentials, no WooCommerce REST/API keys, no
+  webhooks, no mutations.
+- **PR 3 (next)** — event/webhook bridge + controlled-actions foundation (contract-first).
+
+The TypeScript contracts + safe examples remain the design source of truth. No real backend
+connection, no real credentials, no crypto, no dependencies yet.
 
 ### Phase 10 — Real WooCommerce read-only integration
 Read products/orders/customers/reports · error handling · retry/rate-limit strategy. No

@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       WordPress Commerce OS Companion
  * Plugin URI:        https://example-store.test/companion
- * Description:       Secure companion plugin for connecting WordPress/WooCommerce stores to WordPress Commerce OS. Runtime skeleton — non-production: collects no credentials, makes no network calls, and exposes only admin-authenticated local status/health endpoints.
- * Version:           0.1.0
+ * Description:       Secure companion plugin for connecting WordPress/WooCommerce stores to WordPress Commerce OS. Non-production: collects no credentials, makes no network calls, and provides only admin-authenticated local connection state and read-only, summarized WooCommerce data.
+ * Version:           0.2.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            WordPress Commerce OS (placeholder)
@@ -14,12 +14,13 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  *
  * ONE PLUGIN ONLY. WooCommerce support is an INTERNAL module (class WCOS_WooCommerce), not a
- * separate plugin. This runtime skeleton:
- *   - never asks for or stores credentials,
+ * separate plugin. This plugin:
+ *   - never asks for or stores credentials (no tokens, API keys, passwords, secrets),
  *   - never makes network requests (no wp_remote_*, no cURL),
  *   - never calls the WooCommerce REST API and never creates API keys,
- *   - never reads customer/order/product data,
- *   - exposes only admin-authenticated (manage_options) local status/health REST endpoints.
+ *   - never writes/mutates WooCommerce data and never registers webhooks,
+ *   - reads WooCommerce data LOCALLY in summarized, redacted, PII-minimized form only,
+ *   - exposes only admin-authenticated (manage_options) local REST endpoints.
  * See SECURITY.md.
  *
  * @package WordPress_Commerce_OS_Companion
@@ -30,7 +31,7 @@ defined('ABSPATH') || exit;
 /* -------------------------------------------------------------------------
  * Constants (unique wcos_/WCOS_ prefix).
  * ---------------------------------------------------------------------- */
-define('WCOS_VERSION', '0.1.0');
+define('WCOS_VERSION', '0.2.0');
 define('WCOS_PLUGIN_FILE', __FILE__);
 define('WCOS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WCOS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -45,7 +46,10 @@ define('WCOS_ADMIN_PAGE_SLUG', 'wcos-companion');
  * ---------------------------------------------------------------------- */
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-redaction.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-capabilities.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-data-sanitizer.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-woocommerce.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-connection.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-read-bridge.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-health.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-rest.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-admin.php';
@@ -57,6 +61,9 @@ require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-plugin.php';
  * @return string
  */
 function wcos_get_connection_status() {
+    if (class_exists('WCOS_Connection')) {
+        return WCOS_Connection::get_status();
+    }
     $status = get_option('wcos_connection_status', 'not_connected');
 
     return is_string($status) ? $status : 'not_connected';

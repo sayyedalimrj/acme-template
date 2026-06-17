@@ -38,6 +38,40 @@ if (!class_exists('WCOS_Capabilities')) {
         }
 
         /**
+         * Plugin-scoped capabilities. Every one maps to the required admin capability
+         * (manage_options) for now — this is intentional until real RBAC exists. Reserved
+         * mutation capabilities are deliberately NOT included and remain disabled.
+         *
+         * @return string[]
+         */
+        public static function plugin_capabilities() {
+            return array(
+                'view_connection_status',
+                'manage_local_connection_state',
+                'view_woocommerce_summary',
+                'view_woocommerce_products_summary',
+                'view_woocommerce_orders_summary',
+                'view_woocommerce_customers_summary',
+            );
+        }
+
+        /**
+         * Whether the current user is granted a plugin capability. All plugin capabilities map
+         * to the WordPress admin capability (manage_options) in this phase.
+         *
+         * @param string $capability Plugin capability name.
+         * @return bool
+         */
+        public static function current_user_can($capability) {
+            // Unknown capabilities are denied by default.
+            if (!in_array($capability, self::plugin_capabilities(), true)) {
+                return false;
+            }
+
+            return self::current_user_can_manage();
+        }
+
+        /**
          * Read capabilities the companion plugin will (later) serve. Detection/summary only —
          * none of these are active or grant any external access in this skeleton.
          *

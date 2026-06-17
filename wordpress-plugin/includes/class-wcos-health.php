@@ -160,6 +160,52 @@ if (!class_exists('WCOS_Health')) {
                 'Webhooks not configured yet'
             );
 
+            // Local connection state exists.
+            $connection_status = WCOS_Connection::get_status();
+            $items[] = self::item(
+                'local_connection_state',
+                'Local connection state',
+                in_array($connection_status, WCOS_Connection::allowed_statuses(), true) ? 'ok' : 'warning',
+                'info',
+                'Status: ' . $connection_status
+            );
+
+            // WooCommerce read bridge readiness (missing WooCommerce = warning, not fatal).
+            $items[] = self::item(
+                'read_bridge_readiness',
+                'WooCommerce read bridge readiness',
+                $wc_active ? 'ok' : 'warning',
+                'warning',
+                $wc_active ? 'Read bridge available' : 'WooCommerce not active (read bridge unavailable)'
+            );
+
+            // Products summary readable.
+            $items[] = self::item(
+                'products_summary_readable',
+                'Products summary readable',
+                WCOS_WooCommerce::can_read_products() ? 'ok' : 'not_configured',
+                'info',
+                WCOS_WooCommerce::can_read_products() ? 'Readable' : 'Unavailable (WooCommerce inactive)'
+            );
+
+            // Orders summary readable.
+            $items[] = self::item(
+                'orders_summary_readable',
+                'Orders summary readable',
+                WCOS_WooCommerce::can_read_orders() ? 'ok' : 'not_configured',
+                'info',
+                WCOS_WooCommerce::can_read_orders() ? 'Readable' : 'Unavailable (WooCommerce inactive)'
+            );
+
+            // Customers summary readable.
+            $items[] = self::item(
+                'customers_summary_readable',
+                'Customers summary readable',
+                WCOS_WooCommerce::can_read_customers() ? 'ok' : 'not_configured',
+                'info',
+                WCOS_WooCommerce::can_read_customers() ? 'Readable' : 'Unavailable (WooCommerce inactive)'
+            );
+
             return array(
                 'overall'      => self::rollup($items),
                 'items'        => $items,
