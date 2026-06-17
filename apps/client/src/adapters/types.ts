@@ -68,12 +68,6 @@ import type {
   PlanChangeRequestResult,
   PlanFeature,
   PlanPricing,
-  PlatformAdminOverview,
-  PlatformAdminTask,
-  PlatformSecuritySignal,
-  PlatformSiteSummary,
-  PlatformTenant,
-  PlatformUsageSummary,
   Product,
   ProductInterestSignal,
   ProductListQuery,
@@ -356,28 +350,6 @@ export interface ReportsAnalyticsAdapter {
   listReportRecommendations(period: ReportPeriod, siteId?: string): Promise<ReportRecommendation[]>;
 }
 
-/**
- * Platform Admin adapter — the seam for OUR internal control layer over the SaaS customers
- * (Phase: platform-admin dashboard). Serves a decision-first overview plus tenants, sites,
- * security/audit signals, usage summaries, internal admin tasks, and support items.
- *
- * SECURITY/PRIVACY (binding): MOCK-ONLY and FRONTEND-SAFE. No real tenant data, no real PII
- * (fake demo labels/emails only), no secrets, no billing provider IDs, no plugin signing
- * secrets, no WooCommerce credentials, no network, no persistence. A future `apps/admin` +
- * `apps/api` take over this surface server-side (RBAC, audit) without UI rework.
- */
-export interface PlatformAdminAdapter {
-  getPlatformOverview(): Promise<PlatformAdminOverview>;
-  listPlatformTenants(): Promise<PlatformTenant[]>;
-  getPlatformTenant(id: string): Promise<PlatformTenant>;
-  listPlatformSites(): Promise<PlatformSiteSummary[]>;
-  listPlatformSecuritySignals(): Promise<PlatformSecuritySignal[]>;
-  listPlatformAdminTasks(): Promise<PlatformAdminTask[]>;
-  listPlatformUsageSummaries(): Promise<PlatformUsageSummary[]>;
-  /** Support-flavored operational items (reuses the admin task shape). */
-  listPlatformSupportItems(): Promise<PlatformAdminTask[]>;
-}
-
 /** The full set of adapters resolved from configuration. */
 export interface Adapters {
   auth: AuthAdapter;
@@ -394,5 +366,4 @@ export interface Adapters {
   intelligence: CustomerIntelligenceAdapter;
   automation: NotificationAutomationAdapter;
   reports: ReportsAnalyticsAdapter;
-  platformAdmin: PlatformAdminAdapter;
 }

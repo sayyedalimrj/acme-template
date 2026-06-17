@@ -92,19 +92,4 @@ export const queryKeys = {
   /** Everything the reports screen needs for a given period. */
   reportsOverview: (period: string) => ['reports', 'overview', period] as const,
 
-  // Platform Admin is internal/account-level (mock), so these keys are global, not site-scoped.
-  /** Decision-first platform overview (KPIs + at-risk + tasks + signals). */
-  platformOverview: () => ['platformAdmin', 'overview'] as const,
-  /** All managed tenants/customers. */
-  platformTenants: () => ['platformAdmin', 'tenants'] as const,
-  /** A single tenant/customer. */
-  platformTenant: (id: string) => ['platformAdmin', 'tenant', id] as const,
-  /** All managed sites. */
-  platformSites: () => ['platformAdmin', 'sites'] as const,
-  /** All security/audit signals. */
-  platformSecuritySignals: () => ['platformAdmin', 'security'] as const,
-  /** All internal admin tasks. */
-  platformAdminTasks: () => ['platformAdmin', 'tasks'] as const,
-  /** All usage/limit summaries. */
-  platformUsage: () => ['platformAdmin', 'usage'] as const,
 } as const;

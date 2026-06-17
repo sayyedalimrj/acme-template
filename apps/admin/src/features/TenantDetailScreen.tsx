@@ -1,19 +1,13 @@
 /**
- * Platform Admin — customer/tenant detail.
- *
- * Our internal 360° view of a single SaaS customer: profile, subscription, sites + plugin/
- * sync health, support & admin tasks, security/audit signals, usage/limits, an internal-notes
- * placeholder, and clearly-disabled mock actions (open support / upgrade / review sync /
- * contact / suspend). Unknown ids show a clean not-found state with a safe back action.
- *
- * SECURITY/PRIVACY: MOCK-ONLY. No real billing/backend/PII, no real mutations. See
- * security-model.md.
+ * Platform Admin — customer/tenant detail. Profile, subscription, sites + plugin/sync health,
+ * support/admin tasks, security signals, usage, internal-notes placeholder, and disabled mock
+ * actions. Unknown ids show a clean not-found state. Mock-only.
  */
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
 
+import { useAsync, useFmt, useT, useTheme } from '@/system';
 import {
   Button,
   Card,
@@ -27,12 +21,11 @@ import {
   StatusBadge,
   Surface,
   Text,
-} from '@/components/ui';
-import { useT } from '@/i18n/I18nProvider';
-import { useFormatters } from '@/i18n/useFormatters';
-import { useTheme } from '@/theme';
+} from '@/ui';
+import { platformService } from '@/services/platformService';
 
 import {
+  adminTaskStatusMeta,
   connectionMeta,
   HEALTH_LABEL_KEYS,
   planTierLabelKey,
@@ -42,32 +35,12 @@ import {
   subscriptionStateMeta,
   syncStateMeta,
   tenantStatusMeta,
-  workflowStatusMeta,
-} from './platformAdminHelpers';
-import {
-  usePlatformAdminTasks,
-  usePlatformSecuritySignals,
-  usePlatformSites,
-  usePlatformTenant,
-  usePlatformUsage,
-} from './usePlatformAdmin';
+} from './helpers';
 
-interface DetailRowProps {
-  label: string;
-  value: string;
-}
-
-function DetailRow({ label, value }: DetailRowProps): React.JSX.Element {
+function DetailRow({ label, value }: { label: string; value: string }): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   return (
-    <View
-      style={{
-        flexDirection: rowDirection,
-        justifyContent: 'space-between',
-        gap: tokens.spacing.md,
-        paddingVertical: 3,
-      }}
-    >
+    <View style={{ flexDirection: rowDirection, justifyContent: 'space-between', gap: tokens.spacing.md, paddingVertical: 3 }}>
       <Text variant="caption" tone="muted">
         {label}
       </Text>
@@ -78,21 +51,17 @@ function DetailRow({ label, value }: DetailRowProps): React.JSX.Element {
   );
 }
 
-export function PlatformTenantDetailScreen({
-  tenantId,
-}: {
-  tenantId: string;
-}): React.JSX.Element {
+export function TenantDetailScreen({ tenantId }: { tenantId: string }): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
-  const fmt = useFormatters();
+  const fmt = useFmt();
   const router = useRouter();
 
-  const tenantQuery = usePlatformTenant(tenantId);
-  const sitesQuery = usePlatformSites();
-  const tasksQuery = usePlatformAdminTasks();
-  const signalsQuery = usePlatformSecuritySignals();
-  const usageQuery = usePlatformUsage();
+  const tenantQ = useAsync(() => platformService.getTenant(tenantId), [tenantId]);
+  const sitesQ = useAsync(() => platformService.listSites(), []);
+  const tasksQ = useAsync(() => platformService.listAdminTasks(), []);
+  const signalsQ = useAsync(() => platformService.listSecuritySignals(), []);
+  const usageQ = useAsync(() => platformService.listUsage(), []);
 
   const healthLabels = {
     healthy: t(HEALTH_LABEL_KEYS.healthy),
@@ -100,71 +69,43 @@ export function PlatformTenantDetailScreen({
     critical: t(HEALTH_LABEL_KEYS.critical),
   };
 
-  const back = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace('/platform-admin' as Href);
-  };
+  const back = () => router.navigate('/' as Href);
 
-  if (tenantQuery.isPending) {
+  if (tenantQ.loading) {
     return (
-      <Screen testID="platform-tenant-detail-screen">
+      <Screen testID="tenant-detail-screen">
         <LoadingState label={t('common.loading')} />
       </Screen>
     );
   }
 
-  if (tenantQuery.isError || !tenantQuery.data) {
+  if (tenantQ.error || !tenantQ.data) {
     return (
-      <Screen testID="platform-tenant-detail-screen">
-        <EmptyState
-          title={t('platformAdmin.notFound.title')}
-          body={t('platformAdmin.notFound.body')}
-          icon="alert-circle-outline"
-          fill={false}
-        />
+      <Screen testID="tenant-detail-screen">
+        <EmptyState title={t('platformAdmin.notFound.title')} body={t('platformAdmin.notFound.body')} />
         <View style={{ alignItems: 'flex-start' }}>
-          <Button
-            label={t('platformAdmin.detail.back')}
-            variant="secondary"
-            size="sm"
-            onPress={back}
-            leading={<Ionicons name="arrow-back" size={16} color={tokens.color.primary} />}
-          />
+          <Button label={t('platformAdmin.detail.back')} variant="secondary" size="sm" onPress={back} />
         </View>
       </Screen>
     );
   }
 
-  const tenant = tenantQuery.data;
+  const tenant = tenantQ.data;
   const status = tenantStatusMeta(tenant.status);
   const subState = subscriptionStateMeta(tenant.subscription.state);
-  const sites = (sitesQuery.data ?? []).filter((s) => s.tenantId === tenant.id);
-  const tasks = (tasksQuery.data ?? []).filter((x) => x.tenantId === tenant.id);
-  const signals = (signalsQuery.data ?? []).filter((x) => x.tenantId === tenant.id);
-  const usage = (usageQuery.data ?? []).find((u) => u.tenantId === tenant.id);
+  const sites = (sitesQ.data ?? []).filter((s) => s.tenantId === tenant.id);
+  const tasks = (tasksQ.data ?? []).filter((x) => x.tenantId === tenant.id);
+  const signals = (signalsQ.data ?? []).filter((x) => x.tenantId === tenant.id);
+  const usage = (usageQ.data ?? []).find((u) => u.tenantId === tenant.id);
 
   return (
-    <Screen testID="platform-tenant-detail-screen">
+    <Screen testID="tenant-detail-screen">
       <View style={{ alignItems: 'flex-start' }}>
-        <Button
-          label={t('platformAdmin.detail.back')}
-          variant="ghost"
-          size="sm"
-          onPress={back}
-          leading={<Ionicons name="arrow-back" size={16} color={tokens.color.primary} />}
-        />
+        <Button label={t('platformAdmin.detail.back')} variant="ghost" size="sm" onPress={back} />
       </View>
 
-      {/* Profile */}
-      <Card title={t('platformAdmin.detail.profile')} contentStyle={{ gap: tokens.spacing.sm }}>
-        <View
-          style={{
-            flexDirection: rowDirection,
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: tokens.spacing.md,
-          }}
-        >
+      <Card title={t('platformAdmin.detail.profile')}>
+        <View style={{ flexDirection: rowDirection, alignItems: 'center', justifyContent: 'space-between', gap: tokens.spacing.md }}>
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
             <Text variant="subheading" numberOfLines={1}>
               {tenant.name}
@@ -183,36 +124,23 @@ export function PlatformTenantDetailScreen({
         <DetailRow label={t('platformAdmin.tenant.lastActive')} value={fmt.date(tenant.lastActiveAt)} />
       </Card>
 
-      {/* Subscription */}
-      <Card title={t('platformAdmin.detail.subscription')} contentStyle={{ gap: tokens.spacing.xs }}>
+      <Card title={t('platformAdmin.detail.subscription')}>
         <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
           <StatusBadge tone="primary" label={t(planTierLabelKey(tenant.subscription.tier))} dot={false} />
           <StatusBadge tone={subState.tone} label={t(subState.labelKey)} />
         </View>
         <DetailRow label={t('platformAdmin.mrr')} value={fmt.money(tenant.subscription.mrr, tenant.subscription.currency)} />
-        {tenant.subscription.renewsAt ? (
-          <DetailRow label={t('platformAdmin.renews')} value={fmt.date(tenant.subscription.renewsAt)} />
-        ) : null}
-        {tenant.subscription.trialEndsAt ? (
-          <DetailRow label={t('platformAdmin.trialEnds')} value={fmt.date(tenant.subscription.trialEndsAt)} />
-        ) : null}
+        {tenant.subscription.renewsAt ? <DetailRow label={t('platformAdmin.renews')} value={fmt.date(tenant.subscription.renewsAt)} /> : null}
+        {tenant.subscription.trialEndsAt ? <DetailRow label={t('platformAdmin.trialEnds')} value={fmt.date(tenant.subscription.trialEndsAt)} /> : null}
       </Card>
 
-      {/* Sites & sync health */}
-      <Card title={t('platformAdmin.detail.sites')} contentStyle={{ gap: tokens.spacing.sm }}>
+      <Card title={t('platformAdmin.detail.sites')}>
         {sites.length === 0 ? (
           <Text tone="muted">{t('platformAdmin.empty.sites')}</Text>
         ) : (
           sites.map((site) => (
             <Surface key={site.id} bordered padding="md" style={{ gap: tokens.spacing.xs }}>
-              <View
-                style={{
-                  flexDirection: rowDirection,
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: tokens.spacing.sm,
-                }}
-              >
+              <View style={{ flexDirection: rowDirection, alignItems: 'center', justifyContent: 'space-between', gap: tokens.spacing.sm }}>
                 <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                   <Text variant="label" numberOfLines={1}>
                     {site.name}
@@ -233,7 +161,7 @@ export function PlatformTenantDetailScreen({
                   dot={false}
                 />
               </View>
-              <DetailRow label={`${t('platformAdmin.site.plugin')}`} value={`v${site.plugin.pluginVersion} → v${site.plugin.latestVersion}`} />
+              <DetailRow label={t('platformAdmin.site.plugin')} value={`v${site.plugin.pluginVersion} → v${site.plugin.latestVersion}`} />
               <DetailRow label={t('platformAdmin.site.lastSync')} value={site.sync.lastSyncAt ? fmt.date(site.sync.lastSyncAt) : t('platformAdmin.sync.never')} />
               <DetailRow label={`${t('platformAdmin.site.queued')} · ${t('platformAdmin.site.failures')}`} value={`${fmt.num(site.sync.queuedEvents)} · ${fmt.num(site.sync.failures)}`} />
             </Surface>
@@ -241,8 +169,7 @@ export function PlatformTenantDetailScreen({
         )}
       </Card>
 
-      {/* Support & admin tasks */}
-      <Card title={t('platformAdmin.detail.tasks')} contentStyle={{ gap: tokens.spacing.sm }}>
+      <Card title={t('platformAdmin.detail.tasks')}>
         {tasks.length === 0 ? (
           <Text tone="muted">{t('platformAdmin.empty.tasks')}</Text>
         ) : (
@@ -250,19 +177,14 @@ export function PlatformTenantDetailScreen({
             <DataListRow
               key={task.id}
               title={task.title}
-              subtitle={
-                task.blockedReason
-                  ? `${t('platformAdmin.task.blocked')}: ${task.blockedReason}`
-                  : `${t('platformAdmin.task.next')}: ${task.nextAction}`
-              }
-              trailing={<StatusBadge tone={workflowStatusMeta(task.status).tone} label={t(workflowStatusMeta(task.status).labelKey)} />}
+              subtitle={task.blockedReason ? `${t('platformAdmin.task.blocked')}: ${task.blockedReason}` : `${t('platformAdmin.task.next')}: ${task.nextAction}`}
+              trailing={<StatusBadge tone={adminTaskStatusMeta(task.status).tone} label={t(adminTaskStatusMeta(task.status).labelKey)} />}
             />
           ))
         )}
       </Card>
 
-      {/* Security & audit signals */}
-      <Card title={t('platformAdmin.detail.security')} contentStyle={{ gap: tokens.spacing.sm }}>
+      <Card title={t('platformAdmin.detail.security')}>
         {signals.length === 0 ? (
           <Text tone="muted">{t('platformAdmin.empty.signals')}</Text>
         ) : (
@@ -277,9 +199,8 @@ export function PlatformTenantDetailScreen({
         )}
       </Card>
 
-      {/* Usage & limits */}
       {usage ? (
-        <Card title={t('platformAdmin.detail.usage')} contentStyle={{ gap: tokens.spacing.xs }}>
+        <Card title={t('platformAdmin.detail.usage')}>
           <DetailRow label={t('platformAdmin.usage.orders')} value={fmt.num(usage.ordersSynced)} />
           <DetailRow label={t('platformAdmin.usage.events')} value={fmt.num(usage.eventsCaptured)} />
           <DetailRow label={t('platformAdmin.usage.api')} value={`${fmt.num(usage.apiCalls)} / ${fmt.num(usage.apiLimit)}`} />
@@ -292,20 +213,20 @@ export function PlatformTenantDetailScreen({
         </Card>
       ) : null}
 
-      {/* Internal notes placeholder */}
       <Card title={t('platformAdmin.detail.notes')}>
         <Text tone="muted" variant="caption">
           {tenant.internalNote ?? t('platformAdmin.detail.notesPlaceholder')}
         </Text>
       </Card>
 
-      {/* Mock actions — clearly disabled (no backend mutation). */}
-      <Card contentStyle={{ flexDirection: rowDirection, flexWrap: 'wrap', gap: tokens.spacing.sm }}>
-        <MockActionButton label={t('platformAdmin.action.openSupport')} note={t('common.mock')} />
-        <MockActionButton label={t('platformAdmin.action.requestUpgrade')} note={t('common.mock')} />
-        <MockActionButton label={t('platformAdmin.action.reviewSync')} note={t('common.mock')} />
-        <MockActionButton label={t('platformAdmin.action.contactLater')} note={t('common.mock')} />
-        <MockActionButton label={t('platformAdmin.action.suspendLater')} note={t('common.mock')} />
+      <Card>
+        <View style={{ flexDirection: rowDirection, flexWrap: 'wrap', gap: tokens.spacing.sm }}>
+          <MockActionButton label={t('platformAdmin.action.openSupport')} note={t('common.mock')} />
+          <MockActionButton label={t('platformAdmin.action.requestUpgrade')} note={t('common.mock')} />
+          <MockActionButton label={t('platformAdmin.action.reviewSync')} note={t('common.mock')} />
+          <MockActionButton label={t('platformAdmin.action.contactLater')} note={t('common.mock')} />
+          <MockActionButton label={t('platformAdmin.action.suspendLater')} note={t('common.mock')} />
+        </View>
       </Card>
     </Screen>
   );

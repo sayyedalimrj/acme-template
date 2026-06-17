@@ -1,11 +1,29 @@
-# apps/admin — Platform Admin (internal-only)
+# apps/admin — Platform Admin + Workflow Operations (internal-only)
 
-> **Status: planned app shell (not yet scaffolded).** This README is the architecture spec
-> for the internal Platform Admin app. The Platform Admin **mock feature code currently lives
-> temporarily in `apps/client/src/features/platform-admin/`** (see that folder's README) and
-> must be migrated here. PR #32 was corrected to **remove all merchant-facing exposure** of
-> Platform Admin from `apps/client` (no nav entry, no `/platform-admin` route); this README
-> captures the destination so the move can be completed in a follow-up with a runnable env.
+> **Status: scaffolded (mock-only).** This is the internal admin app — a standalone Expo +
+> React Native Web app that **deploys separately** from the merchant app (`apps/client`). It
+> is **internal-only** and must never appear on the merchant domain. The Platform Admin mock
+> was **migrated here from `apps/client`** (the merchant app no longer contains any
+> platform-admin code, route, or nav entry). All data is mock-only; real data will arrive via
+> `apps/api` + the platform DB, behind **strict RBAC** (not built yet).
+
+## Implemented in this PR
+
+- Standalone app shell (`app/_layout.tsx` + `AdminShell`) with a top nav (Overview /
+  Workflows) and an en/fa locale toggle (RTL-aware).
+- **Platform Admin overview** (`/`): KPI strip, filterable customer-health list, next admin
+  tasks, site/sync health, subscription breakdown, recent security/audit, usage/limits,
+  support summary.
+- **Customer/tenant detail** (`/customers/[id]`): profile, subscription, sites + plugin/sync
+  health, support/admin tasks, security signals, usage, internal-notes placeholder, disabled
+  mock actions, not-found state.
+- **Workflow Operations board** (`/workflows`): KPI strip, priority/type filters, columns
+  (backlog/todo · in progress · waiting/blocked · review · done) of compact workflow cards.
+- **Workflow detail** (`/workflows/[id]`): meta, customer/site, checklist, timeline, related
+  security signals, next action, blocked reason, internal notes, **future automation
+  readiness** (trigger/condition/action labels only — no engine), disabled mock actions.
+- A small self-contained UI kit (`src/ui.tsx`), theme + i18n + formatters (`src/system.tsx`,
+  `src/labels.ts`), mock data, in-memory services, and focused tests.
 
 ## Why a separate app
 
@@ -80,3 +98,23 @@ code into packages (introduce a workspace, e.g. npm/pnpm workspaces, at that poi
 
 Until then, `apps/admin` should **duplicate only the minimal UI it needs** and import nothing
 from `apps/client` (no cross-app path coupling).
+
+
+## Deployment (separate from the merchant app)
+
+This app deploys as its own Vercel project (or any static host), **never** on the merchant
+domain.
+
+- **Vercel Project Root Directory:** `apps/admin`
+- **Build command:** `expo export -p web` · **Output directory:** `dist` · **Framework:** none
+- SPA fallback rewrite is configured in `apps/admin/vercel.json`.
+- Target domains: merchant `app.<domain>`, **internal admin `admin.<domain>`**, API
+  `api.<domain>`. Do not expose `apps/admin` under the merchant domain.
+- Access must be gated by **strict RBAC / least privilege** before any real (non-mock) data.
+
+## Local validation
+
+```
+cd apps/admin
+npm run typecheck && npm run lint && npm run format && npm run test:ci && npm run export:web
+```

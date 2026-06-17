@@ -20,7 +20,6 @@ import { createMockMediaStudioAdapter } from './mock/mockMediaStudioAdapter';
 import { createMockNotificationAutomationAdapter } from './mock/mockNotificationAutomationAdapter';
 import { createMockOnboardingAdapter } from './mock/mockOnboardingAdapter';
 import { createMockOrderAdapter } from './mock/mockOrderAdapter';
-import { createMockPlatformAdminAdapter } from './mock/mockPlatformAdminAdapter';
 import { createMockProductAdapter } from './mock/mockProductAdapter';
 import { createMockReportsAnalyticsAdapter } from './mock/mockReportsAnalyticsAdapter';
 import { createMockSiteAdapter } from './mock/mockSiteAdapter';
@@ -45,7 +44,6 @@ function createMockAdapters(): Adapters {
     intelligence: createMockCustomerIntelligenceAdapter(),
     automation: createMockNotificationAutomationAdapter(),
     reports: createMockReportsAnalyticsAdapter(),
-    platformAdmin: createMockPlatformAdminAdapter(),
   };
 }
 
@@ -91,5 +89,4 @@ export type {
   CustomerIntelligenceAdapter,
   NotificationAutomationAdapter,
   ReportsAnalyticsAdapter,
-  PlatformAdminAdapter,
 } from './types';
