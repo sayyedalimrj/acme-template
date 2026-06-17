@@ -41,6 +41,7 @@ export const navItems: NavItem[] = [
     href: '/automations',
     icon: 'chatbubbles-outline',
   },
+  { key: 'reports', labelKey: 'nav.reports', href: '/reports', icon: 'bar-chart-outline' },
   {
     key: 'media-studio',
     labelKey: 'nav.mediaStudio',

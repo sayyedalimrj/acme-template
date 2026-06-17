@@ -136,6 +136,22 @@ export const advisorRecommendations: AIAdvisorRecommendation[] = [
     ],
   },
   {
+    id: 'rec_review_reports',
+    type: 'sales_insight',
+    category: 'sales',
+    title: 'بررسی گزارش‌ها و تحلیل فروشگاه',
+    summary: 'برای دید کلی از فروش، محصولات، مشتریان و قیف تبدیل، گزارش‌ها را مرور کنید.',
+    priority: 'medium',
+    status: 'suggested',
+    related: { kind: 'orders', label: 'گزارش‌ها', href: '/reports' },
+    suggestedStep: 'صفحه گزارش و تحلیل را باز کنید.',
+    actions: [
+      { kind: 'view_reports', targetHref: '/reports' },
+      { kind: 'mark_reviewed' },
+      { kind: 'dismiss' },
+    ],
+  },
+  {
     id: 'rec_price_review',
     type: 'pricing_suggestion',
     category: 'sales',

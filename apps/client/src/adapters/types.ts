@@ -12,6 +12,8 @@
 import type {
   AbandonedCartSignal,
   AddInternalNoteInput,
+  AnalyticsProviderStatus,
+  AnalyticsReadiness,
   AIAdvisorConversationMessage,
   AIAdvisorInsight,
   AIAdvisorPromptSuggestion,
@@ -27,19 +29,24 @@ import type {
   CampaignConversionSignal,
   CampaignDraft,
   CampaignMessagePreview,
+  CampaignReadinessReport,
   CommerceEvent,
   ConnectSiteInput,
   ConsentReadiness,
+  ConversionFunnelReport,
   CurrentSubscriptionSummary,
   Customer,
   CustomerListQuery,
+  CustomerReport,
   DashboardOverview,
   EventProviderStatus,
   EventTrackingReadiness,
+  ExecutiveSummary,
   ExistingOnboardingInput,
   ExistingSiteOnboardingRequest,
   IntelligenceRecommendation,
   IntelligenceSummary,
+  InventoryReport,
   MediaStudioAnalyzeInput,
   MediaStudioAsset,
   MediaStudioGenerationInput,
@@ -64,8 +71,14 @@ import type {
   Product,
   ProductInterestSignal,
   ProductListQuery,
+  ProductPerformanceReport,
   RecordEventInput,
+  ReportInsight,
+  ReportPeriod,
+  ReportRecommendation,
+  SalesReport,
   SearchDemandInsight,
+  SearchDemandReport,
   SiteConnection,
   StoreTemplate,
   SubscriptionPlan,
@@ -304,6 +317,39 @@ export interface NotificationAutomationAdapter {
   dismissDraftMock(id: string): Promise<CampaignDraft[]>;
 }
 
+/**
+ * Reports & Analytics adapter — the seam for the lightweight, mock-only reporting module
+ * (Phase 7). Serves an executive summary plus sales, product-performance, customer,
+ * inventory, search-demand, campaign-readiness, and conversion-funnel reports, all derived
+ * from the existing mock data, plus review-only insights/recommendations.
+ *
+ * SECURITY/PRIVACY (binding — see security-model.md): MOCK-ONLY. NO real analytics provider,
+ * NO GA4, NO WooCommerce Reports API, NO tracking script/cookies, NO external send, NO real
+ * analytics/provider IDs, NO API keys, NO secrets, NO export/download, and NO real date
+ * engine — `period` only scales mock values. `siteId` is accepted for forward-compatibility
+ * but ignored by the mock. Future real reporting goes through the backend/event pipeline.
+ */
+export interface ReportsAnalyticsAdapter {
+  getProviderStatus(): Promise<AnalyticsProviderStatus>;
+  getReadiness(): Promise<AnalyticsReadiness>;
+  getExecutiveSummary(period: ReportPeriod, siteId?: string): Promise<ExecutiveSummary>;
+  getSalesReport(period: ReportPeriod, siteId?: string): Promise<SalesReport>;
+  getProductPerformanceReport(
+    period: ReportPeriod,
+    siteId?: string,
+  ): Promise<ProductPerformanceReport>;
+  getCustomerReport(period: ReportPeriod, siteId?: string): Promise<CustomerReport>;
+  getInventoryReport(period: ReportPeriod, siteId?: string): Promise<InventoryReport>;
+  getSearchDemandReport(period: ReportPeriod, siteId?: string): Promise<SearchDemandReport>;
+  getCampaignReadinessReport(
+    period: ReportPeriod,
+    siteId?: string,
+  ): Promise<CampaignReadinessReport>;
+  getConversionFunnelReport(period: ReportPeriod, siteId?: string): Promise<ConversionFunnelReport>;
+  listReportInsights(period: ReportPeriod, siteId?: string): Promise<ReportInsight[]>;
+  listReportRecommendations(period: ReportPeriod, siteId?: string): Promise<ReportRecommendation[]>;
+}
+
 /** The full set of adapters resolved from configuration. */
 export interface Adapters {
   auth: AuthAdapter;
@@ -319,4 +365,5 @@ export interface Adapters {
   mediaStudio: MediaStudioAdapter;
   intelligence: CustomerIntelligenceAdapter;
   automation: NotificationAutomationAdapter;
+  reports: ReportsAnalyticsAdapter;
 }

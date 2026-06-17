@@ -87,4 +87,8 @@ export const queryKeys = {
   automationOverview: () => ['automation', 'overview'] as const,
   /** Mutable campaign drafts. */
   automationDrafts: () => ['automation', 'drafts'] as const,
+
+  // Reports/analytics is account-level (mock) and period-scoped, so keys are global + period.
+  /** Everything the reports screen needs for a given period. */
+  reportsOverview: (period: string) => ['reports', 'overview', period] as const,
 } as const;

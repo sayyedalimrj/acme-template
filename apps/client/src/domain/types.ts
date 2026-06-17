@@ -893,6 +893,7 @@ export type AIAdvisorActionKind =
   | 'view_product'
   | 'view_orders'
   | 'view_inventory'
+  | 'view_reports'
   | 'review_campaign'
   | 'draft_copy'
   | 'open_media_studio'
@@ -1500,4 +1501,283 @@ export interface AutomationSafetyNotice {
   severity: 'info' | 'warning';
   /** Persian, frontend-safe message. */
   message: string;
+}
+
+// ---------------------------------------------------------------------------
+// Reports & Analytics (Phase 7) — lightweight, mock-only business reporting
+//
+// Gives merchants a clear business view (sales, product performance, customers,
+// inventory, search demand, campaign readiness, a conversion funnel, and an executive
+// summary) built from the existing mock data. It prepares the platform for future real
+// analytics without committing to any provider.
+//
+// SECURITY/PRIVACY (binding — see security-model.md): MOCK-ONLY. NO real analytics provider,
+// NO GA4, NO WooCommerce Reports API, NO tracking script/cookies/fingerprints, NO external
+// send, NO real analytics/provider IDs, NO API keys, NO secrets, NO real date-filtering
+// engine, and NO report export/download. Customer references reuse only mock-safe labels —
+// no extra PII. Future real reporting must go through a backend/event pipeline, a consent/
+// privacy model, and the WordPress/WooCommerce integration.
+// ---------------------------------------------------------------------------
+
+/** Reporting period options. `custom_later` is a placeholder — no real date engine exists. */
+export type ReportPeriod = 'today' | 'last_7_days' | 'last_30_days' | 'this_month' | 'custom_later';
+
+/** Direction of a metric trend. */
+export type MetricTrend = 'up' | 'down' | 'flat';
+
+/** Whether a real analytics provider is wired (it is not — mock only). */
+export type AnalyticsProviderStatus = 'not_connected' | 'mock';
+
+/** Readiness of a future analytics/reporting building block. */
+export type ReportReadinessState = 'not_connected' | 'planned' | 'mock' | 'later';
+
+/** Whether report export/download is available (it is not — planned/mock only). */
+export type ReportExportStatus = 'not_available' | 'planned' | 'mock';
+
+/** Readiness snapshot for the future analytics/reporting stack. */
+export interface AnalyticsReadiness {
+  analyticsProvider: AnalyticsProviderStatus;
+  wooCommerceReports: ReportReadinessState;
+  ga4: ReportReadinessState;
+  backendPipeline: ReportReadinessState;
+  webhooks: ReportReadinessState;
+  export: ReportExportStatus;
+}
+
+/** A single KPI metric with a trend, ready to render as a card. */
+export interface ReportMetric {
+  /** Stable id, e.g. 'gross_sales'. */
+  id: string;
+  /** Persian, frontend-safe label. */
+  label: string;
+  /** Display value (already formatted; currency/number/string). */
+  value: string;
+  trend: MetricTrend;
+  /** Optional Persian change label, e.g. "+۱۲٪". */
+  changeLabel?: string;
+}
+
+/** Executive summary — the headline KPIs across the store for a period. */
+export interface ExecutiveSummary {
+  period: ReportPeriod;
+  currency: CurrencyCode;
+  grossSales: Money;
+  ordersCount: number;
+  averageOrderValue: Money;
+  topProductName?: string;
+  returningCustomers: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  campaignReadyAudiences: number;
+  searchOpportunities: number;
+  /** KPI cards (with trend) ready for the executive-summary grid. */
+  metrics: ReportMetric[];
+}
+
+/** One point on the lightweight (non-charted) sales trend. */
+export interface SalesTrendPoint {
+  /** Persian label, e.g. a weekday or short date. */
+  label: string;
+  value: Money;
+}
+
+/** Revenue + order count for a single order status. */
+export interface SalesByStatusEntry {
+  status: OrderStatus;
+  orders: number;
+  revenue: Money;
+}
+
+/** Sales report — totals, trend, best day, and a status breakdown. */
+export interface SalesReport {
+  period: ReportPeriod;
+  currency: CurrencyCode;
+  totalSales: Money;
+  ordersCount: number;
+  averageOrderValue: Money;
+  trend: MetricTrend;
+  /** Optional Persian change label vs. the previous period. */
+  changeLabel?: string;
+  /** Best sales day (Persian label) + its sales, if modeled. */
+  bestDayLabel?: string;
+  bestDaySales?: Money;
+  /** Lightweight trend rows rendered as progress bars (no chart library). */
+  trendPoints: SalesTrendPoint[];
+  byStatus: SalesByStatusEntry[];
+}
+
+/** Stock-risk tier for a product in the performance report. */
+export type ProductStockRisk = 'none' | 'low' | 'out';
+
+/** A single product row in the performance report. */
+export interface ProductPerformanceEntry {
+  productId: string;
+  productName: string;
+  sku: string;
+  unitsSold: number;
+  revenue: Money;
+  /** Share of total reported revenue (0–100). */
+  revenueSharePercent: number;
+  stockRisk: ProductStockRisk;
+  /** Optional in-app link to the product detail (read-only). */
+  href?: string;
+}
+
+/** Product performance report — top, low-performing, and stock-risk products. */
+export interface ProductPerformanceReport {
+  period: ReportPeriod;
+  currency: CurrencyCode;
+  topProducts: ProductPerformanceEntry[];
+  lowPerformers: ProductPerformanceEntry[];
+  stockRisk: ProductPerformanceEntry[];
+}
+
+/** Customer report — totals, repeat/VIP/inactive counts, and a retention note. */
+export interface CustomerReport {
+  period: ReportPeriod;
+  totalCustomers: number;
+  newCustomers: number;
+  repeatCustomers: number;
+  vipCustomers: number;
+  inactiveCustomers: number;
+  /** Repeat purchase rate (0–100). */
+  repeatRatePercent: number;
+  /** Persian, frontend-safe retention-opportunity note. */
+  retentionOpportunity: string;
+}
+
+/** Priority of a restock action in the inventory report. */
+export type RestockPriority = 'high' | 'medium' | 'low';
+
+/** A single restock-priority row in the inventory report. */
+export interface InventoryRestockEntry {
+  productId: string;
+  productName: string;
+  sku: string;
+  /** Persian stock-status label, e.g. "ناموجود". */
+  stockStatus: string;
+  priority: RestockPriority;
+  /** Optional in-app link to the product detail (read-only). */
+  href?: string;
+}
+
+/** Inventory / stock report — counts + restock priorities. */
+export interface InventoryReport {
+  period: ReportPeriod;
+  lowStock: number;
+  outOfStock: number;
+  backorder: number;
+  restockPriority: InventoryRestockEntry[];
+}
+
+/**
+ * Search demand report — reuses the intelligence `SearchDemandInsight` shape, split into
+ * top terms, no-match searches (unmet demand), and restock-related searches.
+ */
+export interface SearchDemandReport {
+  period: ReportPeriod;
+  topTerms: SearchDemandInsight[];
+  noMatchTerms: SearchDemandInsight[];
+  restockTerms: SearchDemandInsight[];
+}
+
+/** The kind of audience a campaign-readiness row targets. */
+export type CampaignAudienceKind =
+  | 'back_in_stock'
+  | 'abandoned_cart'
+  | 'vip_reactivation'
+  | 'search_demand'
+  | 'product_interest';
+
+/** A single campaign-ready audience row (mock sizes; no contact lists). */
+export interface CampaignReadinessAudience {
+  id: string;
+  kind: CampaignAudienceKind;
+  /** Persian, frontend-safe label. */
+  label: string;
+  size: number;
+  consent: ConsentStatus;
+  readiness: CampaignConversionReadiness;
+}
+
+/** Campaign / SMS readiness report — audiences + consent + drafts ready for review. */
+export interface CampaignReadinessReport {
+  period: ReportPeriod;
+  backInStockAudiences: number;
+  abandonedCartCandidates: number;
+  vipReactivationCandidates: number;
+  /** Consent readiness (planned — no real consent is stored). */
+  consentReadiness: ReportReadinessState;
+  draftsReadyForReview: number;
+  audiences: CampaignReadinessAudience[];
+}
+
+/** A step in the conversion funnel. */
+export type FunnelStepKind =
+  | 'product_views'
+  | 'add_to_cart'
+  | 'begin_checkout'
+  | 'purchase'
+  | 'abandoned_cart';
+
+/** A single funnel step with a mock count and a conversion percentage. */
+export interface FunnelStep {
+  step: FunnelStepKind;
+  /** Persian, frontend-safe label. */
+  label: string;
+  count: number;
+  /** Percentage relative to the top step (0–100). */
+  conversionPercent: number;
+}
+
+/** Conversion funnel report (mock counts; rendered with progress rows, no chart library). */
+export interface ConversionFunnelReport {
+  period: ReportPeriod;
+  steps: FunnelStep[];
+  /** Overall views→purchase conversion (0–100). */
+  overallConversionPercent: number;
+  abandonedCartCount: number;
+}
+
+/** Grouping for a report insight. */
+export type ReportInsightCategory =
+  | 'sales'
+  | 'product'
+  | 'customer'
+  | 'inventory'
+  | 'search'
+  | 'campaign'
+  | 'funnel';
+
+/** A read-only insight surfaced from the reports. */
+export interface ReportInsight {
+  id: string;
+  category: ReportInsightCategory;
+  /** Persian, frontend-safe. */
+  title: string;
+  summary: string;
+  trend?: MetricTrend;
+}
+
+/** The kind of action a report recommendation suggests. */
+export type ReportRecommendationType =
+  | 'restock'
+  | 'run_campaign'
+  | 'rewrite_copy'
+  | 'review_abandoned'
+  | 'improve_media'
+  | 'prioritize_fulfillment';
+
+/** An actionable, review-only report recommendation. */
+export interface ReportRecommendation {
+  id: string;
+  type: ReportRecommendationType;
+  /** Persian, frontend-safe. */
+  title: string;
+  summary: string;
+  priority: IntentStrength;
+  /** Persian suggested next step. */
+  suggestedStep: string;
+  /** Optional in-app link for a read-only follow-up (e.g. /inventory, /automations). */
+  href?: string;
 }

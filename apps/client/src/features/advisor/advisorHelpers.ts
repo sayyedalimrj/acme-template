@@ -73,6 +73,8 @@ export function actionLabelKey(kind: AIAdvisorActionKind): StringKey {
       return 'advisor.action.view_orders';
     case 'view_inventory':
       return 'advisor.action.view_inventory';
+    case 'view_reports':
+      return 'advisor.action.view_reports';
     case 'review_campaign':
       return 'advisor.action.review_campaign';
     case 'draft_copy':
@@ -89,7 +91,12 @@ export function actionLabelKey(kind: AIAdvisorActionKind): StringKey {
 
 /** Whether an action navigates (read-only) vs. is a disabled mock placeholder. */
 export function isNavigableAction(kind: AIAdvisorActionKind): boolean {
-  return kind === 'view_product' || kind === 'view_orders' || kind === 'view_inventory';
+  return (
+    kind === 'view_product' ||
+    kind === 'view_orders' ||
+    kind === 'view_inventory' ||
+    kind === 'view_reports'
+  );
 }
 
 /** Recommendations grouped by category in canonical order (empty groups dropped). */
