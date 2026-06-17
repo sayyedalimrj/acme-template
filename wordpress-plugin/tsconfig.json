@@ -1,0 +1,17 @@
+{
+  "//": "Standalone, dependency-free type-check config for the wordpress-plugin contract. No emit, no Node types, no external libs. Run: tsc -p wordpress-plugin --noEmit",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+    "types": [],
+    "strict": true,
+    "noImplicitAny": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts"]
+}
