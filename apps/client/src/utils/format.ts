@@ -15,6 +15,25 @@ export function formatCurrency(amount: string, currency: string, locale = 'en'):
   }
 }
 
+/**
+ * Locale-aware money display for the (mock) commerce values.
+ *
+ * MOCK-ONLY presentation: there is no FX conversion or backend pricing. In the Persian
+ * locale we relabel values as تومان (Toman) with Persian digits and no fraction — so the
+ * Persian UI never shows "$". In English we keep the WooCommerce currency code (e.g. USD → $).
+ */
+export function formatMoney(amount: string, currency: string, locale = 'en'): string {
+  const value = Number.parseFloat(amount);
+  const safeValue = Number.isFinite(value) ? value : 0;
+  if (locale === 'fa') {
+    const formatted = new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 0 }).format(
+      Math.round(safeValue),
+    );
+    return `${formatted} تومان`;
+  }
+  return formatCurrency(amount, currency, 'en-US');
+}
+
 export function formatNumber(value: number, locale = 'en'): string {
   return new Intl.NumberFormat(locale).format(value);
 }

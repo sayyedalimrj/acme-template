@@ -21,7 +21,9 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  MockActionButton,
   Screen,
+  StatusBadge,
   Surface,
   Text,
 } from '@/components/ui';
@@ -99,6 +101,77 @@ export function AutomationScreen(): React.JSX.Element {
         />
       ) : (
         <>
+          {/* A. Workflow status hero — provider state + next setup step (mock-only action). */}
+          {(() => {
+            const providerMeta = providerStatusMeta(overviewQuery.data.readiness.smsProvider);
+            return (
+              <Card contentStyle={{ gap: tokens.spacing.md }}>
+                <View
+                  style={{
+                    flexDirection: rowDirection,
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: tokens.spacing.md,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: rowDirection,
+                      alignItems: 'center',
+                      gap: tokens.spacing.md,
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: tokens.radius.pill,
+                        backgroundColor: tokens.color.infoSoft,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons
+                        name="chatbubbles-outline"
+                        size={20}
+                        color={tokens.color.info}
+                      />
+                    </View>
+                    <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+                      <Text variant="subheading" numberOfLines={1}>
+                        {t('automation.status.title')}
+                      </Text>
+                      <Text variant="caption" tone="muted">
+                        {t('automation.status.subtitle')}
+                      </Text>
+                    </View>
+                  </View>
+                  <StatusBadge tone={providerMeta.tone} label={t(providerMeta.labelKey)} />
+                </View>
+
+                <Divider />
+
+                <View style={{ gap: tokens.spacing.xs }}>
+                  <Text
+                    variant="caption"
+                    tone="muted"
+                    style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}
+                  >
+                    {t('automation.status.nextStep')}
+                  </Text>
+                  <Text variant="body">{t('automation.status.nextStepBody')}</Text>
+                </View>
+
+                <MockActionButton
+                  label={t('automation.status.connectCta')}
+                  note={t('common.mock')}
+                />
+              </Card>
+            );
+          })()}
+
           {/* B. Provider / consent readiness */}
           <Card title={t('automation.readinessTitle')}>
             {READINESS_ROWS.map((row, index) => {

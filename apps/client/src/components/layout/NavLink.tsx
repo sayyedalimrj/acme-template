@@ -43,9 +43,9 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
     flexDirection: rowDirection,
     alignItems: 'center',
     gap: tokens.spacing.sm,
-    minHeight: compact ? undefined : 44,
-    paddingVertical: tokens.spacing.sm,
-    paddingHorizontal: compact ? tokens.spacing.md : tokens.spacing.sm,
+    minHeight: compact ? undefined : 40,
+    paddingVertical: compact ? tokens.spacing.sm : tokens.spacing.xs + 2,
+    paddingHorizontal: compact ? tokens.spacing.md : tokens.spacing.sm + 2,
     borderRadius: tokens.radius.md,
     backgroundColor: isActive ? tokens.color.primarySoft : 'transparent',
   };
@@ -65,8 +65,8 @@ export function NavLink({ item, compact = false }: NavLinkProps): React.JSX.Elem
       ]}
     >
       {/* Fixed-width icon column keeps labels aligned. */}
-      <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name={item.icon} size={compact ? 18 : 20} color={color} />
+      <View style={{ width: 22, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={item.icon} size={compact ? 18 : 19} color={color} />
       </View>
       {!compact && (
         <View

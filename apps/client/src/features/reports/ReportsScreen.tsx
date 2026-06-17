@@ -18,18 +18,21 @@ import {
   Badge,
   Button,
   Card,
+  ChartCard,
   Divider,
   EmptyState,
   ErrorState,
   LoadingState,
+  MiniBars,
   Screen,
   Surface,
   Text,
+  type MiniBarDatum,
 } from '@/components/ui';
 import { SecurityNote } from '@/features/onboarding/components/SecurityNote';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
-import { formatCurrency, formatNumber } from '@/utils/format';
 import type {
   AnalyticsReadiness,
   ProductPerformanceEntry,
@@ -168,6 +171,7 @@ function ProductPerfRow({
 }): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
   const risk = stockRiskMeta(entry.stockRisk);
   return (
@@ -186,11 +190,11 @@ function ProductPerfRow({
             {entry.productName}
           </Text>
           <Text variant="caption" tone="muted">
-            {entry.sku} · {formatNumber(entry.unitsSold)} {t('orders.items')} ·{' '}
+            {entry.sku} · {fmt.num(entry.unitsSold)} {t('orders.items')} ·{' '}
             {entry.revenueSharePercent}%
           </Text>
         </View>
-        <Text variant="caption">{formatCurrency(entry.revenue, currency)}</Text>
+        <Text variant="caption">{fmt.money(entry.revenue, currency)}</Text>
         {entry.stockRisk !== 'none' ? <Badge tone={risk.tone} label={t(risk.labelKey)} /> : null}
         {entry.href ? (
           <Button
@@ -247,6 +251,7 @@ function SearchDemandRow({
 export function ReportsScreen(): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
   const go = (href: string) => router.navigate(href as never);
 
@@ -254,11 +259,7 @@ export function ReportsScreen(): React.JSX.Element {
   const query = useReportsOverview(period);
 
   const currency = query.data?.executiveSummary.currency ?? 'USD';
-  const money = (value: string) => formatCurrency(value, currency);
-  const salesTrendMax = Math.max(
-    ...(query.data?.sales.trendPoints.map((p) => Number.parseFloat(p.value)) ?? [1]),
-    1,
-  );
+  const money = (value: string) => fmt.money(value, currency);
 
   return (
     <Screen testID="reports-screen">
@@ -358,7 +359,7 @@ export function ReportsScreen(): React.JSX.Element {
               />
               <StatTile
                 label={t('reports.sales.orders')}
-                value={formatNumber(query.data.sales.ordersCount)}
+                value={fmt.num(query.data.sales.ordersCount)}
               />
               <StatTile
                 label={t('reports.sales.aov')}
@@ -371,19 +372,6 @@ export function ReportsScreen(): React.JSX.Element {
                 {query.data.sales.bestDaySales ? ` · ${money(query.data.sales.bestDaySales)}` : ''}
               </Text>
             ) : null}
-
-            <Divider />
-            <Text variant="label" tone="muted">
-              {t('reports.sales.trend')}
-            </Text>
-            {query.data.sales.trendPoints.map((point) => (
-              <BarRow
-                key={point.label}
-                label={point.label}
-                valueText={money(point.value)}
-                fraction={Number.parseFloat(point.value) / salesTrendMax}
-              />
-            ))}
 
             <Divider />
             <Text variant="label" tone="muted">
@@ -403,12 +391,37 @@ export function ReportsScreen(): React.JSX.Element {
                 >
                   <Text variant="caption">{t(`orders.status.${entry.status}` as StringKey)}</Text>
                   <Text variant="caption" tone="muted">
-                    {formatNumber(entry.orders)} · {money(entry.revenue)}
+                    {fmt.num(entry.orders)} · {money(entry.revenue)}
                   </Text>
                 </View>
               </View>
             ))}
           </Card>
+
+          {/* E2. Sales trend — Ecme-style chart panel (dependency-free MiniBars). */}
+          <ChartCard
+            title={t('reports.chart.salesTrend')}
+            subtitle={t('reports.chart.salesTrendCaption')}
+            legend={[
+              { label: t('reports.chart.legendSales'), color: tokens.color.primarySoft },
+              { label: t('reports.chart.legendBest'), color: tokens.color.primary },
+            ]}
+          >
+            {query.data.sales.trendPoints.length === 0 ? (
+              <EmptyState title={t('reports.chart.empty')} icon="bar-chart-outline" fill={false} />
+            ) : (
+              <MiniBars
+                height={150}
+                showValues={false}
+                data={query.data.sales.trendPoints.map<MiniBarDatum>((point) => ({
+                  label: point.label,
+                  value: Number.parseFloat(point.value),
+                  valueLabel: money(point.value),
+                  highlight: point.label === query.data.sales.bestDayLabel,
+                }))}
+              />
+            )}
+          </ChartCard>
 
           {/* F. Product performance */}
           <Card title={t('reports.productTitle')}>
@@ -458,19 +471,19 @@ export function ReportsScreen(): React.JSX.Element {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm }}>
               <StatTile
                 label={t('reports.customer.total')}
-                value={formatNumber(query.data.customers.totalCustomers)}
+                value={fmt.num(query.data.customers.totalCustomers)}
               />
               <StatTile
                 label={t('reports.customer.repeat')}
-                value={`${formatNumber(query.data.customers.repeatCustomers)} · ${query.data.customers.repeatRatePercent}%`}
+                value={`${fmt.num(query.data.customers.repeatCustomers)} · ${query.data.customers.repeatRatePercent}%`}
               />
               <StatTile
                 label={t('reports.customer.vip')}
-                value={formatNumber(query.data.customers.vipCustomers)}
+                value={fmt.num(query.data.customers.vipCustomers)}
               />
               <StatTile
                 label={t('reports.customer.inactive')}
-                value={formatNumber(query.data.customers.inactiveCustomers)}
+                value={fmt.num(query.data.customers.inactiveCustomers)}
               />
             </View>
             <Text variant="caption" tone="muted" style={{ marginTop: tokens.spacing.sm }}>
@@ -491,15 +504,15 @@ export function ReportsScreen(): React.JSX.Element {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm }}>
               <StatTile
                 label={t('reports.inventory.lowStock')}
-                value={formatNumber(query.data.inventory.lowStock)}
+                value={fmt.num(query.data.inventory.lowStock)}
               />
               <StatTile
                 label={t('reports.inventory.outOfStock')}
-                value={formatNumber(query.data.inventory.outOfStock)}
+                value={fmt.num(query.data.inventory.outOfStock)}
               />
               <StatTile
                 label={t('reports.inventory.backorder')}
-                value={formatNumber(query.data.inventory.backorder)}
+                value={fmt.num(query.data.inventory.backorder)}
               />
             </View>
             <Divider />
@@ -591,19 +604,19 @@ export function ReportsScreen(): React.JSX.Element {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm }}>
               <StatTile
                 label={t('reports.campaign.backInStock')}
-                value={formatNumber(query.data.campaignReadiness.backInStockAudiences)}
+                value={fmt.num(query.data.campaignReadiness.backInStockAudiences)}
               />
               <StatTile
                 label={t('reports.campaign.abandoned')}
-                value={formatNumber(query.data.campaignReadiness.abandonedCartCandidates)}
+                value={fmt.num(query.data.campaignReadiness.abandonedCartCandidates)}
               />
               <StatTile
                 label={t('reports.campaign.vip')}
-                value={formatNumber(query.data.campaignReadiness.vipReactivationCandidates)}
+                value={fmt.num(query.data.campaignReadiness.vipReactivationCandidates)}
               />
               <StatTile
                 label={t('reports.campaign.drafts')}
-                value={formatNumber(query.data.campaignReadiness.draftsReadyForReview)}
+                value={fmt.num(query.data.campaignReadiness.draftsReadyForReview)}
               />
             </View>
             <View
@@ -641,7 +654,7 @@ export function ReportsScreen(): React.JSX.Element {
                       <Text variant="label" style={{ flexShrink: 1 }}>
                         {audience.label}
                       </Text>
-                      <Badge tone="neutral" label={`${formatNumber(audience.size)}`} />
+                      <Badge tone="neutral" label={`${fmt.num(audience.size)}`} />
                       <Badge tone={ready.tone} label={t(ready.labelKey)} />
                       <Badge tone={consent.tone} label={t(consent.labelKey)} />
                     </View>
@@ -672,7 +685,7 @@ export function ReportsScreen(): React.JSX.Element {
                 <BarRow
                   key={step.step}
                   label={`${step.label} · ${step.conversionPercent}%`}
-                  valueText={formatNumber(step.count)}
+                  valueText={fmt.num(step.count)}
                   fraction={step.conversionPercent / 100}
                   tone={
                     step.step === 'purchase'

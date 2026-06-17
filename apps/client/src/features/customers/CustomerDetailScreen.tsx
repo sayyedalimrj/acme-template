@@ -24,8 +24,8 @@ import {
 import { orderStatusBadge } from '@/features/orders/orderHelpers';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
-import { formatCurrency, formatDate, formatNumber } from '@/utils/format';
 import type { Customer } from '@/domain/types';
 
 import {
@@ -70,6 +70,7 @@ function DetailRow({ label, value }: DetailRowProps): React.JSX.Element {
 function RecentOrders({ customer }: { customer: Customer }): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
   const orders = customer.recentOrders ?? [];
 
@@ -101,11 +102,11 @@ function RecentOrders({ customer }: { customer: Customer }): React.JSX.Element {
               <View style={{ flex: 1, gap: 2 }}>
                 <Text variant="label">#{order.number}</Text>
                 <Text variant="caption" tone="muted">
-                  {formatDate(order.dateCreated)}
+                  {fmt.date(order.dateCreated)}
                 </Text>
               </View>
               <Badge tone={status.tone} label={t(status.labelKey)} />
-              <Text variant="label">{formatCurrency(order.total, order.currency)}</Text>
+              <Text variant="label">{fmt.money(order.total, order.currency)}</Text>
               <Ionicons name="chevron-forward" size={16} color={tokens.color.textMuted} />
             </Pressable>
           </View>
@@ -122,6 +123,7 @@ export interface CustomerDetailScreenProps {
 export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
 
   const activeSite = useActiveSite();
@@ -204,23 +206,23 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps):
         <DetailRow label={t('customer.label.email')} value={customer.email} />
         <DetailRow label={t('customer.label.username')} value={customer.username} />
         <DetailRow label={t('customer.label.role')} value={customer.role} />
-        <DetailRow label={t('customer.label.since')} value={formatDate(customer.dateCreated)} />
+        <DetailRow label={t('customer.label.since')} value={fmt.date(customer.dateCreated)} />
       </Card>
 
       <Card title={t('customer.section.value')}>
         <DetailRow
           label={t('customer.label.totalSpent')}
-          value={formatCurrency(customer.totalSpent, customer.currency)}
+          value={fmt.money(customer.totalSpent, customer.currency)}
         />
-        <DetailRow label={t('customer.label.orders')} value={formatNumber(customer.ordersCount)} />
+        <DetailRow label={t('customer.label.orders')} value={fmt.num(customer.ordersCount)} />
         <DetailRow
           label={t('customer.label.avgOrder')}
-          value={formatCurrency(averageOrderValue(customer), customer.currency)}
+          value={fmt.money(averageOrderValue(customer), customer.currency)}
         />
         <DetailRow
           label={t('customer.label.lastOrder')}
           value={
-            customer.lastOrderDate ? formatDate(customer.lastOrderDate) : t('product.value.none')
+            customer.lastOrderDate ? fmt.date(customer.lastOrderDate) : t('product.value.none')
           }
         />
         <DetailRow

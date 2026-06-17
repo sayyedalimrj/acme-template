@@ -24,8 +24,8 @@ import { fulfillmentBadge, orderItemCount, orderStatusBadge } from '@/features/o
 import { useOrders } from '@/features/orders/useOrders';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
-import { formatCurrency, formatDate, formatNumber } from '@/utils/format';
 import type { Order } from '@/domain/types';
 
 import {
@@ -95,6 +95,7 @@ function Row({
 export function FulfillmentScreen(): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
   const go = (href: string) => router.navigate(href as never);
 
@@ -139,7 +140,7 @@ export function FulfillmentScreen(): React.JSX.Element {
           headerAction={
             <Badge
               tone="neutral"
-              label={`${formatNumber(queue.length)} ${t('fulfillment.queueCount')}`}
+              label={`${fmt.num(queue.length)} ${t('fulfillment.queueCount')}`}
             />
           }
         >
@@ -156,8 +157,8 @@ export function FulfillmentScreen(): React.JSX.Element {
                     <Text variant="label">#{order.number}</Text>
                     <Text variant="caption" tone="muted" numberOfLines={1}>
                       {order.billing.firstName} {order.billing.lastName} ·{' '}
-                      {formatNumber(orderItemCount(order))} {t('fulfillment.itemsCount')} ·{' '}
-                      {formatDate(order.dateCreated)}
+                      {fmt.num(orderItemCount(order))} {t('fulfillment.itemsCount')} ·{' '}
+                      {fmt.date(order.dateCreated)}
                     </Text>
                     <View
                       style={{
@@ -170,7 +171,7 @@ export function FulfillmentScreen(): React.JSX.Element {
                       <Badge tone={fulfillment.tone} label={t(fulfillment.labelKey)} />
                     </View>
                   </View>
-                  <Text variant="label">{formatCurrency(order.total, order.currency)}</Text>
+                  <Text variant="label">{fmt.money(order.total, order.currency)}</Text>
                   <Ionicons name="chevron-forward" size={16} color={tokens.color.textMuted} />
                 </Row>
               </View>

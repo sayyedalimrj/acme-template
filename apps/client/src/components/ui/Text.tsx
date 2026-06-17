@@ -6,12 +6,23 @@
  * color stay consistent and theme/dark-mode aware.
  */
 import React from 'react';
-import { StyleSheet, Text as RNText, type TextProps as RNTextProps } from 'react-native';
+import { Platform, StyleSheet, Text as RNText, type TextProps as RNTextProps } from 'react-native';
 
 import { useTheme } from '@/theme';
 import type { TypographyScale } from '@/theme/tokens';
 
 export type TextVariant = keyof TypographyScale;
+
+/**
+ * Web-only Persian-first font stack. We cannot bundle a custom font in this environment
+ * (Kook is proprietary/web-only woff; the OFL Vazirmatn TTF + expo-font can't be fetched
+ * under the restricted registry). On the web preview we prefer clean Persian sans fonts if
+ * present and fall back to system sans; on native we use the platform default (a comma stack
+ * is invalid on native), so this is a no-op there. See PR notes for the font follow-up.
+ */
+const WEB_FONT_STACK =
+  "'Vazirmatn', 'Vazir', 'IRANSansX', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+const FONT_FAMILY = Platform.OS === 'web' ? WEB_FONT_STACK : undefined;
 export type TextTone =
   | 'default'
   | 'muted'
@@ -52,6 +63,7 @@ export function Text({
           fontSize: typography.fontSize,
           lineHeight: typography.lineHeight,
           fontWeight: typography.fontWeight,
+          fontFamily: FONT_FAMILY,
           color: toneColor[tone],
           // RTL-aware: text reads in the active direction and aligns to its start edge.
           // Explicit `textAlign` passed via `style` still overrides this default.

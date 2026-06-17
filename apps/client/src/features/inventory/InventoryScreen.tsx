@@ -24,8 +24,8 @@ import { stockBadge } from '@/features/products/productHelpers';
 import { useProducts } from '@/features/products/useProducts';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
-import { formatNumber } from '@/utils/format';
 import type { Product } from '@/domain/types';
 import type { StringKey } from '@/i18n/strings';
 
@@ -112,6 +112,7 @@ function SummaryCell({
 }): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   return (
     <View
       style={{
@@ -128,7 +129,7 @@ function SummaryCell({
         <Text variant="caption" tone="muted">
           {t(labelKey)}
         </Text>
-        <Text variant="heading">{formatNumber(count)}</Text>
+        <Text variant="heading">{fmt.num(count)}</Text>
       </View>
     </View>
   );
@@ -137,6 +138,7 @@ function SummaryCell({
 export function InventoryScreen(): React.JSX.Element {
   const { tokens } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
   const go = (href: string) => router.navigate(href as never);
 
@@ -217,7 +219,7 @@ export function InventoryScreen(): React.JSX.Element {
                     <Badge tone={stock.tone} label={t(stock.labelKey)} />
                     {typeof product.stockQuantity === 'number' ? (
                       <Text variant="caption" tone="muted">
-                        {formatNumber(product.stockQuantity)} {t('inventory.inStockQty')}
+                        {fmt.num(product.stockQuantity)} {t('inventory.inStockQty')}
                       </Text>
                     ) : null}
                   </View>

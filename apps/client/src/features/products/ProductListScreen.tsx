@@ -19,12 +19,13 @@ import {
   Input,
   LoadingState,
   Screen,
+  SegmentedControl,
   Text,
 } from '@/components/ui';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
-import { formatCurrency, formatNumber } from '@/utils/format';
 import type { Product } from '@/domain/types';
 import type { StringKey } from '@/i18n/strings';
 
@@ -37,38 +38,6 @@ import {
 } from './productHelpers';
 import { useProducts } from './useProducts';
 
-interface ChipProps {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}
-
-function FilterChip({ label, active, onPress }: ChipProps): React.JSX.Element {
-  const { tokens } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={{
-        paddingVertical: tokens.spacing.xs + 2,
-        paddingHorizontal: tokens.spacing.md,
-        borderRadius: tokens.radius.pill,
-        borderWidth: tokens.borderWidth.thin,
-        borderColor: active ? tokens.color.primary : tokens.color.border,
-        backgroundColor: active ? tokens.color.primarySoft : tokens.color.surface,
-      }}
-    >
-      <Text
-        variant="caption"
-        style={{ color: active ? tokens.color.primary : tokens.color.textMuted }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 interface ProductRowProps {
   product: Product;
   onPress: () => void;
@@ -77,15 +46,19 @@ interface ProductRowProps {
 function ProductRow({ product, onPress }: ProductRowProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const stock = stockBadge(product);
   const status = statusBadge(product.status);
   const hasSale = Boolean(product.salePrice);
+  const isDraft = product.status !== 'publish';
 
   const rowStyle: ViewStyle = {
     flexDirection: rowDirection,
     alignItems: 'center',
     gap: tokens.spacing.md,
-    padding: tokens.spacing.md,
+    minHeight: 64,
+    paddingVertical: tokens.spacing.sm,
+    paddingHorizontal: tokens.spacing.md,
     borderRadius: tokens.radius.md,
     borderWidth: tokens.borderWidth.hairline,
     borderColor: tokens.color.border,
@@ -102,8 +75,24 @@ function ProductRow({ product, onPress }: ProductRowProps): React.JSX.Element {
         pressed ? { backgroundColor: tokens.color.surfaceAlt } : null,
       ]}
     >
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="subheading" numberOfLines={1}>
+      {/* Thumbnail placeholder — uses the left space and gives the row visual structure. */}
+      <View
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: tokens.radius.md,
+          backgroundColor: tokens.color.surfaceAlt,
+          borderWidth: tokens.borderWidth.hairline,
+          borderColor: tokens.color.border,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons name="cube-outline" size={20} color={tokens.color.textMuted} />
+      </View>
+
+      <View style={{ flex: 1, gap: 3, minWidth: 0 }}>
+        <Text variant="label" numberOfLines={1} style={{ fontWeight: '600' }}>
           {product.name}
         </Text>
         <Text variant="caption" tone="muted" numberOfLines={1}>
@@ -120,24 +109,25 @@ function ProductRow({ product, onPress }: ProductRowProps): React.JSX.Element {
           }}
         >
           <Badge tone={stock.tone} label={t(stock.labelKey)} />
-          <Badge tone={status.tone} label={t(status.labelKey)} />
-          {typeof product.stockQuantity === 'number' ? (
-            <Text variant="caption" tone="muted">
-              {formatNumber(product.stockQuantity)} in stock
-            </Text>
-          ) : null}
+          {isDraft ? <Badge tone={status.tone} label={t(status.labelKey)} /> : null}
         </View>
       </View>
 
       <View style={{ alignItems: 'flex-end', gap: 2 }}>
-        <Text variant="label">{formatCurrency(product.price, product.currency)}</Text>
+        <Text variant="label" style={{ fontWeight: '700' }}>
+          {fmt.money(product.price, product.currency)}
+        </Text>
         {hasSale ? (
           <Text variant="caption" tone="muted" style={{ textDecorationLine: 'line-through' }}>
-            {formatCurrency(product.regularPrice, product.currency)}
+            {fmt.money(product.regularPrice, product.currency)}
+          </Text>
+        ) : typeof product.stockQuantity === 'number' ? (
+          <Text variant="caption" tone="muted">
+            {fmt.num(product.stockQuantity)} {t('inventory.inStockQty')}
           </Text>
         ) : null}
       </View>
-      <Ionicons name="chevron-forward" size={18} color={tokens.color.textMuted} />
+      <Ionicons name="chevron-forward" size={16} color={tokens.color.textMuted} />
     </Pressable>
   );
 }
@@ -156,8 +146,9 @@ const STATUS_FILTERS: { value: StatusFilter; labelKey: StringKey }[] = [
 ];
 
 export function ProductListScreen(): React.JSX.Element {
-  const { tokens, rowDirection } = useTheme();
+  const { tokens } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
 
   const activeSite = useActiveSite();
@@ -191,12 +182,6 @@ export function ProductListScreen(): React.JSX.Element {
     );
   }
 
-  const chipRow: ViewStyle = {
-    flexDirection: rowDirection,
-    flexWrap: 'wrap',
-    gap: tokens.spacing.xs,
-  };
-
   return (
     <Screen testID="product-list-screen">
       <View style={{ gap: tokens.spacing.xs }}>
@@ -204,7 +189,7 @@ export function ProductListScreen(): React.JSX.Element {
         <Text tone="muted">{t('products.subtitle')}</Text>
       </View>
 
-      <Card>
+      <Card padding="md" contentStyle={{ gap: tokens.spacing.sm }}>
         <Input
           value={search}
           onChangeText={setSearch}
@@ -212,26 +197,17 @@ export function ProductListScreen(): React.JSX.Element {
           autoCapitalize="none"
           testID="product-search"
         />
-        <View style={chipRow}>
-          {STOCK_FILTERS.map((f) => (
-            <FilterChip
-              key={f.value}
-              label={t(f.labelKey)}
-              active={stock === f.value}
-              onPress={() => setStock(f.value)}
-            />
-          ))}
-        </View>
-        <View style={chipRow}>
-          {STATUS_FILTERS.map((f) => (
-            <FilterChip
-              key={f.value}
-              label={t(f.labelKey)}
-              active={status === f.value}
-              onPress={() => setStatus(f.value)}
-            />
-          ))}
-        </View>
+        <SegmentedControl
+          options={STOCK_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+          value={stock}
+          onChange={setStock}
+        />
+        <SegmentedControl
+          options={STATUS_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+          value={status}
+          onChange={setStatus}
+          stretch
+        />
       </Card>
 
       {productsQuery.isPending ? (
@@ -245,9 +221,9 @@ export function ProductListScreen(): React.JSX.Element {
       ) : filtered.length === 0 ? (
         <EmptyState title={t('products.empty')} icon="cube-outline" fill={false} />
       ) : (
-        <View style={{ gap: tokens.spacing.sm }} testID="product-list">
+        <View style={{ gap: tokens.spacing.xs }} testID="product-list">
           <Text variant="caption" tone="muted">
-            {formatNumber(filtered.length)} / {formatNumber(total)}
+            {fmt.num(filtered.length)} / {fmt.num(total)}
           </Text>
           {filtered.map((product) => (
             <ProductRow

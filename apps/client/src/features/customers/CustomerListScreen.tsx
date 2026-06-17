@@ -20,12 +20,13 @@ import {
   Input,
   LoadingState,
   Screen,
+  SegmentedControl,
   Text,
 } from '@/components/ui';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
-import { formatCurrency, formatDate, formatNumber } from '@/utils/format';
 import type { Customer } from '@/domain/types';
 import type { StringKey } from '@/i18n/strings';
 
@@ -38,38 +39,6 @@ import {
 } from './customerHelpers';
 import { useCustomers } from './useCustomers';
 
-interface ChipProps {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}
-
-function FilterChip({ label, active, onPress }: ChipProps): React.JSX.Element {
-  const { tokens } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={{
-        paddingVertical: tokens.spacing.xs + 2,
-        paddingHorizontal: tokens.spacing.md,
-        borderRadius: tokens.radius.pill,
-        borderWidth: tokens.borderWidth.thin,
-        borderColor: active ? tokens.color.primary : tokens.color.border,
-        backgroundColor: active ? tokens.color.primarySoft : tokens.color.surface,
-      }}
-    >
-      <Text
-        variant="caption"
-        style={{ color: active ? tokens.color.primary : tokens.color.textMuted }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 interface CustomerRowProps {
   customer: Customer;
   onPress: () => void;
@@ -78,6 +47,7 @@ interface CustomerRowProps {
 function CustomerRow({ customer, onPress }: CustomerRowProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const segment = segmentBadge(customerSegment(customer));
   const initials =
     `${customer.firstName.charAt(0)}${customer.lastName.charAt(0)}`.toUpperCase() || '?';
@@ -129,15 +99,15 @@ function CustomerRow({ customer, onPress }: CustomerRowProps): React.JSX.Element
           {customer.email}
         </Text>
         <Text variant="caption" tone="muted">
-          {formatNumber(customer.ordersCount)} {t('customers.orders')}
+          {fmt.num(customer.ordersCount)} {t('customers.orders')}
           {customer.lastOrderDate
-            ? ` · ${t('customers.label.lastOrder')} ${formatDate(customer.lastOrderDate)}`
+            ? ` · ${t('customers.label.lastOrder')} ${fmt.date(customer.lastOrderDate)}`
             : ''}
         </Text>
       </View>
 
       <View style={{ alignItems: 'flex-end', gap: 2 }}>
-        <Text variant="label">{formatCurrency(customer.totalSpent, customer.currency)}</Text>
+        <Text variant="label">{fmt.money(customer.totalSpent, customer.currency)}</Text>
         <Text variant="caption" tone="muted">
           {t('customers.label.totalSpent')}
         </Text>
@@ -155,8 +125,9 @@ const SEGMENT_FILTERS: { value: SegmentFilter; labelKey: StringKey }[] = [
 ];
 
 export function CustomerListScreen(): React.JSX.Element {
-  const { tokens, rowDirection } = useTheme();
+  const { tokens } = useTheme();
   const t = useT();
+  const fmt = useFormatters();
   const router = useRouter();
 
   const activeSite = useActiveSite();
@@ -195,7 +166,7 @@ export function CustomerListScreen(): React.JSX.Element {
         <Text tone="muted">{t('customers.subtitle')}</Text>
       </View>
 
-      <Card>
+      <Card padding="md" contentStyle={{ gap: tokens.spacing.sm }}>
         <Input
           value={search}
           onChangeText={setSearch}
@@ -203,16 +174,12 @@ export function CustomerListScreen(): React.JSX.Element {
           autoCapitalize="none"
           testID="customer-search"
         />
-        <View style={{ flexDirection: rowDirection, flexWrap: 'wrap', gap: tokens.spacing.xs }}>
-          {SEGMENT_FILTERS.map((f) => (
-            <FilterChip
-              key={f.value}
-              label={t(f.labelKey)}
-              active={segment === f.value}
-              onPress={() => setSegment(f.value)}
-            />
-          ))}
-        </View>
+        <SegmentedControl
+          options={SEGMENT_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+          value={segment}
+          onChange={setSegment}
+          stretch
+        />
       </Card>
 
       {customersQuery.isPending ? (
@@ -228,7 +195,7 @@ export function CustomerListScreen(): React.JSX.Element {
       ) : (
         <View style={{ gap: tokens.spacing.sm }} testID="customer-list">
           <Text variant="caption" tone="muted">
-            {formatNumber(filtered.length)} / {formatNumber(total)}
+            {fmt.num(filtered.length)} / {fmt.num(total)}
           </Text>
           {filtered.map((customer) => (
             <CustomerRow
