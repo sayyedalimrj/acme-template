@@ -18,13 +18,16 @@ import {
   Badge,
   Button,
   Card,
+  ChartCard,
   Divider,
   EmptyState,
   ErrorState,
   LoadingState,
+  MiniBars,
   Screen,
   Surface,
   Text,
+  type MiniBarDatum,
 } from '@/components/ui';
 import { SecurityNote } from '@/features/onboarding/components/SecurityNote';
 import { useT } from '@/i18n/I18nProvider';
@@ -255,10 +258,6 @@ export function ReportsScreen(): React.JSX.Element {
 
   const currency = query.data?.executiveSummary.currency ?? 'USD';
   const money = (value: string) => formatCurrency(value, currency);
-  const salesTrendMax = Math.max(
-    ...(query.data?.sales.trendPoints.map((p) => Number.parseFloat(p.value)) ?? [1]),
-    1,
-  );
 
   return (
     <Screen testID="reports-screen">
@@ -374,19 +373,6 @@ export function ReportsScreen(): React.JSX.Element {
 
             <Divider />
             <Text variant="label" tone="muted">
-              {t('reports.sales.trend')}
-            </Text>
-            {query.data.sales.trendPoints.map((point) => (
-              <BarRow
-                key={point.label}
-                label={point.label}
-                valueText={money(point.value)}
-                fraction={Number.parseFloat(point.value) / salesTrendMax}
-              />
-            ))}
-
-            <Divider />
-            <Text variant="label" tone="muted">
               {t('reports.sales.byStatus')}
             </Text>
             {query.data.sales.byStatus.map((entry, index) => (
@@ -409,6 +395,30 @@ export function ReportsScreen(): React.JSX.Element {
               </View>
             ))}
           </Card>
+
+          {/* E2. Sales trend — Ecme-style chart panel (dependency-free MiniBars). */}
+          <ChartCard
+            title={t('reports.chart.salesTrend')}
+            subtitle={t('reports.chart.salesTrendCaption')}
+            headerAction={<Badge tone="neutral" label={t('reports.chart.period')} />}
+            legend={[
+              { label: t('reports.chart.legendSales'), color: tokens.color.borderStrong },
+              { label: t('reports.chart.legendBest'), color: tokens.color.primary },
+            ]}
+          >
+            {query.data.sales.trendPoints.length === 0 ? (
+              <Text tone="muted">{t('reports.chart.empty')}</Text>
+            ) : (
+              <MiniBars
+                height={120}
+                data={query.data.sales.trendPoints.map<MiniBarDatum>((point) => ({
+                  label: point.label,
+                  value: Number.parseFloat(point.value),
+                  highlight: point.label === query.data.sales.bestDayLabel,
+                }))}
+              />
+            )}
+          </ChartCard>
 
           {/* F. Product performance */}
           <Card title={t('reports.productTitle')}>

@@ -978,6 +978,41 @@ export const en = {
   'reports.action.viewInventory': 'View inventory',
   'reports.action.viewAutomations': 'View automations',
   'dashboard.reports': 'View reports',
+  // --- UI excellence pass: navigation section groups ---
+  'nav.section.storeOps': 'Store Operations',
+  'nav.section.growth': 'Growth',
+  'nav.section.platform': 'Platform',
+  'nav.section.system': 'System',
+  // --- UI excellence pass: shared mock/status micro-labels ---
+  'common.mock': 'Mock',
+  'common.soon': 'Soon',
+  'health.healthy': 'Healthy',
+  'health.degraded': 'Degraded',
+  'health.critical': 'Critical',
+  // --- UI excellence pass: auth polish ---
+  'auth.haveCode': 'Have a verification code?',
+  'auth.verifyLink': 'Enter a code',
+  'auth.securityNote':
+    'Your session stays on this device. We never ask for store keys or passwords on this screen.',
+  // --- UI excellence pass: mock OTP / verification screen ---
+  'verify.title': 'Verify your code',
+  'verify.subtitle': 'Enter the 6-digit code we would send to your phone or email.',
+  'verify.codeLabel': 'Verification code',
+  'verify.mockNote':
+    'Demo verification — no code is sent, generated, stored, or checked. This screen is UI-only and never contacts a backend.',
+  'verify.resend': 'Resend code',
+  'verify.resendHint': 'Resend is disabled in this mock — nothing is delivered.',
+  'verify.verifyCta': 'Verify',
+  'verify.verifyHint': 'Verification is a mock — no code is validated.',
+  'verify.back': 'Back to sign in',
+  'verify.help': "Didn't receive a code?",
+  // --- UI excellence pass: chart/report visuals ---
+  'reports.chart.salesTrend': 'Sales trend',
+  'reports.chart.salesTrendCaption': 'Revenue across the selected period (mock).',
+  'reports.chart.legendSales': 'Sales',
+  'reports.chart.legendBest': 'Best day',
+  'reports.chart.empty': 'No trend data for this period yet.',
+  'reports.chart.period': 'Last 30 days',
 } as const;
 
 export type StringKey = keyof typeof en;
@@ -1903,6 +1938,41 @@ export const fa: Record<StringKey, string> = {
   'reports.action.viewInventory': 'مشاهده موجودی',
   'reports.action.viewAutomations': 'مشاهده اتوماسیون',
   'dashboard.reports': 'مشاهده گزارش‌ها',
+  // --- UI excellence pass: navigation section groups ---
+  'nav.section.storeOps': 'عملیات فروشگاه',
+  'nav.section.growth': 'رشد',
+  'nav.section.platform': 'پلتفرم',
+  'nav.section.system': 'سیستم',
+  // --- UI excellence pass: shared mock/status micro-labels ---
+  'common.mock': 'آزمایشی',
+  'common.soon': 'به‌زودی',
+  'health.healthy': 'سالم',
+  'health.degraded': 'نیازمند توجه',
+  'health.critical': 'بحرانی',
+  // --- UI excellence pass: auth polish ---
+  'auth.haveCode': 'کد تأیید دارید؟',
+  'auth.verifyLink': 'وارد کردن کد',
+  'auth.securityNote':
+    'نشست شما روی همین دستگاه می‌ماند. در این صفحه هرگز کلید یا رمز فروشگاه از شما خواسته نمی‌شود.',
+  // --- UI excellence pass: mock OTP / verification screen ---
+  'verify.title': 'تأیید هویت OTP',
+  'verify.subtitle': 'ما یک رمز یکبار مصرف به ایمیل یا تلفن شما ارسال کردیم.',
+  'verify.codeLabel': 'کد تأیید',
+  'verify.mockNote':
+    'تأیید آزمایشی — هیچ کدی ارسال، تولید، ذخیره یا بررسی نمی‌شود. این صفحه فقط نمایشی است و به هیچ سروری متصل نمی‌شود.',
+  'verify.resend': 'ارسال مجدد OTP',
+  'verify.resendHint': 'ارسال مجدد در این نسخه آزمایشی غیرفعال است — چیزی ارسال نمی‌شود.',
+  'verify.verifyCta': 'تأیید OTP',
+  'verify.verifyHint': 'تأیید آزمایشی است — هیچ کدی اعتبارسنجی نمی‌شود.',
+  'verify.back': 'بازگشت به ورود',
+  'verify.help': 'رمز یکبار مصرف را دریافت نکردید؟',
+  // --- UI excellence pass: chart/report visuals ---
+  'reports.chart.salesTrend': 'روند فروش',
+  'reports.chart.salesTrendCaption': 'درآمد در بازهٔ انتخاب‌شده (آزمایشی).',
+  'reports.chart.legendSales': 'فروش',
+  'reports.chart.legendBest': 'بهترین روز',
+  'reports.chart.empty': 'هنوز داده‌ای برای روند این بازه وجود ندارد.',
+  'reports.chart.period': '۳۰ روز اخیر',
 };
 
 export const catalog = { en, fa } as const;

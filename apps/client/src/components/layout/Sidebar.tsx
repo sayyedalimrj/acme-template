@@ -9,13 +9,13 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { Text } from '@/components/ui';
+import { SectionHeader, Text } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 
 import { ActiveSiteIndicator } from './ActiveSiteIndicator';
 import { NavLink } from './NavLink';
-import { navItems } from './navigation';
+import { navSections } from './navigation';
 
 export const SIDEBAR_WIDTH = 280;
 
@@ -74,25 +74,18 @@ export function Sidebar(): React.JSX.Element {
         {/* Active site context */}
         <ActiveSiteIndicator />
 
-        {/* Section + nav */}
-        <View style={{ gap: tokens.spacing.xs }}>
-          <Text
-            variant="caption"
-            tone="muted"
-            style={{
-              paddingHorizontal: tokens.spacing.sm,
-              marginBottom: tokens.spacing.xs,
-              textTransform: 'uppercase',
-              letterSpacing: 0.8,
-              fontWeight: '600',
-            }}
-          >
-            {t('nav.sectionMain')}
-          </Text>
-          {navItems.map((item) => (
-            <NavLink key={item.key} item={item} />
-          ))}
-        </View>
+        {/* Grouped sections: Store Operations / Growth / Platform / System. */}
+        {navSections.map((section) => (
+          <View key={section.key} style={{ gap: tokens.spacing.xs }}>
+            <SectionHeader
+              label={t(section.labelKey)}
+              style={{ paddingHorizontal: tokens.spacing.sm, marginBottom: tokens.spacing.xs }}
+            />
+            {section.items.map((item) => (
+              <NavLink key={item.key} item={item} />
+            ))}
+          </View>
+        ))}
       </ScrollView>
     </View>
   );

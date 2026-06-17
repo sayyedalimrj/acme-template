@@ -7,8 +7,9 @@
  * layout redirects into the app.
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter, type Href } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, FormField, Input, Text } from '@/components/ui';
@@ -65,6 +66,7 @@ export function SignInScreen(): React.JSX.Element {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { signIn, status } = useSession();
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 920;
 
@@ -134,6 +136,50 @@ export function SignInScreen(): React.JSX.Element {
             {t('auth.mockNote')}
           </Text>
         </Card>
+
+        {/* Secondary action: a clearly mock verification step (UI-only OTP demo). */}
+        <View
+          style={{
+            flexDirection: rowDirection,
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: tokens.spacing.xs,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Text variant="caption" tone="muted">
+            {t('auth.haveCode')}
+          </Text>
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.navigate('/verify' as Href)}
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+          >
+            <Text variant="caption" tone="primary" style={{ fontWeight: '600' }}>
+              {t('auth.verifyLink')}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Frontend-safe security reassurance (no credentials are ever requested here). */}
+        <View
+          style={{
+            flexDirection: rowDirection,
+            alignItems: 'flex-start',
+            gap: tokens.spacing.xs,
+            paddingHorizontal: tokens.spacing.xs,
+          }}
+        >
+          <Ionicons
+            name="lock-closed-outline"
+            size={14}
+            color={tokens.color.textMuted}
+            style={{ marginTop: 2 }}
+          />
+          <Text variant="caption" tone="muted" style={{ flex: 1 }}>
+            {t('auth.securityNote')}
+          </Text>
+        </View>
       </View>
     </View>
   );

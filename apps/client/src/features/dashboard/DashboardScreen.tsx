@@ -22,6 +22,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  MetricCard,
   Screen,
   Text,
   type Column,
@@ -130,54 +131,14 @@ interface KpiCardProps {
   onPress?: () => void;
 }
 
+/**
+ * Dashboard KPI tile. Delegates to the shared MetricCard primitive (Ecme stat-widget) and
+ * keeps the responsive sizing wrapper so the KPI row wraps fluidly on narrow screens.
+ */
 function KpiCard({ label, value, icon, tint, onPress }: KpiCardProps): React.JSX.Element {
-  const { tokens, rowDirection } = useTheme();
-  const [hovered, setHovered] = useState(false);
-  const content = (
-    <Card
-      contentStyle={{ gap: 0 }}
-      style={hovered ? { borderColor: tokens.color.borderStrong } : undefined}
-    >
-      <View
-        style={{
-          flexDirection: rowDirection,
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: tokens.spacing.md,
-        }}
-      >
-        <View style={{ flex: 1, gap: tokens.spacing.xs }}>
-          <Text
-            variant="caption"
-            tone="muted"
-            style={{ textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600' }}
-          >
-            {label}
-          </Text>
-          <Text variant="title" numberOfLines={1}>
-            {value}
-          </Text>
-        </View>
-        <IconChip icon={icon} tint={tint} />
-      </View>
-    </Card>
-  );
   return (
     <View style={{ flexGrow: 1, flexBasis: 200, minWidth: 168 }}>
-      {onPress ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={label}
-          onPress={onPress}
-          onHoverIn={() => setHovered(true)}
-          onHoverOut={() => setHovered(false)}
-          style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}
-        >
-          {content}
-        </Pressable>
-      ) : (
-        content
-      )}
+      <MetricCard label={label} value={value} icon={icon} tint={tint} onPress={onPress} />
     </View>
   );
 }
