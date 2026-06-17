@@ -15,4 +15,6 @@ export { mediaStudioService } from './mediaStudioService';
 export type { MediaStudioInfo } from './mediaStudioService';
 export { customerIntelligenceService } from './customerIntelligenceService';
 export type { IntelligenceOverview } from './customerIntelligenceService';
+export { notificationAutomationService } from './notificationAutomationService';
+export type { AutomationOverview } from './notificationAutomationService';
 export { queryKeys } from './queryKeys';

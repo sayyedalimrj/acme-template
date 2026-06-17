@@ -36,6 +36,12 @@ export const navItems: NavItem[] = [
     icon: 'analytics-outline',
   },
   {
+    key: 'automations',
+    labelKey: 'nav.automation',
+    href: '/automations',
+    icon: 'chatbubbles-outline',
+  },
+  {
     key: 'media-studio',
     labelKey: 'nav.mediaStudio',
     href: '/media-studio',

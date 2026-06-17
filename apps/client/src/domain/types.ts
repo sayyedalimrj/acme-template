@@ -1350,3 +1350,154 @@ export interface RecordEventInput {
   productId?: string;
   searchTerm?: string;
 }
+
+// ---------------------------------------------------------------------------
+// SMS & Back-in-stock automation (Phase 6) — mock-only
+//
+// Turns customer-interest signals (back-in-stock, abandoned cart, product interest, search
+// demand) into REVIEW-ONLY automation/campaign drafts and SMS previews.
+//
+// SECURITY/PRIVACY (binding — see security-model.md): MOCK-ONLY. NO real SMS/email/WhatsApp
+// provider, NO Kavenegar/Twilio/Klaviyo API, NO messages sent, NO real phone numbers (only
+// masked placeholders like "09xx *** 1234"), NO sender IDs, NO provider keys, NO secrets, NO
+// real consent/opt-out storage, NO scheduler. Future real sending must go through a backend/
+// provider adapter with permission checks, an explicit consent model, opt-out handling, and
+// audit logs. Marketing is never sent without consent.
+// ---------------------------------------------------------------------------
+
+/** Messaging channels (only SMS is modeled in the mock UI; others are future). */
+export type NotificationChannel = 'sms' | 'email' | 'whatsapp';
+
+/** Whether a real messaging provider is wired (it is not — mock only). */
+export type NotificationProviderStatus = 'not_connected' | 'mock';
+
+/** SMS provider options (only mock now; real ones are future). */
+export type SmsProviderType = 'mock' | 'kavenegar_later' | 'twilio_later';
+
+/** Readiness of a future provider/consent building block. */
+export type ProviderReadinessState = 'not_connected' | 'planned' | 'mock' | 'later';
+
+/** Consent state for a shopper/audience (no real consent is stored). */
+export type ConsentStatus = 'opted_in' | 'pending' | 'not_collected';
+
+/** Subscription/opt-out state. */
+export type OptOutStatus = 'subscribed' | 'opted_out';
+
+/** Review lifecycle of an automation/campaign draft (mock-only). */
+export type AutomationActionStatus = 'suggested' | 'reviewed' | 'approved' | 'dismissed';
+
+/** Conversion readiness of a campaign draft. */
+export type CampaignConversionReadiness = 'ready' | 'warming' | 'low';
+
+/** The kinds of automation rules / draft triggers. */
+export type AutomationRuleType =
+  | 'back_in_stock_alert'
+  | 'low_stock_followup'
+  | 'abandoned_cart_followup'
+  | 'vip_customer_reactivation'
+  | 'product_interest_followup'
+  | 'search_demand_campaign'
+  | 'restock_announcement'
+  | 'manual_campaign_draft';
+
+/** Provider/consent readiness snapshot shown in the status section. */
+export interface NotificationReadiness {
+  smsProvider: NotificationProviderStatus;
+  kavenegar: ProviderReadinessState;
+  twilio: ProviderReadinessState;
+  email: ProviderReadinessState;
+  consentModel: ProviderReadinessState;
+  optOutHandling: ProviderReadinessState;
+}
+
+/** Frontend-safe consent readiness summary. */
+export interface ConsentReadiness {
+  consentModel: ProviderReadinessState;
+  optOutHandling: ProviderReadinessState;
+  /** Mock count of collected opt-ins. */
+  collectedOptIns: number;
+  /** Frontend-safe note. */
+  note: string;
+}
+
+/** A back-in-stock interest subscription (mock; no real phone numbers). */
+export interface BackInStockSubscription {
+  id: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  /** Mock stock status label, e.g. "ناموجود". */
+  stockStatus: string;
+  interestedShoppers: number;
+  consent: ConsentStatus;
+  /** Masked example contact, e.g. "09xx *** 1234". Never a real number. */
+  maskedExample: string;
+  /** Suggested Persian message body. */
+  suggestedMessage: string;
+}
+
+/** A campaign audience descriptor (mock sizes; no contact lists). */
+export interface CampaignAudience {
+  /** Persian label, e.g. "مشترکین موجودی محصول X". */
+  label: string;
+  size: number;
+  channel: NotificationChannel;
+  consentReadiness: ConsentStatus;
+}
+
+/** A deterministic SMS/message preview (no send). */
+export interface CampaignMessagePreview {
+  channel: NotificationChannel;
+  /** Persian message body. */
+  body: string;
+  charCount: number;
+  audienceSize: number;
+  /** Opt-out footer placeholder (Persian). */
+  optOutText: string;
+  /** Consent warning shown when the audience isn't fully opted-in. */
+  consentWarning: string;
+}
+
+/** A review-only automation/campaign draft. */
+export interface CampaignDraft {
+  id: string;
+  ruleType: AutomationRuleType;
+  /** Persian title/reason. */
+  title: string;
+  reason: string;
+  channel: NotificationChannel;
+  audience: CampaignAudience;
+  /** Short Persian message preview shown on the card. */
+  messagePreview: string;
+  readiness: CampaignConversionReadiness;
+  status: AutomationActionStatus;
+}
+
+/** Alias: a draft is the unit of automation output. */
+export type AutomationDraft = CampaignDraft;
+
+/** Status of an automation rule (mock / planned only — never actively running). */
+export type AutomationRuleStatus = 'mock' | 'planned';
+
+/** A configured automation rule (mock; never executes). */
+export interface AutomationRule {
+  id: string;
+  ruleType: AutomationRuleType;
+  /** Persian trigger description. */
+  trigger: string;
+  audience: string;
+  channel: NotificationChannel;
+  status: AutomationRuleStatus;
+  /** Persian next step. */
+  nextStep: string;
+  /** What real provider/capability is required before this can run. */
+  providerRequirement: string;
+}
+
+/** A frontend-safe safety/consent notice shown in the automation screen. */
+export interface AutomationSafetyNotice {
+  id: string;
+  severity: 'info' | 'warning';
+  /** Persian, frontend-safe message. */
+  message: string;
+}
