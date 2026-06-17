@@ -102,15 +102,18 @@ from `apps/client` (no cross-app path coupling).
 
 ## Deployment (separate from the merchant app)
 
-This app deploys as its own Vercel project (or any static host), **never** on the merchant
-domain.
+This app deploys as its own **separate Vercel project** (or any static host), **never** on the
+merchant domain. This is a separate internal admin app — it is **not** a route inside
+`apps/client`.
 
 - **Vercel Project Root Directory:** `apps/admin`
 - **Build command:** `expo export -p web` · **Output directory:** `dist` · **Framework:** none
 - SPA fallback rewrite is configured in `apps/admin/vercel.json`.
-- Target domains: merchant `app.<domain>`, **internal admin `admin.<domain>`**, API
-  `api.<domain>`. Do not expose `apps/admin` under the merchant domain.
-- Access must be gated by **strict RBAC / least privilege** before any real (non-mock) data.
+- **Suggested domain:** internal admin `admin.<domain>` (merchant app stays on `app.<domain>`,
+  API on `api.<domain>`). Do **not** expose `apps/admin` under the merchant dashboard domain,
+  and do **not** deploy it as a route inside `apps/client`.
+- **Internal-only:** access must be gated by **real RBAC / auth (least privilege)** before any
+  real (non-mock) data.
 
 ## Local validation
 
