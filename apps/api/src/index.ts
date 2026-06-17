@@ -355,3 +355,54 @@ export {
   SCHEMA_DESIGN_EXAMPLE_RESULTS,
   ALL_SCHEMA_DESIGN_EXAMPLES_PASS,
 } from './database/schemaExamples';
+
+// Production database migration SCAFFOLD (descriptors only; no SQL runner, no DB, no secrets)
+export type {
+  MigrationId,
+  MigrationStatus,
+  MigrationRiskLevel,
+  MigrationColumnType,
+  MigrationColumnScope,
+  MigrationColumn,
+  MigrationIndex,
+  MigrationConstraintKind,
+  MigrationConstraint,
+  MigrationTable,
+  MigrationOperationKind,
+  MigrationOperation,
+  MigrationRollbackStrategy,
+  MigrationRollbackPlan,
+  MigrationSafetyCheckCategory,
+  MigrationSafetyCheckSeverity,
+  MigrationSafetyCheck,
+  DatabaseMigration,
+} from './database/migrations/migrationTypes';
+export {
+  idColumn,
+  tenantIdColumn,
+  siteIdColumn,
+  syncRunIdColumn,
+  timestampColumns,
+  column,
+  tenantIndex,
+  tenantForeignKey,
+} from './database/migrations/migrationTypes';
+export {
+  MIGRATION_MANIFEST,
+  MIGRATION_COUNT,
+  getMigration,
+  listMigrationIds,
+  isManifestOrdered,
+  listAllMigratedTableNames,
+} from './database/migrations/migrationManifest';
+export { migration001InitialPlatformSchema } from './database/migrations/001_initial_platform_schema';
+export { migration002SyncReadModels } from './database/migrations/002_sync_read_models';
+export { migration003SupportWorkflowsBilling } from './database/migrations/003_support_workflows_billing';
+export { migration004SecurityAuditUsage } from './database/migrations/004_security_audit_usage';
+export type { ExampleResult as MigrationExampleResult } from './database/migrations/migrationExamples';
+export {
+  ENVIRONMENT_CONTRACT_NAMES,
+  collectMigrationExampleResults,
+  MIGRATION_EXAMPLE_RESULTS,
+  ALL_MIGRATION_EXAMPLES_PASS,
+} from './database/migrations/migrationExamples';
