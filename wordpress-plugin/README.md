@@ -1,10 +1,14 @@
-# wordpress-plugin — WooCommerce OS Companion (Contract / Skeleton)
+# wordpress-plugin — WordPress Commerce OS Companion
 
-> **Status: contract & spec only (Phase 9).** This package defines the _future_ secure
-> WordPress companion plugin that will connect a merchant's WordPress/WooCommerce site to
-> our backend/proxy (`apps/api`). It contains **only** TypeScript contracts, Markdown docs,
-> and safe JSON/PHP **examples**. There is **no runnable plugin**, no PHP runtime logic, and
-> no network code here.
+> **Status: runtime skeleton (Plugin PR 1 of 3).** This is **one plugin** — _WordPress
+> Commerce OS Companion_ — with WooCommerce support as an **internal module**. It now contains
+> a minimal, **installable, non-production** WordPress plugin (PHP runtime) alongside the
+> original TypeScript contracts and safe examples. The plugin **collects no credentials, makes
+> no network calls, calls no WooCommerce/WordPress API, registers no webhooks, and performs no
+> mutations.** It exposes only an admin status page and two admin-authenticated local REST
+> endpoints (status/health).
+>
+> Plugin PR plan: **1) runtime skeleton + admin UI + health/WooCommerce detection (this PR)**, 2) secure connection + read-only WooCommerce bridge, 3) webhooks + controlled actions.
 
 ## Purpose
 
@@ -17,16 +21,51 @@ and `security-model.md`.
 
 ## Not production-ready
 
-This PR is a **design contract**. It explicitly does **NOT** include, and must not gain here:
+This plugin is a **runtime skeleton**. It is installable and safe, but it explicitly does
+**NOT** include, and must not gain here:
 
-- ❌ No real WordPress plugin runtime, activation/uninstall hooks, admin pages, or REST endpoints.
-- ❌ No real credentials collected or stored (not WP application passwords, not WooCommerce
-  consumer keys/secrets, not webhook secrets, not hosting/FTP/cPanel credentials).
-- ❌ No real backend calls and no real webhook delivery.
-- ❌ No real WooCommerce or WordPress API calls.
-- ❌ No real crypto / signature verification / KMS.
-- ❌ No database tables, cron/scheduled actions, or background jobs.
+- ❌ No real backend connection / handshake and no real credentials collected or stored
+  (not WP application passwords, not WooCommerce consumer keys/secrets, not webhook secrets,
+  not hosting/FTP/cPanel credentials).
+- ❌ No real backend calls and no real network requests (no `wp_remote_*`, no cURL).
+- ❌ No real WooCommerce or WordPress REST API calls and no WooCommerce API key creation.
+- ❌ No customer/order/product data access or exposure.
+- ❌ No real webhook registration or event delivery, and no mutations (writes).
+- ❌ No real crypto / signature verification / KMS, no database tables, no cron/background jobs.
 - ❌ No new dependencies (no Composer, no npm runtime deps) and no production build/release.
+
+## Local installation (runtime skeleton)
+
+This is a manual, local-only install for development:
+
+1. Copy the `wordpress-plugin/` directory into your WordPress install as
+   `wp-content/plugins/wordpress-commerce-os-companion`.
+2. In **wp-admin → Plugins**, activate **WordPress Commerce OS Companion**.
+   WooCommerce is **optional** — the plugin activates with or without it.
+3. A top-level **WordPress Commerce OS** menu appears in the admin sidebar. Open it to see
+   plugin status, connection status (Not connected), WooCommerce status (Active / Missing /
+   Unknown), health checks, a security notice, and the next-steps note.
+
+### Admin-only REST endpoints
+
+Both require the `manage_options` capability (no public/unauthenticated access):
+
+- `GET /wp-json/wcos/v1/status` — plugin version, connection status, site/home URL,
+  WooCommerce active flag + version, and a capability summary.
+- `GET /wp-json/wcos/v1/health` — the health-check summary (ok / warning / error /
+  not_configured).
+
+### Current limitations / intentionally not implemented
+
+- No connection to the backend (`apps/api`) yet — connection status is always
+  `not_connected`.
+- No WooCommerce REST calls; the WooCommerce module is **passive detection only**.
+- No webhooks, no events, no mutations, no credential inputs, no settings forms for secrets.
+
+### Naming (unique prefix)
+
+`wcos_` functions · `WCOS_` classes · `wcos/v1` REST namespace · `wcos_` options ·
+text domain `wordpress-commerce-os-companion`.
 
 ## Future responsibilities (documented, built later)
 
@@ -45,23 +84,24 @@ This PR is a **design contract**. It explicitly does **NOT** include, and must n
 
 ```
 wordpress-plugin/
-├── README.md            this file
-├── CONTRACT.md          end-to-end connection/data-flow contract overview
-├── SECURITY.md          binding security rules for the companion plugin
-├── tsconfig.json        standalone, dependency-free type-check config
-├── .prettierrc.json     formatting (mirrors repo TS style; no dependency)
-├── src/                 TypeScript contracts (types + pure, dependency-free helpers)
-│   ├── index.ts
-│   ├── plugin-metadata.ts
-│   ├── site-identity.ts
-│   ├── handshake-contract.ts
-│   ├── health-check-contract.ts
-│   ├── event-bridge-contract.ts
-│   ├── webhook-config-contract.ts
-│   ├── capabilities-contract.ts
-│   ├── disconnect-contract.ts
-│   └── redaction-contract.ts
-└── examples/            safe, secret-free examples (fake domains only)
+├── wordpress-commerce-os-companion.php   main plugin file (header, constants, bootstrap)
+├── includes/                             PHP runtime (one plugin; WooCommerce is internal)
+│   ├── class-wcos-plugin.php             bootstrap singleton
+│   ├── class-wcos-admin.php              admin menu + read-only status page
+│   ├── class-wcos-health.php             local health checks (no network)
+│   ├── class-wcos-rest.php               admin-only /wcos/v1/status + /health
+│   ├── class-wcos-woocommerce.php        internal WooCommerce detection module
+│   ├── class-wcos-capabilities.php       capability helper (manage_options + summaries)
+│   └── class-wcos-redaction.php          secret redaction for diagnostics/REST output
+├── assets/admin.css                      admin page styles
+├── uninstall.php                         removes only plugin-owned non-secret options
+├── README.md · CONTRACT.md · SECURITY.md
+├── tsconfig.json · .prettierrc.json      dependency-free contract type-check + formatting
+├── src/                                  TypeScript contracts (design source of truth)
+│   ├── index.ts · plugin-metadata.ts · site-identity.ts · handshake-contract.ts
+│   ├── health-check-contract.ts · event-bridge-contract.ts · webhook-config-contract.ts
+│   └── capabilities-contract.ts · disconnect-contract.ts · redaction-contract.ts
+└── examples/                             safe, secret-free examples (fake domains only)
     ├── plugin-header.example.php
     ├── handshake-request.example.json
     ├── health-response.example.json

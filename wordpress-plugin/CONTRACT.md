@@ -1,7 +1,13 @@
 # Companion Plugin — Connection & Data-Flow Contract
 
-> Contract overview only. Nothing here is implemented; it describes the intended,
-> security-reviewed flow so `apps/api`, `apps/client`, and the future plugin stay aligned.
+> Contract overview only. The data flow below is **not** implemented yet; it describes the
+> intended, security-reviewed flow so `apps/api`, `apps/client`, and the plugin stay aligned.
+>
+> **Implementation status:** the installable PHP **runtime skeleton** (Plugin PR 1) now exists
+> in this package (main plugin file, admin status page, health checks, admin-only
+> status/health REST endpoints, and the internal WooCommerce detection module). It performs
+> **no** backend connection, handshake, credential handling, WooCommerce API calls, webhooks,
+> or mutations — those arrive in Plugin PRs 2–3.
 
 ## Actors
 

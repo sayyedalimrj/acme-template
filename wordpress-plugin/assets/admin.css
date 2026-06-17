@@ -1,0 +1,103 @@
+/* WordPress Commerce OS Companion — admin page styles (runtime skeleton). */
+
+.wcos-wrap .wcos-subtitle {
+  color: #50575e;
+  max-width: 720px;
+}
+
+.wcos-card {
+  background: #fff;
+  border: 1px solid #dcdcde;
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin: 16px 0;
+  max-width: 860px;
+}
+
+.wcos-card h2 {
+  margin-top: 0;
+}
+
+.wcos-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.wcos-table th,
+.wcos-table td {
+  text-align: start;
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0f0f1;
+  vertical-align: top;
+}
+
+.wcos-table thead th {
+  color: #50575e;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wcos-hint {
+  color: #646970;
+  font-size: 12px;
+}
+
+.wcos-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  background: #f0f0f1;
+  color: #2c3338;
+}
+
+.wcos-badge-active,
+.wcos-status-ok {
+  background: #edfaef;
+  color: #00652b;
+}
+
+.wcos-badge-missing,
+.wcos-status-warning {
+  background: #fcf3e6;
+  color: #8a5300;
+}
+
+.wcos-status-error {
+  background: #fce8e8;
+  color: #8a1f11;
+}
+
+.wcos-status-not_configured,
+.wcos-badge-muted {
+  background: #f0f0f1;
+  color: #50575e;
+}
+
+.wcos-notice {
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 16px 0;
+  max-width: 860px;
+  border: 1px solid transparent;
+}
+
+.wcos-notice strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.wcos-notice-warning {
+  background: #fcf3e6;
+  border-color: #f0c36d;
+  color: #8a5300;
+}
+
+.wcos-notice-danger {
+  background: #fce8e8;
+  border-color: #e6a8a1;
+  color: #8a1f11;
+}
