@@ -8,7 +8,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, type ComponentProps } from 'react';
-import { Pressable, View, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { useTheme, type ColorTokens } from '@/theme';
 
@@ -65,7 +65,10 @@ export function MetricCard({
     <Card
       testID={testID}
       contentStyle={{ gap: 0 }}
-      style={[hovered ? { borderColor: tokens.color.borderStrong } : undefined, style]}
+      style={StyleSheet.flatten([
+        hovered ? { borderColor: tokens.color.borderStrong } : undefined,
+        style,
+      ])}
     >
       <View
         style={{

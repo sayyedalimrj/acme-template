@@ -1,13 +1,11 @@
 /**
- * Verification route ("/verify"). Thin wrapper around the mock verification feature screen.
- *
- * Lives in the (auth) group so it sits alongside sign-in and inherits the unauthenticated
- * layout. It is UI-only (no code is sent, generated, or validated) — see VerifyScreen.
+ * Verification route ("/verify"). Thin wrapper around the mock 4-digit OTP screen.
+ * UI-only — no code is sent, generated, or validated against any provider.
  */
 import React from 'react';
 
-import { VerifyScreen } from '@/features/auth/VerifyScreen';
+import { OtpVerificationScreen } from '@/features/auth/OtpVerificationScreen';
 
 export default function VerifyRoute(): React.JSX.Element {
-  return <VerifyScreen />;
+  return <OtpVerificationScreen />;
 }

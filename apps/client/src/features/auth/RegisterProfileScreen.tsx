@@ -1,0 +1,142 @@
+/**
+ * RegisterProfileScreen — first-time user profile completion (mobile-first).
+ *
+ * Collects the minimum to create a mock store-management account: first name, last name, and
+ * mobile (required), plus optional email and business category. No password. On submit it
+ * establishes an in-memory mock session (the auth layout then redirects to the dashboard).
+ * Nothing is persisted; no backend, no provider.
+ */
+import { useLocalSearchParams } from 'expo-router';
+import React, { useState } from 'react';
+
+import { useT } from '@/i18n/I18nProvider';
+import { useSession } from '@/session/SessionProvider';
+
+import { AuthField } from './components/AuthField';
+import { AuthFrame } from './components/AuthFrame';
+import { AuthPrimaryButton } from './components/AuthPrimaryButton';
+import { isValidMobile } from './authHelpers';
+
+function firstParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) {
+    return value[0] ?? '';
+  }
+  return value ?? '';
+}
+
+interface FieldErrors {
+  firstName?: string;
+  lastName?: string;
+  mobile?: string;
+}
+
+export function RegisterProfileScreen(): React.JSX.Element {
+  const t = useT();
+  const { signIn } = useSession();
+  const params = useLocalSearchParams<{ identifier?: string; channel?: string }>();
+
+  const identifier = firstParam(params.identifier);
+  const channel = firstParam(params.channel);
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [mobile, setMobile] = useState(channel === 'mobile' ? identifier : '');
+  const [email, setEmail] = useState(channel === 'email' ? identifier : '');
+  const [category, setCategory] = useState('');
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  const onSubmit = (): void => {
+    const nextErrors: FieldErrors = {};
+    if (firstName.trim().length === 0) {
+      nextErrors.firstName = t('register.errorFirstName');
+    }
+    if (lastName.trim().length === 0) {
+      nextErrors.lastName = t('register.errorLastName');
+    }
+    if (!isValidMobile(mobile)) {
+      nextErrors.mobile = t('register.errorMobile');
+    }
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+    // Mock session only (in-memory). The (auth) layout redirects to the dashboard.
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+    void signIn({ name: fullName, email: email.trim() || undefined });
+  };
+
+  const clearError = (key: keyof FieldErrors): void => {
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+  };
+
+  return (
+    <AuthFrame
+      testID="register-screen"
+      iconName="person-add-outline"
+      title={t('register.title')}
+      subtitle={t('register.subtitle')}
+    >
+      <AuthField
+        testID="register-first-name"
+        label={t('register.firstName')}
+        placeholder={t('register.firstNamePlaceholder')}
+        value={firstName}
+        onChangeText={(next) => {
+          setFirstName(next);
+          clearError('firstName');
+        }}
+        autoCapitalize="words"
+        error={errors.firstName}
+        returnKeyType="next"
+      />
+      <AuthField
+        testID="register-last-name"
+        label={t('register.lastName')}
+        placeholder={t('register.lastNamePlaceholder')}
+        value={lastName}
+        onChangeText={(next) => {
+          setLastName(next);
+          clearError('lastName');
+        }}
+        autoCapitalize="words"
+        error={errors.lastName}
+        returnKeyType="next"
+      />
+      <AuthField
+        testID="register-mobile"
+        label={t('register.mobile')}
+        placeholder={t('register.mobilePlaceholder')}
+        value={mobile}
+        onChangeText={(next) => {
+          setMobile(next);
+          clearError('mobile');
+        }}
+        keyboardType="phone-pad"
+        forceLtrValue
+        error={errors.mobile}
+        returnKeyType="next"
+      />
+      <AuthField
+        testID="register-email"
+        label={t('register.email')}
+        placeholder={t('register.emailPlaceholder')}
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        forceLtrValue
+        returnKeyType="next"
+      />
+      <AuthField
+        testID="register-category"
+        label={t('register.category')}
+        placeholder={t('register.categoryPlaceholder')}
+        value={category}
+        onChangeText={setCategory}
+        autoCapitalize="words"
+        returnKeyType="go"
+        onSubmitEditing={onSubmit}
+      />
+      <AuthPrimaryButton testID="register-submit" label={t('register.submit')} onPress={onSubmit} />
+    </AuthFrame>
+  );
+}
