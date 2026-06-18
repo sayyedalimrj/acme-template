@@ -76,6 +76,7 @@ export function AuthEntryScreen(): React.JSX.Element {
         error={error}
         keyboardType="email-address"
         forceLtrValue
+        autoFocus
         returnKeyType="go"
         onSubmitEditing={onContinue}
       />

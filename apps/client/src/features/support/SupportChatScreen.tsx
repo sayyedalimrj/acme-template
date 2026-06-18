@@ -1,14 +1,16 @@
 /**
- * SupportChatScreen — a real (mock) support messenger.
+ * SupportChatScreen — the merchant-facing support messenger.
  *
  * A conversation thread with message bubbles (RTL-correct), an agent header, and a sticky
- * compose bar. Sending a message appends it to the local thread and triggers a canned agent
- * auto-reply. MOCK-ONLY and FRONTEND-SAFE: there is no chat backend, no provider, and nothing
- * is sent anywhere — the conversation lives only in component state.
+ * compose bar. The thread is served by the `SupportMessagingAdapter` via `useSupportChat`
+ * (mock today). Sending a message appends it and returns a canned agent reply. This is the
+ * client side of the bridge to the internal admin support inbox: a future `http` adapter posts
+ * and reads through OUR backend so the same conversation is mirrored in `apps/admin` — this
+ * screen stays unchanged. MOCK-ONLY: nothing is sent to any external provider.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -26,18 +28,15 @@ import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '@/features/mobile/mobileUxSp
 import { mobileColors, mobileMetrics, mobileType } from '@/features/mobile/mobileTokens';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
+import type { SupportChatMessage } from '@/domain/types';
 
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'agent';
-  text: string;
-}
+import { useSendSupportMessage, useSupportConversation } from './useSupportChat';
 
-function MessageBubble({ message }: { message: ChatMessage }): React.JSX.Element {
+function MessageBubble({ message }: { message: SupportChatMessage }): React.JSX.Element {
   const { isRTL } = useTheme();
-  const isUser = message.role === 'user';
+  const isUser = message.author === 'customer';
   // Explicit side control so it is correct regardless of RN web RTL quirks: the user's own
-  // messages sit on the trailing side, the agent's on the leading side.
+  // messages sit on the trailing side, the agent/system on the leading side.
   const justify = isUser
     ? isRTL
       ? 'flex-start'
@@ -65,7 +64,7 @@ function MessageBubble({ message }: { message: ChatMessage }): React.JSX.Element
             textAlign: isRTL ? 'right' : 'left',
           }}
         >
-          {message.text}
+          {message.body}
         </Text>
       </View>
     </View>
@@ -78,14 +77,15 @@ export function SupportChatScreen(): React.JSX.Element {
   const { rowDirection, isRTL } = useTheme();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const idRef = useRef(1);
-  const inputRef = useRef('');
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 'seed', role: 'agent', text: t('csupport.chat.seed') },
-  ]);
+  const conversationQuery = useSupportConversation();
+  const sendMutation = useSendSupportMessage();
+
   const [draft, setDraft] = useState('');
   const [inputHeight, setInputHeight] = useState(0);
+
+  const messages = conversationQuery.data?.messages ?? [];
+  const messageCount = messages.length;
 
   const onBack = (): void => {
     if (router.canGoBack()) {
@@ -99,23 +99,18 @@ export function SupportChatScreen(): React.JSX.Element {
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
   }, []);
 
+  useEffect(() => {
+    scrollToEnd();
+  }, [messageCount, scrollToEnd]);
+
   const send = useCallback((): void => {
-    const text = inputRef.current.trim();
-    if (text.length === 0) {
+    const text = draft.trim();
+    if (text.length === 0 || sendMutation.isPending) {
       return;
     }
-    const userId = `m${idRef.current++}`;
-    setMessages((prev) => [...prev, { id: userId, role: 'user', text }]);
     setDraft('');
-    inputRef.current = '';
-    scrollToEnd();
-    // Canned, mock auto-reply (no backend, nothing is sent anywhere).
-    const replyId = `m${idRef.current++}`;
-    setTimeout(() => {
-      setMessages((prev) => [...prev, { id: replyId, role: 'agent', text: t('csupport.chat.autoReply') }]);
-      scrollToEnd();
-    }, 650);
-  }, [scrollToEnd, t]);
+    sendMutation.mutate(text);
+  }, [draft, sendMutation]);
 
   const onContentSizeChange = (
     e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>,
@@ -195,14 +190,12 @@ export function SupportChatScreen(): React.JSX.Element {
         <TextInput
           testID="support-chat-input"
           value={draft}
-          onChangeText={(v) => {
-            setDraft(v);
-            inputRef.current = v;
-          }}
+          onChangeText={setDraft}
           placeholder={t('csupport.chat.inputPlaceholder')}
           placeholderTextColor={mobileColors.mutedSoft}
           multiline
           onContentSizeChange={onContentSizeChange}
+          onSubmitEditing={send}
           style={{
             flex: 1,
             minHeight: 44,
