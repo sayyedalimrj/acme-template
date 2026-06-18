@@ -272,6 +272,63 @@ export const SUPPORT_PREVIEW: readonly SupportPreview[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Home "at a glance" overview chart (mock, deterministic)
+// ---------------------------------------------------------------------------
+
+/** Which metric the overview chart shows. */
+export type OverviewMetric = 'sales' | 'orders' | 'customers';
+/** Time range for the overview chart. */
+export type OverviewRange = 'week' | 'month' | 'year';
+
+export const OVERVIEW_METRICS: readonly { value: OverviewMetric; labelKey: StringKey }[] = [
+  { value: 'sales', labelKey: 'home.overview.sales' },
+  { value: 'orders', labelKey: 'home.overview.orders' },
+  { value: 'customers', labelKey: 'home.overview.customers' },
+];
+
+export const OVERVIEW_RANGES: readonly { value: OverviewRange; labelKey: StringKey }[] = [
+  { value: 'week', labelKey: 'home.overview.week' },
+  { value: 'month', labelKey: 'home.overview.month' },
+  { value: 'year', labelKey: 'home.overview.year' },
+];
+
+const RANGE_LENGTH: Record<OverviewRange, number> = { week: 7, month: 4, year: 12 };
+
+/** Deterministic pseudo-value so the chart is stable across renders (no backend). */
+function seededValue(metric: OverviewMetric, range: OverviewRange, index: number): number {
+  const metricSeed = metric === 'sales' ? 7 : metric === 'orders' ? 3 : 5;
+  const rangeSeed = range === 'week' ? 11 : range === 'month' ? 17 : 23;
+  // Smooth-ish deterministic wave in [0.35, 1].
+  const wave = (Math.sin((index + 1) * metricSeed * 0.5 + rangeSeed) + 1) / 2; // 0..1
+  const factor = 0.4 + wave * 0.6;
+  const base = metric === 'sales' ? 4_200_000 : metric === 'orders' ? 38 : 22;
+  const scale = range === 'week' ? 1 : range === 'month' ? 4 : 12;
+  return Math.round(base * scale * factor);
+}
+
+export interface OverviewSeries {
+  /** Per-bucket values (length depends on the range). */
+  values: number[];
+  /** Sum across the period. */
+  total: number;
+  /** Change vs. the previous period (whole-number percent; can be negative). */
+  trendPercent: number;
+}
+
+/** Build a deterministic mock series for a metric + range. */
+export function buildOverviewSeries(metric: OverviewMetric, range: OverviewRange): OverviewSeries {
+  const length = RANGE_LENGTH[range];
+  const values = Array.from({ length }, (_, i) => seededValue(metric, range, i));
+  const total = values.reduce((sum, v) => sum + v, 0);
+  const half = Math.max(1, Math.floor(length / 2));
+  const firstAvg = values.slice(0, half).reduce((s, v) => s + v, 0) / half;
+  const lastAvg = values.slice(-half).reduce((s, v) => s + v, 0) / half;
+  const trendPercent =
+    firstAvg > 0 ? Math.round(((lastAvg - firstAvg) / firstAvg) * 100) : 0;
+  return { values, total, trendPercent };
+}
+
 /** Localized renewal label key per known mock site id (customer-friendly date). */
 export const SITE_RENEWAL_KEYS: Record<string, StringKey> = {
   site_demo: 'home.hero.renewalA',
