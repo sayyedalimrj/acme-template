@@ -7,7 +7,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { SectionHeader, Text } from '@/components/ui';
@@ -35,10 +35,17 @@ function NavGroup({ section }: { section: NavSection }): React.JSX.Element {
   const containsActive = sectionIsActive(section, pathname);
   const [open, setOpen] = useState(Boolean(section.defaultOpen) || containsActive);
 
-  // Auto-open the group that owns the active route when navigation changes.
-  useEffect(() => {
-    if (containsActive) setOpen(true);
-  }, [containsActive]);
+  // Auto-open the group that owns the active route when navigation changes. Tracking the
+  // previous value and adjusting state during render (instead of in an effect) avoids the
+  // cascading-render lint and preserves the exact behavior: re-open only on transition to
+  // active; user collapses are respected while the route stays active.
+  const [wasActive, setWasActive] = useState(containsActive);
+  if (containsActive !== wasActive) {
+    setWasActive(containsActive);
+    if (containsActive) {
+      setOpen(true);
+    }
+  }
 
   return (
     <View style={{ gap: 2 }}>
