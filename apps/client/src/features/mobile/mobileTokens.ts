@@ -8,6 +8,7 @@
  * See `mobileUxSpec.ts` for the consolidated spec + research basis.
  */
 import { useMemo } from 'react';
+import { useWindowDimensions } from 'react-native';
 
 import { useTheme, type ThemeMode } from '@/theme';
 
@@ -232,3 +233,64 @@ export const mobileType = {
   heroTitleSize: 19,
   heroLabelSize: 13,
 } as const;
+
+/**
+ * Responsive font scale.
+ *
+ * Persian labels are wide, so on narrow phones fixed sizes overflow and get clipped. We scale
+ * type down on small screens (and never up beyond the design size) using the EFFECTIVE content
+ * width — capped at the frame width so the desktop-centered frame keeps the phone-sized type
+ * instead of ballooning with the (huge) window width.
+ */
+const FONT_SCALE_BASE_WIDTH = 390;
+const FONT_SCALE_MIN = 0.82;
+const FONT_SCALE_MAX = 1;
+
+export function getFontScale(windowWidth: number): number {
+  const effective = Math.min(windowWidth, mobileMetrics.frameMaxWidth);
+  const factor = effective / FONT_SCALE_BASE_WIDTH;
+  return Math.max(FONT_SCALE_MIN, Math.min(FONT_SCALE_MAX, factor));
+}
+
+export function useFontScale(): number {
+  const { width } = useWindowDimensions();
+  return useMemo(() => getFontScale(width), [width]);
+}
+
+export type MobileTypeScale = {
+  greetingSize: number;
+  titleSize: number;
+  titleWeight: typeof mobileType.titleWeight;
+  sectionSize: number;
+  sectionWeight: typeof mobileType.sectionWeight;
+  bodySize: number;
+  labelSize: number;
+  labelWeight: typeof mobileType.labelWeight;
+  captionSize: number;
+  heroTitleSize: number;
+  heroLabelSize: number;
+  /** Scale factor in use (so callers can scale ad-hoc sizes too). */
+  scale: number;
+};
+
+/** Hook: the typography scale scaled responsively to the current (effective) width. */
+export function useMobileType(): MobileTypeScale {
+  const scale = useFontScale();
+  return useMemo(() => {
+    const r = (n: number): number => Math.round(n * scale);
+    return {
+      greetingSize: r(mobileType.greetingSize),
+      titleSize: r(mobileType.titleSize),
+      titleWeight: mobileType.titleWeight,
+      sectionSize: r(mobileType.sectionSize),
+      sectionWeight: mobileType.sectionWeight,
+      bodySize: r(mobileType.bodySize),
+      labelSize: r(mobileType.labelSize),
+      labelWeight: mobileType.labelWeight,
+      captionSize: r(mobileType.captionSize),
+      heroTitleSize: r(mobileType.heroTitleSize),
+      heroLabelSize: r(mobileType.heroLabelSize),
+      scale,
+    };
+  }, [scale]);
+}

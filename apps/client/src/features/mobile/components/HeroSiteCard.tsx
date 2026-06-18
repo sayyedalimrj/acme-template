@@ -15,7 +15,7 @@ import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 import type { SiteConnection } from '@/domain/types';
 
-import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from '../mobileTokens';
+import { mobileMetrics, useMobileColors, useMobileShadow, useMobileType } from '../mobileTokens';
 import { CustomerStatusBadge } from './CustomerStatusBadge';
 import { PressableScale } from './PressableScale';
 
@@ -52,6 +52,7 @@ export function HeroSiteCard({
   const t = useT();
   const colors = useMobileColors();
   const shadow = useMobileShadow();
+  const type = useMobileType();
   const { rowDirection, isRTL } = useTheme();
 
   return (
@@ -104,18 +105,20 @@ export function HeroSiteCard({
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             style={{
-              fontSize: mobileType.heroTitleSize,
+              fontSize: type.heroTitleSize,
               fontWeight: '700',
               color: colors.heroText,
               textAlign: isRTL ? 'right' : 'left',
             }}
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
           >
             {site.name}
           </Text>
           <Text
             style={{
-              fontSize: mobileType.heroLabelSize,
+              fontSize: type.heroLabelSize,
               color: colors.heroTextSoft,
               writingDirection: 'ltr',
               textAlign: isRTL ? 'right' : 'left',

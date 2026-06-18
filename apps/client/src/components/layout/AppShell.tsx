@@ -13,6 +13,8 @@ import { useWindowDimensions, View } from 'react-native';
 import { BottomNav } from '@/features/mobile/components';
 import { mobileMetrics, useMobileColors, useMobileFrameShadow } from '@/features/mobile/mobileTokens';
 
+import { GlobalHeader } from './GlobalHeader';
+
 /** At/above this width we render the centered desktop frame. */
 export const WIDE_BREAKPOINT = mobileMetrics.desktopBreakpoint;
 
@@ -60,6 +62,7 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
             : null,
         ]}
       >
+        <GlobalHeader />
         <View style={{ flex: 1 }}>{children}</View>
         <BottomNav />
       </View>

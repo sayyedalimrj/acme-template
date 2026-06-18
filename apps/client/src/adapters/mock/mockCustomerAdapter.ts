@@ -5,6 +5,7 @@ import { customers } from '@/mock/data/customers';
 import type { Customer, CustomerListQuery, Paged } from '@/domain/types';
 
 import type { CustomerAdapter } from '../types';
+import { siteScopedView } from './mockActiveSite';
 import { clone, delay, paginate } from './mockUtils';
 
 function applyFilters(items: Customer[], query: CustomerListQuery): Customer[] {
@@ -24,7 +25,9 @@ export function createMockCustomerAdapter(): CustomerAdapter {
   return {
     async listCustomers(query: CustomerListQuery = {}): Promise<Paged<Customer>> {
       await delay();
-      const filtered = applyFilters(customers, query);
+      // Per-store view so switching the active site changes the customer list.
+      const scoped = siteScopedView(customers);
+      const filtered = applyFilters(scoped, query);
       return clone(paginate(filtered, query.page, query.pageSize));
     },
     async getCustomer(id: string): Promise<Customer> {

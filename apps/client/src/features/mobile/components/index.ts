@@ -8,6 +8,7 @@ export { MobileSubHeader } from './MobileSubHeader';
 export { MobileTabHeader } from './MobileTabHeader';
 export { BottomNav } from './BottomNav';
 export { HeroSiteCard, siteInitials } from './HeroSiteCard';
+export { SiteCarousel } from './SiteCarousel';
 export { EmptySiteCard } from './EmptySiteCard';
 export { CustomerStatusBadge } from './CustomerStatusBadge';
 export { QuickActionCard } from './QuickActionCard';

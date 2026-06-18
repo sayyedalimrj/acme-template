@@ -6,7 +6,6 @@
  */
 import React, { type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMobileColors } from '../mobileTokens';
 
@@ -26,14 +25,14 @@ export function MobilePage({
   scrollBottomPadding = 28,
 }: MobilePageProps): React.JSX.Element {
   const colors = useMobileColors();
-  const insets = useSafeAreaInsets();
 
+  // The top safe-area inset is owned by the persistent GlobalHeader (rendered by the AppShell
+  // above every screen), so screens no longer add it again here.
   return (
     <View testID={testID} style={{ flex: 1, backgroundColor: colors.background }}>
       {header ? (
         <View
           style={{
-            paddingTop: insets.top,
             backgroundColor: colors.background,
             borderBottomWidth: StyleSheet.hairlineWidth,
             borderBottomColor: colors.separator,
@@ -47,7 +46,7 @@ export function MobilePage({
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingTop: header ? 8 : insets.top + 6,
+          paddingTop: header ? 8 : 10,
           paddingBottom: scrollBottomPadding,
         }}
         showsVerticalScrollIndicator={false}

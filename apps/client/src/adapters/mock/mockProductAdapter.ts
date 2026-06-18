@@ -5,6 +5,7 @@ import { products } from '@/mock/data/catalog';
 import type { Paged, Product, ProductListQuery } from '@/domain/types';
 
 import type { ProductAdapter } from '../types';
+import { siteScopedView } from './mockActiveSite';
 import { clone, delay, paginate } from './mockUtils';
 
 function applyFilters(items: Product[], query: ProductListQuery): Product[] {
@@ -34,7 +35,8 @@ export function createMockProductAdapter(): ProductAdapter {
   return {
     async listProducts(query: ProductListQuery = {}): Promise<Paged<Product>> {
       await delay();
-      const filtered = applyFilters(products, query);
+      // Per-store view so switching the active site changes the products list.
+      const filtered = applyFilters(siteScopedView(products), query);
       return clone(paginate(filtered, query.page, query.pageSize));
     },
     async getProduct(id: string): Promise<Product> {

@@ -15,7 +15,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme';
 
 import { Text } from './Text';
-import { ThemeToggleButton } from './ThemeToggleButton';
 
 export interface ScreenProps {
   children: ReactNode;
@@ -37,8 +36,6 @@ export interface ScreenProps {
   onBack?: () => void;
   /** Optional trailing element rendered on the far side of the header. */
   headerRight?: ReactNode;
-  /** Show the moon/sun theme toggle in the header. Defaults to true when a title is set. */
-  showThemeToggle?: boolean;
 }
 
 function ScreenHeader({
@@ -47,14 +44,12 @@ function ScreenHeader({
   showBack,
   onBack,
   headerRight,
-  showThemeToggle,
 }: {
   title: string;
   subtitle?: string;
   showBack: boolean;
   onBack?: () => void;
   headerRight?: ReactNode;
-  showThemeToggle: boolean;
 }): React.JSX.Element {
   const { tokens, rowDirection, directional, isRTL } = useTheme();
   const router = useRouter();
@@ -125,7 +120,6 @@ function ScreenHeader({
       </View>
 
       {headerRight ?? null}
-      {showThemeToggle ? <ThemeToggleButton variant="chrome" /> : null}
     </View>
   );
 }
@@ -142,14 +136,12 @@ export function Screen({
   showBack,
   onBack,
   headerRight,
-  showThemeToggle,
 }: ScreenProps): React.JSX.Element {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
 
   const hasHeader = Boolean(title);
   const resolvedShowBack = showBack ?? hasHeader;
-  const resolvedShowThemeToggle = showThemeToggle ?? hasHeader;
 
   const padding = padded ? tokens.spacing.lg : 0;
   const innerStyle: ViewStyle = {
@@ -167,15 +159,16 @@ export function Screen({
     backgroundColor: tokens.color.background,
   };
 
+  // The top safe-area inset is owned by the persistent GlobalHeader (AppShell), so the
+  // contextual back/title header here sits directly beneath it without re-insetting.
   const header = hasHeader ? (
-    <View style={{ paddingTop: insets.top, zIndex: 10, backgroundColor: tokens.color.background }}>
+    <View style={{ zIndex: 10, backgroundColor: tokens.color.background }}>
       <ScreenHeader
         title={title as string}
         subtitle={subtitle}
         showBack={resolvedShowBack}
         onBack={onBack}
         headerRight={headerRight}
-        showThemeToggle={resolvedShowThemeToggle}
       />
     </View>
   ) : null;

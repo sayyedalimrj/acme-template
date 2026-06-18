@@ -7,19 +7,19 @@ import React, { type ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
-import { ThemeToggleButton } from '@/components/ui/ThemeToggleButton';
 import { useTheme } from '@/theme';
 
-import { mobileMetrics, mobileType, useMobileColors } from '../mobileTokens';
+import { mobileMetrics, useMobileColors, useMobileType } from '../mobileTokens';
 
 export interface MobileTabHeaderProps {
   title: string;
-  /** Extra trailing controls rendered before the theme toggle (e.g. add product). */
+  /** Extra trailing controls rendered on the trailing side (e.g. add product). */
   trailing?: ReactNode;
 }
 
 export function MobileTabHeader({ title, trailing }: MobileTabHeaderProps): React.JSX.Element {
   const colors = useMobileColors();
+  const type = useMobileType();
   const { rowDirection, isRTL } = useTheme();
 
   return (
@@ -35,8 +35,8 @@ export function MobileTabHeader({ title, trailing }: MobileTabHeaderProps): Reac
       <Text
         style={{
           flex: 1,
-          fontSize: mobileType.titleSize,
-          fontWeight: mobileType.titleWeight,
+          fontSize: type.titleSize,
+          fontWeight: type.titleWeight,
           color: colors.text,
           textAlign: isRTL ? 'right' : 'left',
         }}
@@ -45,7 +45,6 @@ export function MobileTabHeader({ title, trailing }: MobileTabHeaderProps): Reac
         {title}
       </Text>
       {trailing}
-      <ThemeToggleButton />
     </View>
   );
 }

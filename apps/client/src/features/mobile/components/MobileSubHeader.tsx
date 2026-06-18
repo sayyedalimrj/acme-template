@@ -9,7 +9,6 @@ import React, { type ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
-import { ThemeToggleButton } from '@/components/ui/ThemeToggleButton';
 import { useTheme } from '@/theme';
 
 import { mobileMetrics, mobileType, useMobileColors } from '../mobileTokens';
@@ -75,7 +74,6 @@ export function MobileSubHeader({
       </Text>
 
       {trailing ?? null}
-      <ThemeToggleButton />
     </View>
   );
 }

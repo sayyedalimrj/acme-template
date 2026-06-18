@@ -5,6 +5,7 @@ import { orders } from '@/mock/data/orders';
 import type { Order, OrderListQuery, Paged } from '@/domain/types';
 
 import type { OrderAdapter } from '../types';
+import { siteScopedView } from './mockActiveSite';
 import { clone, delay, paginate } from './mockUtils';
 
 function applyFilters(items: Order[], query: OrderListQuery): Order[] {
@@ -40,7 +41,8 @@ export function createMockOrderAdapter(): OrderAdapter {
   return {
     async listOrders(query: OrderListQuery = {}): Promise<Paged<Order>> {
       await delay();
-      const filtered = applyFilters(orders, query).sort((a, b) =>
+      // Per-store view so switching the active site changes the orders list.
+      const filtered = applyFilters(siteScopedView(orders), query).sort((a, b) =>
         b.dateCreated.localeCompare(a.dateCreated),
       );
       return clone(paginate(filtered, query.page, query.pageSize));

@@ -10,7 +10,7 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
 
-import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from '../mobileTokens';
+import { mobileMetrics, useMobileColors, useMobileShadow, useMobileType } from '../mobileTokens';
 import { PressableScale } from './PressableScale';
 
 export interface QuickActionCardProps {
@@ -30,6 +30,7 @@ export function QuickActionCard({
 }: QuickActionCardProps): React.JSX.Element {
   const colors = useMobileColors();
   const shadow = useMobileShadow();
+  const type = useMobileType();
 
   return (
     <PressableScale
@@ -87,12 +88,14 @@ export function QuickActionCard({
       </View>
       <Text
         style={{
-          fontSize: mobileType.captionSize,
+          fontSize: Math.round(type.captionSize * 0.92),
           fontWeight: '600',
           color: colors.text,
           textAlign: 'center',
         }}
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
       >
         {label}
       </Text>

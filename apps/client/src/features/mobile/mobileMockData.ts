@@ -295,16 +295,35 @@ export const OVERVIEW_RANGES: readonly { value: OverviewRange; labelKey: StringK
 
 const RANGE_LENGTH: Record<OverviewRange, number> = { week: 7, month: 4, year: 12 };
 
+/** Stable small integer seed derived from a site id, so each store has its own shape/scale. */
+function siteSeedFromId(siteId?: string): number {
+  if (!siteId) {
+    return 0;
+  }
+  let hash = 0;
+  for (let i = 0; i < siteId.length; i += 1) {
+    hash = (hash * 31 + siteId.charCodeAt(i)) % 997;
+  }
+  return hash;
+}
+
 /** Deterministic pseudo-value so the chart is stable across renders (no backend). */
-function seededValue(metric: OverviewMetric, range: OverviewRange, index: number): number {
+function seededValue(
+  metric: OverviewMetric,
+  range: OverviewRange,
+  index: number,
+  siteSeed: number,
+): number {
   const metricSeed = metric === 'sales' ? 7 : metric === 'orders' ? 3 : 5;
   const rangeSeed = range === 'week' ? 11 : range === 'month' ? 17 : 23;
-  // Smooth-ish deterministic wave in [0.35, 1].
-  const wave = (Math.sin((index + 1) * metricSeed * 0.5 + rangeSeed) + 1) / 2; // 0..1
+  // Smooth-ish deterministic wave in [0.35, 1]; the site seed shifts the phase per store.
+  const wave = (Math.sin((index + 1) * metricSeed * 0.5 + rangeSeed + siteSeed * 0.37) + 1) / 2;
   const factor = 0.4 + wave * 0.6;
   const base = metric === 'sales' ? 4_200_000 : metric === 'orders' ? 38 : 22;
   const scale = range === 'week' ? 1 : range === 'month' ? 4 : 12;
-  return Math.round(base * scale * factor);
+  // Per-store magnitude multiplier (0.7–1.3) so totals visibly differ between stores.
+  const storeFactor = 0.7 + ((siteSeed % 13) / 12) * 0.6;
+  return Math.round(base * scale * factor * storeFactor);
 }
 
 export interface OverviewSeries {
@@ -316,10 +335,15 @@ export interface OverviewSeries {
   trendPercent: number;
 }
 
-/** Build a deterministic mock series for a metric + range. */
-export function buildOverviewSeries(metric: OverviewMetric, range: OverviewRange): OverviewSeries {
+/** Build a deterministic mock series for a metric + range, optionally per-store via `siteId`. */
+export function buildOverviewSeries(
+  metric: OverviewMetric,
+  range: OverviewRange,
+  siteId?: string,
+): OverviewSeries {
+  const siteSeed = siteSeedFromId(siteId);
   const length = RANGE_LENGTH[range];
-  const values = Array.from({ length }, (_, i) => seededValue(metric, range, i));
+  const values = Array.from({ length }, (_, i) => seededValue(metric, range, i, siteSeed));
   const total = values.reduce((sum, v) => sum + v, 0);
   const half = Math.max(1, Math.floor(length / 2));
   const firstAvg = values.slice(0, half).reduce((s, v) => s + v, 0) / half;
@@ -327,6 +351,17 @@ export function buildOverviewSeries(metric: OverviewMetric, range: OverviewRange
   const trendPercent =
     firstAvg > 0 ? Math.round(((lastAvg - firstAvg) / firstAvg) * 100) : 0;
   return { values, total, trendPercent };
+}
+
+/** Per-store counts for the home quick actions (orders/customers), so they switch with the site. */
+export interface QuickActionCounts {
+  orders: number;
+}
+
+export function quickActionCountsForSite(siteId?: string): QuickActionCounts {
+  const seed = siteSeedFromId(siteId);
+  // 2–14 open orders, deterministic per store.
+  return { orders: 2 + (seed % 13) };
 }
 
 /** Localized renewal label key per known mock site id (customer-friendly date). */

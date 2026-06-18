@@ -23,6 +23,7 @@ import { createMockOrderAdapter } from './mock/mockOrderAdapter';
 import { createMockProductAdapter } from './mock/mockProductAdapter';
 import { createMockReportsAnalyticsAdapter } from './mock/mockReportsAnalyticsAdapter';
 import { createMockSiteAdapter } from './mock/mockSiteAdapter';
+import { resetActiveMockSiteId } from './mock/mockActiveSite';
 import { createMockSupportAdapter } from './mock/mockSupportAdapter';
 import { createMockSupportMessagingAdapter } from './mock/mockSupportMessagingAdapter';
 import type { Adapters } from './types';
@@ -73,6 +74,7 @@ export function getAdapters(): Adapters {
 /** Test-only: clear the cached adapter set so each test starts from fresh mock state. */
 export function resetAdaptersForTests(): void {
   cached = null;
+  resetActiveMockSiteId();
 }
 
 export type {
