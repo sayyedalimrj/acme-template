@@ -1,49 +1,74 @@
 /**
  * Mobile visual tokens (mobile-first, reference-derived) — repair pass.
  *
- * Self-contained design tokens for the customer-facing mobile app. They intentionally do NOT
- * mutate the global theme (`src/theme`) so the rest of the app is unaffected. Values were
- * tuned in the UI/UX repair pass for calmer spacing, softer surfaces, and a premium feel.
+ * Self-contained design tokens for the customer-facing mobile app. Light and dark palettes
+ * share the same shape so components can read semantic roles without knowing the active mode.
+ * Use `useMobileColors()` inside React components; `getMobileColors(mode)` for non-hook code.
  *
- * See `mobileUxSpec.ts` for the consolidated spec + research basis. Font family comes from the
- * shared Persian-first stack (no font files are bundled here — see the font note in
- * `mobileUxSpec.ts`).
+ * See `mobileUxSpec.ts` for the consolidated spec + research basis.
  */
+import { useMemo } from 'react';
 
-/** Colors — blended, premium, few bright badges, muted chip backgrounds. */
-export const mobileColors = {
-  background: '#FFFFFF',
+import { useTheme, type ThemeMode } from '@/theme';
+
+/** Semantic mobile color roles (light and dark share this shape). */
+export interface MobileColorTokens {
+  background: string;
   /** Soft backdrop behind the centered frame on wide/desktop viewports. */
+  pageBackdrop: string;
+  primary: string;
+  primaryPressed: string;
+  primarySoft: string;
+  onPrimary: string;
+  text: string;
+  textSecondary: string;
+  muted: string;
+  mutedSoft: string;
+  tile: string;
+  card: string;
+  hero: string;
+  heroDeep: string;
+  heroLayer: string;
+  heroText: string;
+  heroTextSoft: string;
+  bottomNav: string;
+  navActive: string;
+  navInactive: string;
+  statusActive: string;
+  statusActiveSoft: string;
+  statusAttention: string;
+  statusAttentionSoft: string;
+  statusDanger: string;
+  statusDangerSoft: string;
+  statusOffline: string;
+  statusOfflineSoft: string;
+  badge: string;
+  separator: string;
+  frameBorder: string;
+}
+
+/** Light palette — calm ink-blue text, soft separators, single brand blue. */
+export const lightMobileColors: MobileColorTokens = {
+  background: '#FFFFFF',
   pageBackdrop: '#EEF1F6',
   primary: '#456EFE',
   primaryPressed: '#3457D8',
-  /** Soft blue surface for tiles/chips on light backgrounds. */
   primarySoft: 'rgba(69, 110, 254, 0.10)',
   onPrimary: '#FFFFFF',
-  /** Primary text. */
   text: '#23303B',
-  /** Secondary text. */
   textSecondary: '#8E949A',
-  /** Muted text. */
   muted: '#A4A9AE',
-  /** Extra-muted (placeholder-like). */
   mutedSoft: '#B4B2C8',
-  /** Soft gray tile / chip background. */
   tile: 'rgba(164, 169, 174, 0.14)',
-  /** Card surface. */
   card: '#FFFFFF',
-  /** Hero (dark) card background + a slightly deeper variant. */
   hero: '#23303B',
   heroDeep: '#1F2D38',
-  /** Subtle layer on the hero card. */
   heroLayer: 'rgba(255, 255, 255, 0.08)',
   heroText: '#FFFFFF',
   heroTextSoft: 'rgba(255, 255, 255, 0.70)',
-  /** Bottom nav background. */
   bottomNav: '#FBFBFD',
   navActive: '#456EFE',
   navInactive: '#9AA0A6',
-  /** Status tones (customer-friendly) — soft, not harsh. */
   statusActive: '#2BA770',
   statusActiveSoft: 'rgba(43, 167, 112, 0.12)',
   statusAttention: '#D9971B',
@@ -52,67 +77,142 @@ export const mobileColors = {
   statusDangerSoft: 'rgba(229, 87, 91, 0.12)',
   statusOffline: '#9AA0A6',
   statusOfflineSoft: 'rgba(154, 160, 166, 0.14)',
-  /** Unread/badge red. */
   badge: '#E5575B',
-  /** Hairline separators (no harsh borders). */
   separator: 'rgba(35, 48, 59, 0.06)',
   frameBorder: 'rgba(35, 48, 59, 0.05)',
-} as const;
+};
 
-/** Soft card shadow (≈ 1px 5px 40px rgba(110,117,136,0.07)). RN-only shadow props. */
-export const mobileShadow = {
+/** Dark palette — near-black surfaces, muted borders, lifted brand blue. */
+export const darkMobileColors: MobileColorTokens = {
+  background: '#0F1114',
+  pageBackdrop: '#08090B',
+  primary: '#6E8CFF',
+  primaryPressed: '#456EFE',
+  primarySoft: 'rgba(110, 140, 255, 0.16)',
+  onPrimary: '#FFFFFF',
+  text: '#F3F4F6',
+  textSecondary: '#9CA3AF',
+  muted: '#6B7280',
+  mutedSoft: '#4B5563',
+  tile: 'rgba(255, 255, 255, 0.06)',
+  card: '#1B1C1F',
+  hero: '#1B1C1F',
+  heroDeep: '#14161A',
+  heroLayer: 'rgba(255, 255, 255, 0.06)',
+  heroText: '#F3F4F6',
+  heroTextSoft: 'rgba(243, 244, 246, 0.70)',
+  bottomNav: '#14161A',
+  navActive: '#6E8CFF',
+  navInactive: '#6B7280',
+  statusActive: '#34D399',
+  statusActiveSoft: 'rgba(52, 211, 153, 0.14)',
+  statusAttention: '#FBBF24',
+  statusAttentionSoft: 'rgba(251, 191, 36, 0.14)',
+  statusDanger: '#F87171',
+  statusDangerSoft: 'rgba(248, 113, 113, 0.14)',
+  statusOffline: '#6B7280',
+  statusOfflineSoft: 'rgba(107, 114, 128, 0.14)',
+  badge: '#F87171',
+  separator: 'rgba(255, 255, 255, 0.08)',
+  frameBorder: 'rgba(255, 255, 255, 0.06)',
+};
+
+/** @deprecated Use `useMobileColors()` or `lightMobileColors` instead. */
+export const mobileColors = lightMobileColors;
+
+export function getMobileColors(mode: ThemeMode): MobileColorTokens {
+  return mode === 'dark' ? darkMobileColors : lightMobileColors;
+}
+
+export function useMobileColors(): MobileColorTokens {
+  const { mode } = useTheme();
+  return useMemo(() => getMobileColors(mode), [mode]);
+}
+
+export interface MobileShadowToken {
+  shadowColor: string;
+  shadowOpacity: number;
+  shadowRadius: number;
+  shadowOffset: { width: number; height: number };
+  elevation: number;
+}
+
+const lightMobileShadow: MobileShadowToken = {
   shadowColor: '#6E7588',
   shadowOpacity: 0.1,
   shadowRadius: 24,
   shadowOffset: { width: 0, height: 8 },
   elevation: 2,
-} as const;
+};
 
-/** A slightly stronger shadow for the centered desktop frame. */
-export const mobileFrameShadow = {
+const darkMobileShadow: MobileShadowToken = {
+  shadowColor: '#000000',
+  shadowOpacity: 0.35,
+  shadowRadius: 24,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 4,
+};
+
+/** @deprecated Use `useMobileShadow()` instead. */
+export const mobileShadow = lightMobileShadow;
+
+export function getMobileShadow(mode: ThemeMode): MobileShadowToken {
+  return mode === 'dark' ? darkMobileShadow : lightMobileShadow;
+}
+
+export function useMobileShadow(): MobileShadowToken {
+  const { mode } = useTheme();
+  return useMemo(() => getMobileShadow(mode), [mode]);
+}
+
+const lightMobileFrameShadow: MobileShadowToken = {
   shadowColor: '#23303B',
   shadowOpacity: 0.1,
   shadowRadius: 32,
   shadowOffset: { width: 0, height: 16 },
   elevation: 8,
-} as const;
+};
+
+const darkMobileFrameShadow: MobileShadowToken = {
+  shadowColor: '#000000',
+  shadowOpacity: 0.5,
+  shadowRadius: 32,
+  shadowOffset: { width: 0, height: 16 },
+  elevation: 12,
+};
+
+/** @deprecated Use `useMobileFrameShadow()` instead. */
+export const mobileFrameShadow = lightMobileFrameShadow;
+
+export function getMobileFrameShadow(mode: ThemeMode): MobileShadowToken {
+  return mode === 'dark' ? darkMobileFrameShadow : lightMobileFrameShadow;
+}
+
+export function useMobileFrameShadow(): MobileShadowToken {
+  const { mode } = useTheme();
+  return useMemo(() => getMobileFrameShadow(mode), [mode]);
+}
 
 /** Layout dimensions (dp/px) — see mobileUxSpec.ts for rationale. */
 export const mobileMetrics = {
-  /** Centered-frame max width (desktop centers; never stretches). */
   frameMaxWidth: 448,
-  /** At/above this width we render the centered desktop frame. */
   desktopBreakpoint: 600,
-  /** Frame radius for the centered desktop preview. */
   frameRadius: 30,
-  /** Page horizontal padding. */
   screenPadding: 22,
-  /** Vertical gap between stacked sections. */
   sectionGap: 22,
-  /** Gap between cards in a row/grid. */
   cardGap: 14,
-  /** Header row height. */
   headerHeight: 56,
-  /** Hero card height + radius. */
   heroHeight: 200,
   heroRadius: 20,
-  /** Quick action card size. */
   quickActionHeight: 116,
-  /** Service / feature icon tile size. */
   serviceTile: 60,
-  /** List row height. */
   listRowHeight: 74,
-  /** Bottom nav bar content height (safe-area inset added on top). */
   bottomNavHeight: 62,
-  /** Minimum primary tap target. */
   tapTargetMin: 48,
-  /** Primary button height. */
   buttonHeight: 56,
   buttonRadius: 14,
-  /** Avatar / header icon button. */
   avatarSize: 44,
   headerButton: 42,
-  /** Generic card radii. */
   cardRadius: 18,
   cardRadiusSmall: 14,
   tileRadius: 15,

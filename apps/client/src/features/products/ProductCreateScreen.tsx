@@ -19,7 +19,7 @@ import {
   MobileSubHeader,
   PressableScale,
 } from '@/features/mobile/components';
-import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '@/features/mobile/mobileUxSpec';
+import { NO_WEB_OUTLINE, useMobileFontFamily } from '@/features/mobile/mobileUxSpec';
 import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from '@/features/mobile/mobileTokens';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
@@ -42,6 +42,7 @@ function Field({
   multiline?: boolean;
 }): React.JSX.Element {
   const colors = useMobileColors();
+  const fontFamily = useMobileFontFamily();
   const { isRTL } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
@@ -75,7 +76,7 @@ function Field({
           borderColor: focused ? colors.primary : 'transparent',
           fontSize: mobileType.bodySize,
           color: colors.text,
-          fontFamily: MOBILE_FONT_FAMILY,
+          fontFamily,
           textAlign: isRTL ? 'right' : 'left',
           writingDirection: isRTL ? 'rtl' : 'ltr',
           textAlignVertical: multiline ? 'top' : 'center',

@@ -14,7 +14,7 @@ import {
   type TextInputKeyPressEventData,
 } from 'react-native';
 
-import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '../../mobile/mobileUxSpec';
+import { NO_WEB_OUTLINE, useMobileFontFamily } from '../../mobile/mobileUxSpec';
 import { authColors, authMetrics, authType } from '../authTokens';
 import { OTP_LENGTH, toAsciiDigits } from '../authHelpers';
 
@@ -32,6 +32,7 @@ export function OtpBoxes({
   editable = true,
 }: OtpBoxesProps): React.JSX.Element {
   const inputs = useRef<(TextInput | null)[]>([]);
+  const fontFamily = useMobileFontFamily();
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
   const focusBox = (index: number): void => {
@@ -114,7 +115,7 @@ export function OtpBoxes({
               writingDirection: 'ltr',
               fontSize: authType.otpSize,
               fontWeight: '700',
-              fontFamily: MOBILE_FONT_FAMILY,
+              fontFamily,
               color: authColors.text,
               backgroundColor: authColors.inputBackground,
               borderRadius: authMetrics.otpRadius,

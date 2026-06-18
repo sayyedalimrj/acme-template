@@ -13,7 +13,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { I18nProvider } from '@/i18n/I18nProvider';
 import { SessionProvider } from '@/session/SessionProvider';
-import { ThemeProvider } from '@/theme';
+import { FontProvider, ThemeProvider } from '@/theme';
 
 export interface AppProvidersProps {
   children: ReactNode;
@@ -38,9 +38,11 @@ export function AppProviders({ children }: AppProvidersProps): React.JSX.Element
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <I18nProvider>
-            <SessionProvider>{children}</SessionProvider>
-          </I18nProvider>
+          <FontProvider>
+            <I18nProvider>
+              <SessionProvider>{children}</SessionProvider>
+            </I18nProvider>
+          </FontProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

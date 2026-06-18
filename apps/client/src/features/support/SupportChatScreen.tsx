@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui';
 import { MobileSubHeader, PressableScale } from '@/features/mobile/components';
-import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '@/features/mobile/mobileUxSpec';
+import { NO_WEB_OUTLINE, useMobileFontFamily } from '@/features/mobile/mobileUxSpec';
 import { mobileMetrics, mobileType, useMobileColors } from '@/features/mobile/mobileTokens';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
@@ -74,6 +74,7 @@ function MessageBubble({ message }: { message: SupportChatMessage }): React.JSX.
 
 export function SupportChatScreen(): React.JSX.Element {
   const colors = useMobileColors();
+  const fontFamily = useMobileFontFamily();
   const t = useT();
   const router = useRouter();
   const { rowDirection, isRTL } = useTheme();
@@ -209,7 +210,7 @@ export function SupportChatScreen(): React.JSX.Element {
             backgroundColor: colors.tile,
             fontSize: mobileType.bodySize,
             color: colors.text,
-            fontFamily: MOBILE_FONT_FAMILY,
+            fontFamily,
             textAlign: isRTL ? 'right' : 'left',
             writingDirection: isRTL ? 'rtl' : 'ltr',
             ...NO_WEB_OUTLINE,

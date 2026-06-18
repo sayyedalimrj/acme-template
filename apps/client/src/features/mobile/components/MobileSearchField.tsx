@@ -10,7 +10,7 @@ import { TextInput, View } from 'react-native';
 
 import { useTheme } from '@/theme';
 
-import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '../mobileUxSpec';
+import { NO_WEB_OUTLINE, useMobileFontFamily } from '../mobileUxSpec';
 import { mobileType, useMobileColors } from '../mobileTokens';
 
 export interface MobileSearchFieldProps {
@@ -27,6 +27,7 @@ export function MobileSearchField({
   testID,
 }: MobileSearchFieldProps): React.JSX.Element {
   const colors = useMobileColors();
+  const fontFamily = useMobileFontFamily();
   const { rowDirection, isRTL } = useTheme();
   const [focused, setFocused] = useState(false);
 
@@ -58,7 +59,7 @@ export function MobileSearchField({
           flex: 1,
           fontSize: mobileType.bodySize,
           color: colors.text,
-          fontFamily: MOBILE_FONT_FAMILY,
+          fontFamily,
           padding: 0,
           textAlign: isRTL ? 'right' : 'left',
           writingDirection: isRTL ? 'rtl' : 'ltr',
