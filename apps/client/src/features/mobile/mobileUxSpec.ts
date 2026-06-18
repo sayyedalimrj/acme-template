@@ -8,7 +8,7 @@
 import { Platform, type TextStyle } from 'react-native';
 
 import { useAppFont } from '@/theme';
-import { resolveAppFontFamily } from '@/theme/fonts';
+import { resolveInputFontFamily, resolveTextFontFamily } from '@/theme/fonts';
 
 import { easing, motion, motionDuration } from './motion';
 import { lightMobileColors, mobileMetrics, mobileType } from './mobileTokens';
@@ -19,10 +19,16 @@ export const PERSIAN_FONT_STACK =
 /** Web fallback when expo-font has not finished loading yet. */
 export const MOBILE_FONT_FAMILY = Platform.OS === 'web' ? PERSIAN_FONT_STACK : undefined;
 
-/** Hook: resolved font family for raw RN Text / TextInput on the current platform. */
-export function useMobileFontFamily(): string | undefined {
+/** Hook: resolved font family for raw RN TextInput on the current platform. */
+export function useMobileFontFamily(fontWeight?: string | number): string | undefined {
   const { fontsLoaded } = useAppFont();
-  return resolveAppFontFamily(fontsLoaded);
+  return resolveInputFontFamily(fontsLoaded, fontWeight);
+}
+
+/** Hook: resolved font family for raw RN Text labels on the current platform. */
+export function useMobileTextFontFamily(): string | undefined {
+  const { fontsLoaded } = useAppFont();
+  return resolveTextFontFamily(fontsLoaded);
 }
 
 export const NO_WEB_OUTLINE: TextStyle =

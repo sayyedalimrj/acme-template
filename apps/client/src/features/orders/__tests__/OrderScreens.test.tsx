@@ -70,6 +70,6 @@ describe('OrderDetailScreen', () => {
     renderWithProviders(<OrderDetailScreen orderId="order_5820" />);
     expect(await screen.findByText('#5820', {}, { timeout: 4000 })).toBeTruthy();
     // A line item from the mock order renders.
-    expect(screen.getByText('Lumen Desk Lamp (Walnut)')).toBeTruthy();
+    expect(screen.getByText('چراغ رومیزی لومن (گردو)')).toBeTruthy();
   });
 });

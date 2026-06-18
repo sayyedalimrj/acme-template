@@ -8,13 +8,16 @@
  */
 import React, { useRef, useState } from 'react';
 import {
+  Platform,
   TextInput,
   View,
   type NativeSyntheticEvent,
   type TextInputKeyPressEventData,
 } from 'react-native';
 
-import { NO_WEB_OUTLINE, useMobileFontFamily } from '../../mobile/mobileUxSpec';
+import { resolveFontFamilyForWeight, useAppFont } from '@/theme';
+
+import { NO_WEB_OUTLINE } from '../../mobile/mobileUxSpec';
 import { authColors, authMetrics, authType } from '../authTokens';
 import { OTP_LENGTH, toAsciiDigits } from '../authHelpers';
 
@@ -32,7 +35,8 @@ export function OtpBoxes({
   editable = true,
 }: OtpBoxesProps): React.JSX.Element {
   const inputs = useRef<(TextInput | null)[]>([]);
-  const fontFamily = useMobileFontFamily();
+  const { fontsLoaded } = useAppFont();
+  const otpFontFamily = resolveFontFamilyForWeight(fontsLoaded, '700');
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
   const focusBox = (index: number): void => {
@@ -41,11 +45,9 @@ export function OtpBoxes({
   };
 
   const setDigit = (index: number, raw: string): void => {
-    // Tolerate Persian/Arabic digits; keep only numerics.
     const cleaned = toAsciiDigits(raw).replace(/[^0-9]/g, '');
 
     if (cleaned.length > 1) {
-      // Paste / multi-char: distribute digits across boxes starting at this index.
       const next = [...digits];
       let cursor = index;
       for (const ch of cleaned.split('')) {
@@ -80,9 +82,13 @@ export function OtpBoxes({
 
   return (
     <View
-      // OTP digits always read left-to-right, even in the RTL (Persian) UI. Boxes flex to fill
-      // the row so the group lines up with the full-width verify button beneath it.
-      style={{ flexDirection: 'row', gap: 12 }}
+      // Force LTR digit order; fixed-width boxes stay evenly spaced under the full-width CTA.
+      style={{
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 10,
+      }}
       accessibilityLabel={`${OTP_LENGTH}-digit verification code`}
     >
       {Array.from({ length: OTP_LENGTH }).map((_, index) => {
@@ -102,20 +108,21 @@ export function OtpBoxes({
             onBlur={() => setFocusedIndex((prev) => (prev === index ? null : prev))}
             keyboardType="number-pad"
             inputMode="numeric"
-            // Allow a full paste into one box; the value stays a single controlled digit.
-            maxLength={OTP_LENGTH}
+            maxLength={1}
             selectTextOnFocus
             editable={editable}
             returnKeyType="next"
             accessibilityLabel={`Digit ${index + 1}`}
             style={{
-              flex: 1,
+              width: authMetrics.otpBoxWidth,
               height: authMetrics.otpBoxHeight,
+              flexShrink: 0,
               textAlign: 'center',
               writingDirection: 'ltr',
               fontSize: authType.otpSize,
-              fontWeight: '700',
-              fontFamily,
+              // Use the bold face directly on native; web keeps fontWeight with a single family name.
+              fontFamily: otpFontFamily,
+              fontWeight: Platform.OS === 'web' ? '700' : undefined,
               color: authColors.text,
               backgroundColor: authColors.inputBackground,
               borderRadius: authMetrics.otpRadius,
@@ -125,6 +132,7 @@ export function OtpBoxes({
                 : active
                   ? authColors.inputBorderFocused
                   : authColors.inputBorder,
+              padding: 0,
               ...NO_WEB_OUTLINE,
             }}
           />

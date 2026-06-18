@@ -5,7 +5,7 @@
  * dashboard (known user) or to registration (new user). No secrets, no passwords, no provider
  * keys, no real PII — just demo names + example identifiers. Nothing is persisted.
  */
-import { detectIdentifier, normalizeMobile, type IdentifierChannel } from './authHelpers';
+import { detectIdentifier, mobileDigitsOnly, type IdentifierChannel } from './authHelpers';
 
 /** A known mock user (fake demo identity). */
 export interface AuthMockUser {
@@ -19,13 +19,13 @@ export interface AuthMockUser {
 export const AUTH_MOCK_USERS: readonly AuthMockUser[] = [
   {
     id: 'usr_mock_operator',
-    name: 'Demo Operator',
+    name: 'اپراتور آزمایشی',
     email: 'operator@demo.local',
     mobile: '09123456789',
   },
   {
     id: 'usr_mock_sara',
-    name: 'Sara Tajeri',
+    name: 'سارا تجری',
     email: 'sara@shop.example',
     mobile: '09120000000',
   },
@@ -48,8 +48,15 @@ export function findMockUser(identifier: string, channel?: IdentifierChannel): A
   }
 
   if (resolved === 'mobile') {
-    const mobile = normalizeMobile(trimmed);
-    return AUTH_MOCK_USERS.find((user) => normalizeMobile(user.mobile) === mobile) ?? null;
+    const mobile = mobileDigitsOnly(trimmed);
+    const normalized =
+      mobile.startsWith('98') && mobile.length === 12 ? `0${mobile.slice(2)}` : mobile;
+    return (
+      AUTH_MOCK_USERS.find((user) => {
+        const userDigits = mobileDigitsOnly(user.mobile);
+        return userDigits === normalized || userDigits === mobile;
+      }) ?? null
+    );
   }
 
   return null;

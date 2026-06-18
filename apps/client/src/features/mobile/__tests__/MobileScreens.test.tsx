@@ -54,8 +54,8 @@ beforeEach(() => {
 
 describe('siteInitials', () => {
   it('builds two-letter initials from a store name', () => {
-    expect(siteInitials('Northwind Goods')).toBe('NG');
-    expect(siteInitials('Atelier')).toBe('AT');
+    expect(siteInitials('فروشگاه بادبان')).toBe('فب');
+    expect(siteInitials('آتلیه خانه')).toBe('آخ');
     expect(siteInitials('')).toBe('•');
   });
 });

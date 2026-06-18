@@ -52,7 +52,7 @@ describe('MediaStudioScreen', () => {
     renderWithProviders(<MediaStudioScreen />);
     // The seeded variant title for the first product renders once variants load.
     expect(
-      await screen.findByText('Aurora Cotton Crew Tee — نسخه بهبودیافته', {}, { timeout: 4000 }),
+      await screen.findByText('تی‌شرت نخی آئورا — نسخه بهبودیافته', {}, { timeout: 4000 }),
     ).toBeTruthy();
   });
 });

@@ -50,25 +50,25 @@ beforeEach(() => {
 describe('CustomerListScreen', () => {
   it('renders mock customers for the active site', async () => {
     renderWithProviders(<CustomerListScreen />);
-    expect(await screen.findByText('Maya Brennan', {}, { timeout: 4000 })).toBeTruthy();
-    expect(screen.getByText('Priya Nair')).toBeTruthy();
+    expect(await screen.findByText('سارا رضایی', {}, { timeout: 4000 })).toBeTruthy();
+    expect(screen.getByText('نیلوفر کریمی')).toBeTruthy();
   });
 
   it('filters customers by search (name)', async () => {
     renderWithProviders(<CustomerListScreen />);
-    await screen.findByText('Maya Brennan', {}, { timeout: 4000 });
+    await screen.findByText('سارا رضایی', {}, { timeout: 4000 });
 
     fireEvent.changeText(screen.getByTestId('customer-search'), 'priya');
 
-    await waitFor(() => expect(screen.queryByText('Maya Brennan')).toBeNull());
-    expect(screen.getByText('Priya Nair')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText('سارا رضایی')).toBeNull());
+    expect(screen.getByText('نیلوفر کریمی')).toBeTruthy();
   });
 });
 
 describe('CustomerDetailScreen', () => {
   it('renders the selected customer with value summary', async () => {
     renderWithProviders(<CustomerDetailScreen customerId="cust_142" />);
-    expect(await screen.findByText('Priya Nair', {}, { timeout: 4000 })).toBeTruthy();
+    expect(await screen.findByText('نیلوفر کریمی', {}, { timeout: 4000 })).toBeTruthy();
     expect(screen.getByText('priya.nair@example.test')).toBeTruthy();
   });
 });

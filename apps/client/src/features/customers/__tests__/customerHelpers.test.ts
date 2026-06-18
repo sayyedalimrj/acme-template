@@ -11,9 +11,9 @@ import {
 
 describe('filterCustomers', () => {
   it('searches by customer name', () => {
-    const result = filterCustomers(customers, { search: 'priya' });
+    const result = filterCustomers(customers, { search: 'نیلوفر' });
     expect(result).toHaveLength(1);
-    expect(result[0].firstName).toBe('Priya');
+    expect(result[0].firstName).toBe('نیلوفر');
   });
 
   it('searches by email', () => {

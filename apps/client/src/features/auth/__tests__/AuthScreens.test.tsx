@@ -87,9 +87,10 @@ describe('AuthEntryScreen', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('navigates to the OTP screen for a valid identifier', () => {
+  it('navigates to the OTP screen for a valid email', () => {
     renderAuth(<AuthEntryScreen />);
     fireEvent.changeText(screen.getByTestId('auth-entry-input'), 'you@company.com');
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(false);
     fireEvent.press(screen.getByTestId('auth-entry-submit'));
     expect(mockNavigate).toHaveBeenCalledTimes(1);
     const arg = mockNavigate.mock.calls[0][0] as {
@@ -99,6 +100,16 @@ describe('AuthEntryScreen', () => {
     expect(arg.pathname).toBe('/verify');
     expect(arg.params.identifier).toBe('you@company.com');
     expect(arg.params.channel).toBe('email');
+  });
+
+  it('enables continue for 10- or 11-digit mobile numbers', () => {
+    renderAuth(<AuthEntryScreen />);
+    fireEvent.changeText(screen.getByTestId('auth-entry-input'), '9123456789');
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(false);
+    fireEvent.changeText(screen.getByTestId('auth-entry-input'), '09123456789');
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(false);
+    fireEvent.changeText(screen.getByTestId('auth-entry-input'), '091234567');
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(true);
   });
 });
 

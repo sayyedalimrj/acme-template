@@ -111,13 +111,13 @@ export const dashboardOverview: DashboardOverview = {
     {
       id: 'evt_2',
       type: 'product',
-      message: 'Lumen Desk Lamp went on backorder',
+      message: 'چراغ رومیزی لومن (گردو) به حالت پیش‌سفارش رفت',
       date: '2026-06-08T13:33:00Z',
     },
     {
       id: 'evt_3',
       type: 'customer',
-      message: 'New customer: Aiko Tanaka',
+      message: 'مشتری جدید: مریم احمدی',
       date: '2026-06-15T07:40:00Z',
     },
     { id: 'evt_4', type: 'order', message: 'Order #5817 refunded', date: '2026-06-12T14:30:00Z' },

@@ -1,8 +1,8 @@
 /**
- * App font loading (Vazirmatn OFL via @expo-google-fonts).
+ * App font loading — Vazirmatn (OFL) today; IRANYekanX when licensed files are added.
  *
- * Persian is primary for the client app. Vazirmatn ships as a stand-in until a licensed
- * IRANYekanX asset is provided; swap the loaded families here when that file is available.
+ * Drop IRANYekanX `.ttf` files into `assets/fonts/` and set `USE_IRANYEKANX` to true.
+ * Persian is primary for the client app.
  */
 import {
   Vazirmatn_400Regular,
@@ -13,40 +13,63 @@ import {
 import { useFonts } from 'expo-font';
 import { Platform } from 'react-native';
 
-/** Font map passed to `useFonts`. */
-export const appFontMap = {
+/** Flip to true after adding licensed IRANYekanX files under `assets/fonts/`. */
+export const USE_IRANYEKANX = false;
+
+const vazirmatnFontMap = {
   Vazirmatn_400Regular,
   Vazirmatn_500Medium,
   Vazirmatn_600SemiBold,
   Vazirmatn_700Bold,
 } as const;
 
+/** Font map passed to `useFonts`. Extend with IRANYekanX when licensed assets are present. */
+export const appFontMap = USE_IRANYEKANX
+  ? ({
+      // TODO: require licensed files, e.g. IRANYekanXRegular: require('../../assets/fonts/IRANYekanX-Regular.ttf'),
+      ...vazirmatnFontMap,
+    } as const)
+  : vazirmatnFontMap;
+
 export type AppFontFamily = keyof typeof appFontMap;
 
-/** Primary UI font on native (after expo-font load). Web falls back to the CSS stack. */
-export const NATIVE_FONT_FAMILY: AppFontFamily = 'Vazirmatn_400Regular';
+const WEB_FALLBACK_STACK =
+  "'Vazirmatn', 'IRANYekanX', 'Vazir', 'IRANSansX', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
-const WEB_FONT_STACK =
-  "'Vazirmatn', 'B Yekan', 'IRANYekanX', 'Vazir', 'IRANSansX', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
-
-/** Resolved font family for Text and mobile inputs on the current platform. */
-export function resolveAppFontFamily(fontsLoaded: boolean): string | undefined {
-  if (Platform.OS === 'web') {
-    return fontsLoaded ? `'Vazirmatn', ${WEB_FONT_STACK}` : WEB_FONT_STACK;
+/** CSS font stack for <Text> on web (supports fallbacks). */
+export function resolveTextFontFamily(fontsLoaded: boolean): string | undefined {
+  if (Platform.OS !== 'web') {
+    return fontsLoaded ? 'Vazirmatn_400Regular' : undefined;
   }
-  return fontsLoaded ? NATIVE_FONT_FAMILY : undefined;
+  return fontsLoaded ? `'Vazirmatn', ${WEB_FALLBACK_STACK}` : WEB_FALLBACK_STACK;
 }
 
-/** Map RN fontWeight to the matching Vazirmatn face when fonts are loaded. */
+/**
+ * Single font family for TextInput (comma stacks break RN TextInput on web).
+ */
+export function resolveInputFontFamily(
+  fontsLoaded: boolean,
+  fontWeight?: string | number,
+): string | undefined {
+  if (!fontsLoaded) {
+    return Platform.OS === 'web' ? undefined : undefined;
+  }
+  if (Platform.OS === 'web') {
+    return 'Vazirmatn';
+  }
+  return resolveFontFamilyForWeight(fontsLoaded, fontWeight);
+}
+
+/** Map RN fontWeight to the matching bundled face on native. */
 export function resolveFontFamilyForWeight(
   fontsLoaded: boolean,
   fontWeight?: string | number,
 ): string | undefined {
   if (!fontsLoaded) {
-    return resolveAppFontFamily(false);
+    return undefined;
   }
   if (Platform.OS === 'web') {
-    return resolveAppFontFamily(true);
+    return 'Vazirmatn';
   }
   const w = typeof fontWeight === 'number' ? fontWeight : Number(fontWeight);
   if (w >= 700) return 'Vazirmatn_700Bold';
@@ -55,10 +78,15 @@ export function resolveFontFamilyForWeight(
   return 'Vazirmatn_400Regular';
 }
 
+/** @deprecated Use resolveTextFontFamily or resolveInputFontFamily. */
+export function resolveAppFontFamily(fontsLoaded: boolean): string | undefined {
+  return resolveTextFontFamily(fontsLoaded);
+}
+
 export function useAppFonts(): { fontsLoaded: boolean; fontFamily: string | undefined } {
   const [fontsLoaded] = useFonts(appFontMap);
   return {
     fontsLoaded,
-    fontFamily: resolveAppFontFamily(fontsLoaded),
+    fontFamily: resolveTextFontFamily(fontsLoaded),
   };
 }
