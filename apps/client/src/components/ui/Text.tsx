@@ -20,8 +20,10 @@ export type TextVariant = keyof TypographyScale;
  * present and fall back to system sans; on native we use the platform default (a comma stack
  * is invalid on native), so this is a no-op there. See PR notes for the font follow-up.
  */
+// Persian-first font stack (web only). TODO: bundle a licensed Persian font asset later
+// (e.g. `B Yekan` / `IRANYekanX`) via expo-font and prepend it here.
 const WEB_FONT_STACK =
-  "'Vazirmatn', 'Vazir', 'IRANSansX', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+  "'B Yekan', 'IRANYekanX', 'Vazirmatn', 'Vazir', 'IRANSansX', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 const FONT_FAMILY = Platform.OS === 'web' ? WEB_FONT_STACK : undefined;
 export type TextTone =
   | 'default'
