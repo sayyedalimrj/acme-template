@@ -15,9 +15,10 @@ import { useTheme } from '@/theme';
 
 import { AnimatedSection, FeatureCard, MobilePage, MobileSubHeader } from './components';
 import { FEATURE_SECTIONS } from './mobileMockData';
-import { mobileColors, mobileMetrics, mobileType } from './mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors } from './mobileTokens';
 
 export function MoreFeaturesScreen(): React.JSX.Element {
+  const colors = useMobileColors();
   const t = useT();
   const router = useRouter();
   const { isRTL } = useTheme();
@@ -45,7 +46,7 @@ export function MoreFeaturesScreen(): React.JSX.Element {
                 style={{
                   fontSize: mobileType.sectionSize,
                   fontWeight: '700',
-                  color: mobileColors.text,
+                  color: colors.text,
                   textAlign: isRTL ? 'right' : 'left',
                 }}
               >

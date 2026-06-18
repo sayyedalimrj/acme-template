@@ -11,7 +11,7 @@ import React, { type ReactNode } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
 import { BottomNav } from '@/features/mobile/components';
-import { mobileColors, mobileFrameShadow, mobileMetrics } from '@/features/mobile/mobileTokens';
+import { mobileMetrics, useMobileColors, useMobileFrameShadow } from '@/features/mobile/mobileTokens';
 
 /** At/above this width we render the centered desktop frame. */
 export const WIDE_BREAKPOINT = mobileMetrics.desktopBreakpoint;
@@ -21,6 +21,8 @@ export interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps): React.JSX.Element {
+  const colors = useMobileColors();
+  const frameShadow = useMobileFrameShadow();
   const { width } = useWindowDimensions();
   const wide = width >= mobileMetrics.desktopBreakpoint;
 
@@ -28,7 +30,7 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
     <View
       style={{
         flex: 1,
-        backgroundColor: wide ? mobileColors.pageBackdrop : mobileColors.background,
+        backgroundColor: wide ? colors.pageBackdrop : colors.background,
         alignItems: 'center',
         justifyContent: 'center',
         // Clip so the page itself never scrolls (esp. on large iPad/desktop viewports): only the
@@ -45,15 +47,15 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
             flex: 1,
             width: '100%',
             maxWidth: mobileMetrics.frameMaxWidth,
-            backgroundColor: mobileColors.background,
+            backgroundColor: colors.background,
             overflow: 'hidden',
           },
           wide
             ? {
                 borderRadius: mobileMetrics.frameRadius,
                 borderWidth: 1,
-                borderColor: mobileColors.frameBorder,
-                ...mobileFrameShadow,
+                borderColor: colors.frameBorder,
+                ...frameShadow,
               }
             : null,
         ]}

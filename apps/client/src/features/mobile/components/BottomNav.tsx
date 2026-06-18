@@ -16,8 +16,8 @@ import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 import type { StringKey } from '@/i18n/strings';
 
-import { MOBILE_FONT_FAMILY } from '../mobileUxSpec';
-import { mobileColors, mobileMetrics } from '../mobileTokens';
+import { useMobileFontFamily } from '../mobileUxSpec';
+import { mobileMetrics, useMobileColors } from '../mobileTokens';
 import { PressableScale } from './PressableScale';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -63,6 +63,8 @@ function isActiveRoute(pathname: string, href: string): boolean {
 }
 
 export function BottomNav(): React.JSX.Element {
+  const colors = useMobileColors();
+  const fontFamily = useMobileFontFamily();
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
@@ -77,9 +79,9 @@ export function BottomNav(): React.JSX.Element {
     <View
       style={{
         flexDirection: rowDirection,
-        backgroundColor: mobileColors.bottomNav,
+        backgroundColor: colors.bottomNav,
         borderTopWidth: 1,
-        borderTopColor: mobileColors.separator,
+        borderTopColor: colors.separator,
         paddingBottom: bottomInset,
         paddingTop: 8,
         paddingHorizontal: 6,
@@ -88,7 +90,7 @@ export function BottomNav(): React.JSX.Element {
     >
       {TABS.map((tab) => {
         const active = isActiveRoute(pathname, tab.href);
-        const color = active ? mobileColors.navActive : mobileColors.navInactive;
+        const color = active ? colors.navActive : colors.navInactive;
         return (
           <PressableScale
             key={tab.key}
@@ -116,7 +118,7 @@ export function BottomNav(): React.JSX.Element {
                 width: 20,
                 height: 3,
                 borderRadius: 2,
-                backgroundColor: active ? mobileColors.navActive : 'transparent',
+                backgroundColor: active ? colors.navActive : 'transparent',
               }}
             />
             <Ionicons name={active ? tab.iconActive : tab.icon} size={23} color={color} />
@@ -126,7 +128,7 @@ export function BottomNav(): React.JSX.Element {
                 fontSize: 11,
                 fontWeight: active ? '700' : '500',
                 color,
-                fontFamily: MOBILE_FONT_FAMILY,
+                fontFamily,
                 textAlign: 'center',
               }}
             >

@@ -14,9 +14,11 @@ import { useTheme } from '@/theme';
 
 import { AnimatedSection, MiniActivityRow, MobilePage, MobileSubHeader } from './components';
 import { NOTIFICATION_GROUPS } from './mobileMockData';
-import { mobileColors, mobileMetrics, mobileShadow, mobileType } from './mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from './mobileTokens';
 
 export function NotificationsShellScreen(): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const t = useT();
   const router = useRouter();
   const { isRTL } = useTheme();
@@ -43,7 +45,7 @@ export function NotificationsShellScreen(): React.JSX.Element {
                 style={{
                   fontSize: mobileType.labelSize,
                   fontWeight: '700',
-                  color: mobileColors.textSecondary,
+                  color: colors.textSecondary,
                   textAlign: isRTL ? 'right' : 'left',
                 }}
               >
@@ -53,17 +55,17 @@ export function NotificationsShellScreen(): React.JSX.Element {
                 style={[
                   {
                     borderRadius: mobileMetrics.cardRadius,
-                    backgroundColor: mobileColors.card,
+                    backgroundColor: colors.card,
                     paddingHorizontal: 16,
                     paddingVertical: 4,
                   },
-                  mobileShadow,
+                  shadow,
                 ]}
               >
                 {group.items.map((item, index) => (
                   <View key={item.id}>
                     {index > 0 ? (
-                      <View style={{ height: 1, backgroundColor: mobileColors.separator }} />
+                      <View style={{ height: 1, backgroundColor: colors.separator }} />
                     ) : null}
                     <MiniActivityRow
                       icon={item.icon}

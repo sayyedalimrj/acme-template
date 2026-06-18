@@ -10,7 +10,7 @@ import React, { type ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { mobileColors } from '../mobileTokens';
+import { useMobileColors } from '../mobileTokens';
 
 export interface MobilePageProps {
   children: ReactNode;
@@ -27,10 +27,11 @@ export function MobilePage({
   testID,
   scrollBottomPadding = 28,
 }: MobilePageProps): React.JSX.Element {
+  const colors = useMobileColors();
   const insets = useSafeAreaInsets();
 
   return (
-    <View testID={testID} style={{ flex: 1, backgroundColor: mobileColors.background }}>
+    <View testID={testID} style={{ flex: 1, backgroundColor: colors.background }}>
       {header ? <View style={{ paddingTop: insets.top }}>{header}</View> : null}
 
       <ScrollView

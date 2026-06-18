@@ -25,7 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui';
 import { MobileSubHeader, PressableScale } from '@/features/mobile/components';
 import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '@/features/mobile/mobileUxSpec';
-import { mobileColors, mobileMetrics, mobileType } from '@/features/mobile/mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors } from '@/features/mobile/mobileTokens';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 import type { SupportChatMessage } from '@/domain/types';
@@ -33,6 +33,7 @@ import type { SupportChatMessage } from '@/domain/types';
 import { useSendSupportMessage, useSupportConversation } from './useSupportChat';
 
 function MessageBubble({ message }: { message: SupportChatMessage }): React.JSX.Element {
+  const colors = useMobileColors();
   const { isRTL } = useTheme();
   const isUser = message.author === 'customer';
   // Explicit side control so it is correct regardless of RN web RTL quirks: the user's own
@@ -53,14 +54,14 @@ function MessageBubble({ message }: { message: SupportChatMessage }): React.JSX.
           paddingHorizontal: 14,
           paddingVertical: 10,
           borderRadius: 16,
-          backgroundColor: isUser ? mobileColors.primary : mobileColors.tile,
+          backgroundColor: isUser ? colors.primary : colors.tile,
         }}
       >
         <Text
           style={{
             fontSize: mobileType.bodySize,
             lineHeight: 21,
-            color: isUser ? mobileColors.onPrimary : mobileColors.text,
+            color: isUser ? colors.onPrimary : colors.text,
             textAlign: isRTL ? 'right' : 'left',
           }}
         >
@@ -72,6 +73,7 @@ function MessageBubble({ message }: { message: SupportChatMessage }): React.JSX.
 }
 
 export function SupportChatScreen(): React.JSX.Element {
+  const colors = useMobileColors();
   const t = useT();
   const router = useRouter();
   const { rowDirection, isRTL } = useTheme();
@@ -121,7 +123,7 @@ export function SupportChatScreen(): React.JSX.Element {
   return (
     <KeyboardAvoidingView
       testID="support-chat-screen"
-      style={{ flex: 1, backgroundColor: mobileColors.background }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={{ paddingTop: insets.top }}>
@@ -135,19 +137,19 @@ export function SupportChatScreen(): React.JSX.Element {
                 width: mobileMetrics.headerButton,
                 height: mobileMetrics.headerButton,
                 borderRadius: mobileMetrics.headerButton / 2,
-                backgroundColor: mobileColors.statusActiveSoft,
+                backgroundColor: colors.statusActiveSoft,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Ionicons name="headset" size={18} color={mobileColors.statusActive} />
+              <Ionicons name="headset" size={18} color={colors.statusActive} />
             </View>
           }
         />
         <Text
           style={{
             fontSize: mobileType.captionSize,
-            color: mobileColors.textSecondary,
+            color: colors.textSecondary,
             paddingHorizontal: mobileMetrics.screenPadding,
             textAlign: isRTL ? 'right' : 'left',
             marginBottom: 6,
@@ -183,8 +185,8 @@ export function SupportChatScreen(): React.JSX.Element {
           paddingTop: 10,
           paddingBottom: 12,
           borderTopWidth: 1,
-          borderTopColor: mobileColors.separator,
-          backgroundColor: mobileColors.background,
+          borderTopColor: colors.separator,
+          backgroundColor: colors.background,
         }}
       >
         <TextInput
@@ -192,7 +194,7 @@ export function SupportChatScreen(): React.JSX.Element {
           value={draft}
           onChangeText={setDraft}
           placeholder={t('csupport.chat.inputPlaceholder')}
-          placeholderTextColor={mobileColors.mutedSoft}
+          placeholderTextColor={colors.mutedSoft}
           multiline
           onContentSizeChange={onContentSizeChange}
           onSubmitEditing={send}
@@ -204,9 +206,9 @@ export function SupportChatScreen(): React.JSX.Element {
             paddingHorizontal: 16,
             paddingVertical: 11,
             borderRadius: 22,
-            backgroundColor: mobileColors.tile,
+            backgroundColor: colors.tile,
             fontSize: mobileType.bodySize,
-            color: mobileColors.text,
+            color: colors.text,
             fontFamily: MOBILE_FONT_FAMILY,
             textAlign: isRTL ? 'right' : 'left',
             writingDirection: isRTL ? 'rtl' : 'ltr',
@@ -222,7 +224,7 @@ export function SupportChatScreen(): React.JSX.Element {
             width: 44,
             height: 44,
             borderRadius: 22,
-            backgroundColor: mobileColors.primary,
+            backgroundColor: colors.primary,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -230,7 +232,7 @@ export function SupportChatScreen(): React.JSX.Element {
           <Ionicons
             name={isRTL ? 'arrow-back' : 'arrow-forward'}
             size={20}
-            color={mobileColors.onPrimary}
+            color={colors.onPrimary}
           />
         </PressableScale>
       </View>

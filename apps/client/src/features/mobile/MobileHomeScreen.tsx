@@ -49,16 +49,17 @@ import {
   type OverviewMetric,
   type OverviewRange,
 } from './mobileMockData';
-import { mobileColors, mobileMetrics, mobileShadow, mobileType } from './mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from './mobileTokens';
 
 function SectionTitle({ title }: { title: string }): React.JSX.Element {
+  const colors = useMobileColors();
   const { isRTL } = useTheme();
   return (
     <Text
       style={{
         fontSize: mobileType.sectionSize,
         fontWeight: '700',
-        color: mobileColors.text,
+        color: colors.text,
         textAlign: isRTL ? 'right' : 'left',
         marginBottom: 12,
       }}
@@ -82,6 +83,7 @@ function SiteCarousel({
   onPressSite: (site: SiteConnection) => void;
   renewalFor: (site: SiteConnection) => string | undefined;
 }): React.JSX.Element {
+  const colors = useMobileColors();
   const [pageWidth, setPageWidth] = useState(0);
 
   const onLayout = (event: LayoutChangeEvent): void => {
@@ -142,7 +144,7 @@ function SiteCarousel({
               height: 7,
               borderRadius: 4,
               backgroundColor:
-                index === selectedIndex ? mobileColors.primary : mobileColors.mutedSoft,
+                index === selectedIndex ? colors.primary : colors.mutedSoft,
             }}
           />
         ))}
@@ -152,6 +154,8 @@ function SiteCarousel({
 }
 
 function MoreEntryCard({ onPress }: { onPress: () => void }): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const t = useT();
   const { rowDirection, isRTL } = useTheme();
   return (
@@ -165,10 +169,10 @@ function MoreEntryCard({ onPress }: { onPress: () => void }): React.JSX.Element 
           alignItems: 'center',
           gap: 14,
           borderRadius: mobileMetrics.cardRadius,
-          backgroundColor: mobileColors.card,
+          backgroundColor: colors.card,
           padding: 16,
         },
-        mobileShadow,
+        shadow,
       ]}
     >
       <View
@@ -176,19 +180,19 @@ function MoreEntryCard({ onPress }: { onPress: () => void }): React.JSX.Element 
           width: 48,
           height: 48,
           borderRadius: 14,
-          backgroundColor: mobileColors.tile,
+          backgroundColor: colors.tile,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name="apps-outline" size={22} color={mobileColors.primary} />
+        <Ionicons name="apps-outline" size={22} color={colors.primary} />
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <Text
           style={{
             fontSize: mobileType.labelSize,
             fontWeight: '700',
-            color: mobileColors.text,
+            color: colors.text,
             textAlign: isRTL ? 'right' : 'left',
           }}
         >
@@ -197,7 +201,7 @@ function MoreEntryCard({ onPress }: { onPress: () => void }): React.JSX.Element 
         <Text
           style={{
             fontSize: mobileType.captionSize,
-            color: mobileColors.textSecondary,
+            color: colors.textSecondary,
             textAlign: isRTL ? 'right' : 'left',
           }}
           numberOfLines={1}
@@ -213,16 +217,16 @@ function MoreEntryCard({ onPress }: { onPress: () => void }): React.JSX.Element 
           paddingHorizontal: 12,
           height: 36,
           borderRadius: 9,
-          backgroundColor: mobileColors.tile,
+          backgroundColor: colors.tile,
         }}
       >
-        <Text style={{ fontSize: 13, fontWeight: '700', color: mobileColors.primary }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
           {t('home.more.cta')}
         </Text>
         <Ionicons
           name={isRTL ? 'chevron-back' : 'chevron-forward'}
           size={15}
-          color={mobileColors.primary}
+          color={colors.primary}
         />
       </View>
     </PressableScale>
@@ -231,6 +235,8 @@ function MoreEntryCard({ onPress }: { onPress: () => void }): React.JSX.Element 
 
 /** "At a glance" overview card: a metric + range selector over a calm bar chart. */
 function OverviewSection({ currency }: { currency: string }): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const t = useT();
   const fmt = useFormatters();
   const { rowDirection, isRTL } = useTheme();
@@ -255,19 +261,19 @@ function OverviewSection({ currency }: { currency: string }): React.JSX.Element 
   const totalLabel =
     metric === 'sales' ? fmt.money(String(series.total), currency) : fmt.num(series.total);
   const up = series.trendPercent >= 0;
-  const trendColor = up ? mobileColors.statusActive : mobileColors.statusDanger;
-  const trendBg = up ? mobileColors.statusActiveSoft : mobileColors.statusDangerSoft;
+  const trendColor = up ? colors.statusActive : colors.statusDanger;
+  const trendBg = up ? colors.statusActiveSoft : colors.statusDangerSoft;
 
   return (
     <View
       style={[
         {
           borderRadius: mobileMetrics.cardRadius,
-          backgroundColor: mobileColors.card,
+          backgroundColor: colors.card,
           padding: 16,
           gap: 14,
         },
-        mobileShadow,
+        shadow,
       ]}
     >
       {/* Metric selector */}
@@ -283,7 +289,7 @@ function OverviewSection({ currency }: { currency: string }): React.JSX.Element 
           style={{
             fontSize: 22,
             fontWeight: '700',
-            color: mobileColors.text,
+            color: colors.text,
             textAlign: isRTL ? 'right' : 'left',
           }}
           numberOfLines={1}
@@ -307,7 +313,7 @@ function OverviewSection({ currency }: { currency: string }): React.JSX.Element 
           </Text>
         </View>
         <View style={{ flex: 1 }} />
-        <Text style={{ fontSize: 11, color: mobileColors.textSecondary }} numberOfLines={1}>
+        <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
           {t('home.overview.vsPrev')}
         </Text>
       </View>
@@ -325,6 +331,8 @@ function OverviewSection({ currency }: { currency: string }): React.JSX.Element 
 }
 
 export function MobileHomeScreen(): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const t = useT();
   const router = useRouter();
   const go = (href: string): void => router.navigate(href as never);
@@ -432,17 +440,17 @@ export function MobileHomeScreen(): React.JSX.Element {
             style={[
               {
                 borderRadius: mobileMetrics.cardRadius,
-                backgroundColor: mobileColors.card,
+                backgroundColor: colors.card,
                 paddingHorizontal: 16,
                 paddingVertical: 4,
               },
-              mobileShadow,
+              shadow,
             ]}
           >
             {RECENT_ACTIVITY.map((item, index) => (
               <View key={item.id}>
                 {index > 0 ? (
-                  <View style={{ height: 1, backgroundColor: mobileColors.separator }} />
+                  <View style={{ height: 1, backgroundColor: colors.separator }} />
                 ) : null}
                 <MiniActivityRow
                   icon={item.icon}

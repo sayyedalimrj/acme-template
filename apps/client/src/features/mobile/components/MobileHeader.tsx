@@ -12,7 +12,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
-import { mobileColors, mobileMetrics, mobileType } from '../mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors, type MobileColorTokens } from '../mobileTokens';
 import { PressableScale } from './PressableScale';
 
 export interface MobileHeaderProps {
@@ -38,11 +38,13 @@ function IconButton({
   badge,
   onPress,
   label,
+  colors,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   badge?: number;
   onPress: () => void;
   label: string;
+  colors: MobileColorTokens;
 }): React.JSX.Element {
   return (
     <PressableScale
@@ -52,12 +54,12 @@ function IconButton({
         width: mobileMetrics.headerButton,
         height: mobileMetrics.headerButton,
         borderRadius: mobileMetrics.headerButton / 2,
-        backgroundColor: mobileColors.tile,
+        backgroundColor: colors.tile,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Ionicons name={icon} size={20} color={mobileColors.text} />
+      <Ionicons name={icon} size={20} color={colors.text} />
       {badge && badge > 0 ? (
         <View
           style={{
@@ -68,14 +70,14 @@ function IconButton({
             height: 16,
             borderRadius: 8,
             paddingHorizontal: 4,
-            backgroundColor: mobileColors.badge,
+            backgroundColor: colors.badge,
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 2,
-            borderColor: mobileColors.background,
+            borderColor: colors.background,
           }}
         >
-          <Text style={{ fontSize: 10, fontWeight: '700', color: mobileColors.onPrimary }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: colors.onPrimary }}>
             {badge > 9 ? '9+' : String(badge)}
           </Text>
         </View>
@@ -97,6 +99,7 @@ export function MobileHeader({
   supportLabel,
   accountLabel,
 }: MobileHeaderProps): React.JSX.Element {
+  const colors = useMobileColors();
   const { rowDirection, isRTL } = useTheme();
 
   return (
@@ -118,12 +121,12 @@ export function MobileHeader({
           width: mobileMetrics.avatarSize,
           height: mobileMetrics.avatarSize,
           borderRadius: mobileMetrics.avatarSize / 2,
-          backgroundColor: mobileColors.primary,
+          backgroundColor: colors.primary,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Text style={{ color: mobileColors.onPrimary, fontWeight: '700', fontSize: 16 }}>
+        <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 16 }}>
           {initials}
         </Text>
       </PressableScale>
@@ -133,7 +136,7 @@ export function MobileHeader({
           <Text
             style={{
               fontSize: mobileType.greetingSize,
-              color: mobileColors.textSecondary,
+              color: colors.textSecondary,
               textAlign: isRTL ? 'right' : 'left',
             }}
             numberOfLines={1}
@@ -145,7 +148,7 @@ export function MobileHeader({
           style={{
             fontSize: mobileType.titleSize,
             fontWeight: mobileType.titleWeight,
-            color: mobileColors.text,
+            color: colors.text,
             textAlign: isRTL ? 'right' : 'left',
           }}
           numberOfLines={1}
@@ -160,12 +163,14 @@ export function MobileHeader({
           badge={unreadNotifications}
           onPress={onPressNotifications}
           label={notificationsLabel}
+          colors={colors}
         />
         <IconButton
           icon="chatbubble-ellipses-outline"
           badge={unreadSupport}
           onPress={onPressSupport}
           label={supportLabel}
+          colors={colors}
         />
       </View>
     </View>

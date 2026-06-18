@@ -11,7 +11,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
-import { mobileColors } from '../mobileTokens';
+import { useMobileColors } from '../mobileTokens';
 
 export interface OverviewPoint {
   label: string;
@@ -26,6 +26,7 @@ export interface OverviewChartProps {
 }
 
 export function OverviewChart({ data, height = 132, testID }: OverviewChartProps): React.JSX.Element {
+  const colors = useMobileColors();
   const { rowDirection } = useTheme();
   const max = Math.max(1, ...data.map((d) => (Number.isFinite(d.value) ? d.value : 0)));
   const gridFractions = [0, 0.5, 1];
@@ -44,7 +45,7 @@ export function OverviewChart({ data, height = 132, testID }: OverviewChartProps
                 left: 0,
                 right: 0,
                 height: 1,
-                backgroundColor: mobileColors.separator,
+                backgroundColor: colors.separator,
                 opacity: f === 1 ? 1 : 0.6,
               }}
             />
@@ -69,7 +70,7 @@ export function OverviewChart({ data, height = 132, testID }: OverviewChartProps
                     maxWidth: 30,
                     height: barHeight,
                     borderRadius: 7,
-                    backgroundColor: d.highlight ? mobileColors.primary : mobileColors.primarySoft,
+                    backgroundColor: d.highlight ? colors.primary : colors.primarySoft,
                   }}
                 />
               </View>
@@ -85,7 +86,7 @@ export function OverviewChart({ data, height = 132, testID }: OverviewChartProps
               numberOfLines={1}
               style={{
                 fontSize: 11,
-                color: d.highlight ? mobileColors.text : mobileColors.textSecondary,
+                color: d.highlight ? colors.text : colors.textSecondary,
                 fontWeight: d.highlight ? '700' : '500',
               }}
             >

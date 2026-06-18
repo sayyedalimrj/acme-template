@@ -10,7 +10,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
-import { mobileColors, mobileMetrics, mobileShadow, mobileType } from '../mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from '../mobileTokens';
 import { PressableScale } from './PressableScale';
 
 export interface FeatureCardProps {
@@ -28,6 +28,8 @@ export function FeatureCard({
   badge,
   testID,
 }: FeatureCardProps): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const { rowDirection, isRTL } = useTheme();
 
   return (
@@ -41,12 +43,12 @@ export function FeatureCard({
           alignItems: 'center',
           gap: 12,
           borderRadius: mobileMetrics.cardRadiusSmall,
-          backgroundColor: mobileColors.card,
+          backgroundColor: colors.card,
           paddingVertical: 14,
           paddingHorizontal: 14,
           minHeight: 64,
         },
-        mobileShadow,
+        shadow,
       ]}
     >
       <View
@@ -54,19 +56,19 @@ export function FeatureCard({
           width: 44,
           height: 44,
           borderRadius: 13,
-          backgroundColor: mobileColors.tile,
+          backgroundColor: colors.tile,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={icon} size={21} color={mobileColors.primary} />
+        <Ionicons name={icon} size={21} color={colors.primary} />
       </View>
       <Text
         style={{
           flex: 1,
           fontSize: mobileType.labelSize,
           fontWeight: '600',
-          color: mobileColors.text,
+          color: colors.text,
           textAlign: isRTL ? 'right' : 'left',
         }}
         numberOfLines={2}
@@ -80,12 +82,12 @@ export function FeatureCard({
             height: 20,
             borderRadius: 10,
             paddingHorizontal: 6,
-            backgroundColor: mobileColors.badge,
+            backgroundColor: colors.badge,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontSize: 11, fontWeight: '700', color: mobileColors.onPrimary }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.onPrimary }}>
             {badge > 9 ? '9+' : String(badge)}
           </Text>
         </View>

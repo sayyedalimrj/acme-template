@@ -10,7 +10,7 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
 
-import { mobileColors, mobileMetrics, mobileShadow, mobileType } from '../mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from '../mobileTokens';
 import { PressableScale } from './PressableScale';
 
 export interface QuickActionCardProps {
@@ -28,6 +28,9 @@ export function QuickActionCard({
   onPress,
   testID,
 }: QuickActionCardProps): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
+
   return (
     <PressableScale
       onPress={onPress}
@@ -39,13 +42,13 @@ export function QuickActionCard({
           minWidth: 0,
           height: mobileMetrics.quickActionHeight,
           borderRadius: mobileMetrics.cardRadiusSmall,
-          backgroundColor: mobileColors.card,
+          backgroundColor: colors.card,
           padding: 12,
           alignItems: 'center',
           justifyContent: 'center',
           gap: 10,
         },
-        mobileShadow,
+        shadow,
       ]}
     >
       <View
@@ -53,12 +56,12 @@ export function QuickActionCard({
           width: 52,
           height: 52,
           borderRadius: 16,
-          backgroundColor: mobileColors.tile,
+          backgroundColor: colors.tile,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={icon} size={24} color={mobileColors.primary} />
+        <Ionicons name={icon} size={24} color={colors.primary} />
         {count && count > 0 ? (
           <View
             style={{
@@ -69,14 +72,14 @@ export function QuickActionCard({
               height: 20,
               borderRadius: 10,
               paddingHorizontal: 5,
-              backgroundColor: mobileColors.primary,
+              backgroundColor: colors.primary,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 2,
-              borderColor: mobileColors.card,
+              borderColor: colors.card,
             }}
           >
-            <Text style={{ fontSize: 11, fontWeight: '700', color: mobileColors.onPrimary }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: colors.onPrimary }}>
               {count > 99 ? '99+' : String(count)}
             </Text>
           </View>
@@ -86,7 +89,7 @@ export function QuickActionCard({
         style={{
           fontSize: mobileType.captionSize,
           fontWeight: '600',
-          color: mobileColors.text,
+          color: colors.text,
           textAlign: 'center',
         }}
         numberOfLines={1}

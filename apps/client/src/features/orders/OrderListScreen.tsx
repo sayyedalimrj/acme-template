@@ -23,10 +23,10 @@ import {
   type StatusTone,
 } from '@/features/mobile/components';
 import {
-  mobileColors,
   mobileMetrics,
-  mobileShadow,
   mobileType,
+  useMobileColors,
+  useMobileShadow,
 } from '@/features/mobile/mobileTokens';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
@@ -65,6 +65,7 @@ const STATUS_FILTERS: readonly { value: OrderStatusFilter; labelKey: StringKey }
 ];
 
 function ScreenTitle({ title }: { title: string }): React.JSX.Element {
+  const colors = useMobileColors();
   const { isRTL } = useTheme();
   return (
     <View style={{ paddingHorizontal: mobileMetrics.screenPadding, paddingVertical: 8 }}>
@@ -72,7 +73,7 @@ function ScreenTitle({ title }: { title: string }): React.JSX.Element {
         style={{
           fontSize: mobileType.titleSize,
           fontWeight: '700',
-          color: mobileColors.text,
+          color: colors.text,
           textAlign: isRTL ? 'right' : 'left',
         }}
       >
@@ -91,6 +92,7 @@ function OrderRow({
   onPress: () => void;
   customerFallback: string;
 }): React.JSX.Element {
+  const colors = useMobileColors();
   const { rowDirection, isRTL } = useTheme();
   const t = useT();
   const fmt = useFormatters();
@@ -114,19 +116,19 @@ function OrderRow({
         {/* Line 1: order number (leading) + total (trailing) on the same baseline. */}
         <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
           <Text
-            style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: mobileColors.text }}
+            style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: colors.text }}
             numberOfLines={1}
           >
             #{order.number}
           </Text>
           {attention ? (
             <View
-              style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mobileColors.badge }}
+              style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.badge }}
             />
           ) : null}
           <View style={{ flex: 1 }} />
           <Text
-            style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: mobileColors.text }}
+            style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: colors.text }}
             numberOfLines={1}
           >
             {fmt.money(order.total, order.currency)}
@@ -137,7 +139,7 @@ function OrderRow({
         <Text
           style={{
             fontSize: mobileType.captionSize,
-            color: mobileColors.textSecondary,
+            color: colors.textSecondary,
             textAlign: isRTL ? 'right' : 'left',
           }}
           numberOfLines={1}
@@ -150,7 +152,7 @@ function OrderRow({
           <StatusBadge tone={toStatusTone(status.tone)} label={t(status.labelKey)} />
           <View style={{ flex: 1 }} />
           <Text
-            style={{ fontSize: mobileType.captionSize, color: mobileColors.mutedSoft }}
+            style={{ fontSize: mobileType.captionSize, color: colors.mutedSoft }}
             numberOfLines={1}
           >
             {fmt.date(order.dateCreated)}
@@ -161,13 +163,15 @@ function OrderRow({
       <Ionicons
         name={isRTL ? 'chevron-back' : 'chevron-forward'}
         size={16}
-        color={mobileColors.mutedSoft}
+        color={colors.mutedSoft}
       />
     </PressableScale>
   );
 }
 
 export function OrderListScreen(): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const t = useT();
   const router = useRouter();
   const { isRTL } = useTheme();
@@ -217,7 +221,7 @@ export function OrderListScreen(): React.JSX.Element {
         </AnimatedSection>
 
         {ordersQuery.isPending ? (
-          <Text style={{ color: mobileColors.muted, textAlign: isRTL ? 'right' : 'left' }}>
+          <Text style={{ color: colors.muted, textAlign: isRTL ? 'right' : 'left' }}>
             {t('common.loading')}
           </Text>
         ) : ordersQuery.isError ? (
@@ -226,14 +230,14 @@ export function OrderListScreen(): React.JSX.Element {
             accessibilityLabel={t('common.retry')}
             style={{ paddingVertical: 24, alignItems: 'center' }}
           >
-            <Text style={{ color: mobileColors.primary, fontWeight: '700' }}>
+            <Text style={{ color: colors.primary, fontWeight: '700' }}>
               {t('orders.error')} · {t('common.retry')}
             </Text>
           </PressableScale>
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-            <Ionicons name="receipt-outline" size={34} color={mobileColors.mutedSoft} />
-            <Text style={{ color: mobileColors.muted, marginTop: 10 }}>{t('orders.empty')}</Text>
+            <Ionicons name="receipt-outline" size={34} color={colors.mutedSoft} />
+            <Text style={{ color: colors.muted, marginTop: 10 }}>{t('orders.empty')}</Text>
           </View>
         ) : (
           <AnimatedSection index={1}>
@@ -242,17 +246,17 @@ export function OrderListScreen(): React.JSX.Element {
               style={[
                 {
                   borderRadius: mobileMetrics.cardRadius,
-                  backgroundColor: mobileColors.card,
+                  backgroundColor: colors.card,
                   paddingHorizontal: 16,
                   paddingVertical: 4,
                 },
-                mobileShadow,
+                shadow,
               ]}
             >
               {filtered.map((order, index) => (
                 <View key={order.id}>
                   {index > 0 ? (
-                    <View style={{ height: 1, backgroundColor: mobileColors.separator }} />
+                    <View style={{ height: 1, backgroundColor: colors.separator }} />
                   ) : null}
                   <OrderRow
                     order={order}

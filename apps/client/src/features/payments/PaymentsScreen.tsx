@@ -26,7 +26,7 @@ import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
-import { mobileColors, mobileMetrics, mobileShadow, mobileType } from '@/features/mobile/mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from '@/features/mobile/mobileTokens';
 import type { Order, OrderStatus } from '@/domain/types';
 import type { StringKey } from '@/i18n/strings';
 
@@ -68,13 +68,15 @@ function SummaryTile({
   value: string;
   tone: 'primary' | 'success' | 'warning';
 }): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const { isRTL } = useTheme();
   const color =
     tone === 'success'
-      ? mobileColors.statusActive
+      ? colors.statusActive
       : tone === 'warning'
-        ? mobileColors.statusAttention
-        : mobileColors.primary;
+        ? colors.statusAttention
+        : colors.primary;
   return (
     <View
       style={[
@@ -82,15 +84,15 @@ function SummaryTile({
           flex: 1,
           minWidth: 0,
           borderRadius: mobileMetrics.cardRadiusSmall,
-          backgroundColor: mobileColors.card,
+          backgroundColor: colors.card,
           padding: 14,
           gap: 6,
         },
-        mobileShadow,
+        shadow,
       ]}
     >
       <Text
-        style={{ fontSize: mobileType.captionSize, color: mobileColors.textSecondary }}
+        style={{ fontSize: mobileType.captionSize, color: colors.textSecondary }}
         numberOfLines={1}
       >
         {label}
@@ -113,6 +115,7 @@ function PaymentRow({
   customerFallback: string;
   onPress: () => void;
 }): React.JSX.Element {
+  const colors = useMobileColors();
   const { rowDirection, isRTL } = useTheme();
   const t = useT();
   const fmt = useFormatters();
@@ -136,25 +139,25 @@ function PaymentRow({
           width: 44,
           height: 44,
           borderRadius: 13,
-          backgroundColor: mobileColors.tile,
+          backgroundColor: colors.tile,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name="card-outline" size={20} color={mobileColors.primary} />
+        <Ionicons name="card-outline" size={20} color={colors.primary} />
       </View>
 
       <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
         <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
           <Text
-            style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: mobileColors.text }}
+            style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: colors.text }}
             numberOfLines={1}
           >
             {t('payments.forOrder')} #{order.number}
           </Text>
           <View style={{ flex: 1 }} />
           <Text
-            style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: mobileColors.text }}
+            style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: colors.text }}
             numberOfLines={1}
           >
             {fmt.money(order.total, order.currency)}
@@ -163,7 +166,7 @@ function PaymentRow({
         <Text
           style={{
             fontSize: mobileType.captionSize,
-            color: mobileColors.textSecondary,
+            color: colors.textSecondary,
             textAlign: isRTL ? 'right' : 'left',
           }}
           numberOfLines={1}
@@ -174,7 +177,7 @@ function PaymentRow({
           <StatusBadge tone={meta.tone} label={t(meta.labelKey)} />
           <View style={{ flex: 1 }} />
           <Text
-            style={{ fontSize: mobileType.captionSize, color: mobileColors.mutedSoft }}
+            style={{ fontSize: mobileType.captionSize, color: colors.mutedSoft }}
             numberOfLines={1}
           >
             {fmt.date(order.dateCreated)}
@@ -186,6 +189,7 @@ function PaymentRow({
 }
 
 function SectionTitle({ title }: { title: string }): React.JSX.Element {
+  const colors = useMobileColors();
   const { isRTL } = useTheme();
   return (
     <View style={{ paddingHorizontal: mobileMetrics.screenPadding, paddingVertical: 8 }}>
@@ -193,7 +197,7 @@ function SectionTitle({ title }: { title: string }): React.JSX.Element {
         style={{
           fontSize: mobileType.titleSize,
           fontWeight: '700',
-          color: mobileColors.text,
+          color: colors.text,
           textAlign: isRTL ? 'right' : 'left',
         }}
       >
@@ -204,6 +208,8 @@ function SectionTitle({ title }: { title: string }): React.JSX.Element {
 }
 
 export function PaymentsScreen(): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const t = useT();
   const router = useRouter();
   const fmt = useFormatters();
@@ -286,7 +292,7 @@ export function PaymentsScreen(): React.JSX.Element {
         </AnimatedSection>
 
         {ordersQuery.isPending ? (
-          <Text style={{ color: mobileColors.muted, textAlign: isRTL ? 'right' : 'left' }}>
+          <Text style={{ color: colors.muted, textAlign: isRTL ? 'right' : 'left' }}>
             {t('common.loading')}
           </Text>
         ) : ordersQuery.isError ? (
@@ -295,14 +301,14 @@ export function PaymentsScreen(): React.JSX.Element {
             accessibilityLabel={t('common.retry')}
             style={{ paddingVertical: 24, alignItems: 'center' }}
           >
-            <Text style={{ color: mobileColors.primary, fontWeight: '700' }}>
+            <Text style={{ color: colors.primary, fontWeight: '700' }}>
               {t('payments.error')} · {t('common.retry')}
             </Text>
           </PressableScale>
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-            <Ionicons name="card-outline" size={34} color={mobileColors.mutedSoft} />
-            <Text style={{ color: mobileColors.muted, marginTop: 10 }}>{t('payments.empty')}</Text>
+            <Ionicons name="card-outline" size={34} color={colors.mutedSoft} />
+            <Text style={{ color: colors.muted, marginTop: 10 }}>{t('payments.empty')}</Text>
           </View>
         ) : (
           <AnimatedSection index={2}>
@@ -310,7 +316,7 @@ export function PaymentsScreen(): React.JSX.Element {
               style={{
                 fontSize: mobileType.sectionSize,
                 fontWeight: '700',
-                color: mobileColors.text,
+                color: colors.text,
                 textAlign: isRTL ? 'right' : 'left',
                 marginBottom: 4,
               }}
@@ -322,17 +328,17 @@ export function PaymentsScreen(): React.JSX.Element {
               style={[
                 {
                   borderRadius: mobileMetrics.cardRadius,
-                  backgroundColor: mobileColors.card,
+                  backgroundColor: colors.card,
                   paddingHorizontal: 16,
                   paddingVertical: 4,
                 },
-                mobileShadow,
+                shadow,
               ]}
             >
               {filtered.map((order, index) => (
                 <View key={order.id}>
                   {index > 0 ? (
-                    <View style={{ height: 1, backgroundColor: mobileColors.separator }} />
+                    <View style={{ height: 1, backgroundColor: colors.separator }} />
                   ) : null}
                   <PaymentRow
                     order={order}
@@ -345,7 +351,7 @@ export function PaymentsScreen(): React.JSX.Element {
             <Text
               style={{
                 fontSize: mobileType.captionSize,
-                color: mobileColors.textSecondary,
+                color: colors.textSecondary,
                 textAlign: 'center',
                 marginTop: 14,
               }}
