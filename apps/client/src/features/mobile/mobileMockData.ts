@@ -42,7 +42,7 @@ export const QUICK_ACTIONS: readonly QuickAction[] = [
     icon: 'people-outline',
     href: '/customers',
   },
-  { key: 'payments', labelKey: 'home.quick.payments', icon: 'card-outline', href: '/plans' },
+  { key: 'payments', labelKey: 'home.quick.payments', icon: 'card-outline', href: '/payments' },
 ];
 
 /** A tool entry inside the More features grid. */
@@ -79,7 +79,7 @@ export const FEATURE_SECTIONS: readonly FeatureSection[] = [
         icon: 'people-outline',
         href: '/customers',
       },
-      { key: 'payments', labelKey: 'home.quick.payments', icon: 'card-outline', href: '/plans' },
+      { key: 'payments', labelKey: 'home.quick.payments', icon: 'card-outline', href: '/payments' },
     ],
   },
   {

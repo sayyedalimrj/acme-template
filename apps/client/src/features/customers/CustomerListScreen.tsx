@@ -160,11 +160,11 @@ export function CustomerListScreen(): React.JSX.Element {
   }
 
   return (
-    <Screen testID="customer-list-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('customers.title')}</Text>
-        <Text tone="muted">{t('customers.subtitle')}</Text>
-      </View>
+    <Screen
+      testID="customer-list-screen"
+      title={t('customers.title')}
+      subtitle={t('customers.subtitle')}
+    >
 
       <Card padding="md" contentStyle={{ gap: tokens.spacing.sm }}>
         <Input

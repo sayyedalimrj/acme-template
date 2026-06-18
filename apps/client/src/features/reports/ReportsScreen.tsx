@@ -262,11 +262,7 @@ export function ReportsScreen(): React.JSX.Element {
   const money = (value: string) => fmt.money(value, currency);
 
   return (
-    <Screen testID="reports-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('reports.title')}</Text>
-        <Text tone="muted">{t('reports.subtitle')}</Text>
-      </View>
+    <Screen testID="reports-screen" title={t('reports.title')} subtitle={t('reports.subtitle')}>
 
       <SecurityNote messageKey="reports.safety.note" />
 

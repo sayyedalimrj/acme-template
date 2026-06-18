@@ -7,22 +7,17 @@
  */
 import React from 'react';
 
-import { EmptyState, Screen, Text } from '@/components/ui';
+import { EmptyState, Screen } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
-import { useTheme } from '@/theme';
 
 export interface ComingSoonScreenProps {
   title: string;
 }
 
 export function ComingSoonScreen({ title }: ComingSoonScreenProps): React.JSX.Element {
-  const { tokens } = useTheme();
   const t = useT();
   return (
-    <Screen testID="coming-soon-screen">
-      <Text variant="title" style={{ marginBottom: tokens.spacing.xs }}>
-        {title}
-      </Text>
+    <Screen testID="coming-soon-screen" title={title}>
       <EmptyState
         title={t('placeholder.title')}
         body={t('placeholder.body')}

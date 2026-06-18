@@ -212,11 +212,11 @@ export function OnboardingScreen(): React.JSX.Element {
   );
 
   return (
-    <Screen testID="onboarding-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('onboarding.title')}</Text>
-        <Text tone="muted">{t('onboarding.subtitle')}</Text>
-      </View>
+    <Screen
+      testID="onboarding-screen"
+      title={t('onboarding.title')}
+      subtitle={t('onboarding.subtitle')}
+    >
 
       <SecurityNote />
 

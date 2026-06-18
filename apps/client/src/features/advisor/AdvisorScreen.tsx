@@ -49,11 +49,7 @@ export function AdvisorScreen(): React.JSX.Element {
   const groups = groupRecommendations(recommendationsQuery.data ?? []);
 
   return (
-    <Screen testID="advisor-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('advisor.title')}</Text>
-        <Text tone="muted">{t('advisor.subtitle')}</Text>
-      </View>
+    <Screen testID="advisor-screen" title={t('advisor.title')} subtitle={t('advisor.subtitle')}>
 
       <SecurityNote messageKey="advisor.safety.note" />
 

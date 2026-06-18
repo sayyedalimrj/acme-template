@@ -165,11 +165,11 @@ export function ConnectSiteScreen(): React.JSX.Element {
   const sites = sitesQuery.data ?? [];
 
   return (
-    <Screen testID="connect-site-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('connectSite.title')}</Text>
-        <Text tone="muted">{t('connectSite.subtitle')}</Text>
-      </View>
+    <Screen
+      testID="connect-site-screen"
+      title={t('connectSite.title')}
+      subtitle={t('connectSite.subtitle')}
+    >
 
       <SecurityNote />
 

@@ -165,11 +165,7 @@ export function InventoryScreen(): React.JSX.Element {
   const lowStock = alerts.length - outOfStock - backorder;
 
   return (
-    <Screen testID="inventory-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('inventory.title')}</Text>
-        <Text tone="muted">{t('inventory.subtitle')}</Text>
-      </View>
+    <Screen testID="inventory-screen" title={t('inventory.title')} subtitle={t('inventory.subtitle')}>
 
       <Card>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.lg }}>

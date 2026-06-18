@@ -6,9 +6,8 @@
  * action, and a security note reaffirming that no credentials are collected in the app.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import React, { type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import {
   Badge,
@@ -71,32 +70,10 @@ export function OnboardingRequestDetailScreen({
 }: OnboardingRequestDetailScreenProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
-  const router = useRouter();
 
   const { data: request, isPending, isError, refetch } = useOnboardingRequest(requestId);
   const templatesQuery = useStoreTemplates();
   const plansQuery = useSubscriptionPlans();
-
-  const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.navigate('/onboarding' as never);
-    }
-  };
-
-  const BackLink = (
-    <Pressable
-      accessibilityRole="button"
-      onPress={goBack}
-      style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.xs }}
-    >
-      <Ionicons name="chevron-back" size={18} color={tokens.color.primary} />
-      <Text variant="label" tone="primary">
-        {t('onboarding.detail.back')}
-      </Text>
-    </Pressable>
-  );
 
   if (isPending) {
     return (
@@ -108,8 +85,7 @@ export function OnboardingRequestDetailScreen({
 
   if (isError || !request) {
     return (
-      <Screen testID="onboarding-detail-screen">
-        {BackLink}
+      <Screen testID="onboarding-detail-screen" title={t('onboarding.detail.notFound.title')}>
         <ErrorState
           title={t('onboarding.detail.notFound.title')}
           body={t('onboarding.detail.notFound.body')}
@@ -134,15 +110,10 @@ export function OnboardingRequestDetailScreen({
     : undefined;
 
   return (
-    <Screen testID="onboarding-detail-screen">
-      {BackLink}
-
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{request.businessName}</Text>
-        <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
-          <Badge tone="neutral" label={typeLabel} />
-          <Badge tone={meta.tone} label={t(meta.labelKey)} />
-        </View>
+    <Screen testID="onboarding-detail-screen" title={request.businessName}>
+      <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
+        <Badge tone="neutral" label={typeLabel} />
+        <Badge tone={meta.tone} label={t(meta.labelKey)} />
       </View>
 
       {/* Summary */}

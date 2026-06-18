@@ -82,11 +82,11 @@ export function AutomationScreen(): React.JSX.Element {
   const preview = selectedDraft ? buildMessagePreview(selectedDraft) : null;
 
   return (
-    <Screen testID="automation-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('automation.title')}</Text>
-        <Text tone="muted">{t('automation.subtitle')}</Text>
-      </View>
+    <Screen
+      testID="automation-screen"
+      title={t('automation.title')}
+      subtitle={t('automation.subtitle')}
+    >
 
       <SecurityNote messageKey="automation.safety.note" />
 

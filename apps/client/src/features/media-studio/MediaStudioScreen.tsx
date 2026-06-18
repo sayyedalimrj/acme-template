@@ -85,11 +85,11 @@ export function MediaStudioScreen({ initialProductId }: MediaStudioScreenProps):
   const variants = variantsQuery.data ?? [];
 
   return (
-    <Screen testID="media-studio-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('mediaStudio.title')}</Text>
-        <Text tone="muted">{t('mediaStudio.subtitle')}</Text>
-      </View>
+    <Screen
+      testID="media-studio-screen"
+      title={t('mediaStudio.title')}
+      subtitle={t('mediaStudio.subtitle')}
+    >
 
       <SecurityNote messageKey="mediaStudio.safety.note" />
 

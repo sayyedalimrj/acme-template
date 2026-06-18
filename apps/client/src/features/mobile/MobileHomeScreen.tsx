@@ -93,8 +93,17 @@ function SiteCarousel({
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={onScrollEnd}
         >
-          {sites.map((site) => (
-            <View key={site.id} style={{ width: pageWidth }}>
+          {sites.map((site, index) => (
+            // Inner horizontal padding gives a clear gap between adjacent hero cards while
+            // each page still snaps to the full page width (paging stays aligned).
+            <View
+              key={site.id}
+              style={{
+                width: pageWidth,
+                paddingLeft: index === 0 ? 0 : 7,
+                paddingRight: index === sites.length - 1 ? 0 : 7,
+              }}
+            >
               <HeroSiteCard
                 site={site}
                 renewalLabel={renewalFor(site)}
@@ -234,8 +243,10 @@ export function MobileHomeScreen(): React.JSX.Element {
       unreadSupport={UNREAD.support}
       onPressNotifications={() => go('/notifications')}
       onPressSupport={() => go('/support')}
+      onPressAvatar={() => go('/settings')}
       notificationsLabel={t('notif.title')}
       supportLabel={t('csupport.title')}
+      accountLabel={t('home.accountLabel')}
     />
   );
 
@@ -263,14 +274,14 @@ export function MobileHomeScreen(): React.JSX.Element {
             <HeroSiteCard
               site={siteList[0]}
               renewalLabel={renewalFor(siteList[0])}
-              onPress={() => go('/more')}
+              onPress={() => go('/plans')}
             />
           ) : (
             <SiteCarousel
               sites={siteList}
               selectedIndex={selectedIndex}
               onSelect={setSelectedIndex}
-              onPressSite={() => go('/more')}
+              onPressSite={() => go('/plans')}
               renewalFor={renewalFor}
             />
           )}
