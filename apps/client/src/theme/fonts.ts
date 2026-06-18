@@ -1,66 +1,46 @@
 /**
- * App font loading — Vazirmatn (OFL) today; IRANYekanX when licensed files are added.
+ * App font loading — IRANYekanX Pro (Farsi numerals) bundled from licensed assets.
  *
- * Drop IRANYekanX `.ttf` files into `assets/fonts/` and set `USE_IRANYEKANX` to true.
- * Persian is primary for the client app.
+ * Source: `IRANYekanX Pro.rar` in the repo root (FontIran license — see assets/fonts/iranyekan/FontLicense.txt).
  */
-import {
-  Vazirmatn_400Regular,
-  Vazirmatn_500Medium,
-  Vazirmatn_600SemiBold,
-  Vazirmatn_700Bold,
-} from '@expo-google-fonts/vazirmatn';
 import { useFonts } from 'expo-font';
 import { Platform } from 'react-native';
 
-/** Flip to true after adding licensed IRANYekanX files under `assets/fonts/`. */
-export const USE_IRANYEKANX = false;
-
-const vazirmatnFontMap = {
-  Vazirmatn_400Regular,
-  Vazirmatn_500Medium,
-  Vazirmatn_600SemiBold,
-  Vazirmatn_700Bold,
+export const appFontMap = {
+  IRANYekanXRegular: require('../../assets/fonts/iranyekan/IRANYekanXFaNum-Regular.ttf'),
+  IRANYekanXMedium: require('../../assets/fonts/iranyekan/IRANYekanXFaNum-Medium.ttf'),
+  IRANYekanXSemiBold: require('../../assets/fonts/iranyekan/IRANYekanXFaNum-DemiBold.ttf'),
+  IRANYekanXBold: require('../../assets/fonts/iranyekan/IRANYekanXFaNum-Bold.ttf'),
 } as const;
-
-/** Font map passed to `useFonts`. Extend with IRANYekanX when licensed assets are present. */
-export const appFontMap = USE_IRANYEKANX
-  ? ({
-      // TODO: require licensed files, e.g. IRANYekanXRegular: require('../../assets/fonts/IRANYekanX-Regular.ttf'),
-      ...vazirmatnFontMap,
-    } as const)
-  : vazirmatnFontMap;
 
 export type AppFontFamily = keyof typeof appFontMap;
 
 const WEB_FALLBACK_STACK =
-  "'Vazirmatn', 'IRANYekanX', 'Vazir', 'IRANSansX', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+  "'IRANYekanX', 'Vazirmatn', 'Vazir', 'IRANSansX', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
 /** CSS font stack for <Text> on web (supports fallbacks). */
 export function resolveTextFontFamily(fontsLoaded: boolean): string | undefined {
   if (Platform.OS !== 'web') {
-    return fontsLoaded ? 'Vazirmatn_400Regular' : undefined;
+    return fontsLoaded ? 'IRANYekanXRegular' : undefined;
   }
-  return fontsLoaded ? `'Vazirmatn', ${WEB_FALLBACK_STACK}` : WEB_FALLBACK_STACK;
+  return fontsLoaded ? `'IRANYekanX', ${WEB_FALLBACK_STACK}` : WEB_FALLBACK_STACK;
 }
 
-/**
- * Single font family for TextInput (comma stacks break RN TextInput on web).
- */
+/** Single font family for TextInput (comma stacks break RN TextInput on web). */
 export function resolveInputFontFamily(
   fontsLoaded: boolean,
   fontWeight?: string | number,
 ): string | undefined {
   if (!fontsLoaded) {
-    return Platform.OS === 'web' ? undefined : undefined;
+    return undefined;
   }
   if (Platform.OS === 'web') {
-    return 'Vazirmatn';
+    return 'IRANYekanX';
   }
   return resolveFontFamilyForWeight(fontsLoaded, fontWeight);
 }
 
-/** Map RN fontWeight to the matching bundled face on native. */
+/** Map RN fontWeight to the matching bundled IRANYekanX face on native. */
 export function resolveFontFamilyForWeight(
   fontsLoaded: boolean,
   fontWeight?: string | number,
@@ -69,13 +49,13 @@ export function resolveFontFamilyForWeight(
     return undefined;
   }
   if (Platform.OS === 'web') {
-    return 'Vazirmatn';
+    return 'IRANYekanX';
   }
   const w = typeof fontWeight === 'number' ? fontWeight : Number(fontWeight);
-  if (w >= 700) return 'Vazirmatn_700Bold';
-  if (w >= 600) return 'Vazirmatn_600SemiBold';
-  if (w >= 500) return 'Vazirmatn_500Medium';
-  return 'Vazirmatn_400Regular';
+  if (w >= 700) return 'IRANYekanXBold';
+  if (w >= 600) return 'IRANYekanXSemiBold';
+  if (w >= 500) return 'IRANYekanXMedium';
+  return 'IRANYekanXRegular';
 }
 
 /** @deprecated Use resolveTextFontFamily or resolveInputFontFamily. */

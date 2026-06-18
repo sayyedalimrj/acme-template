@@ -18,6 +18,7 @@ import {
   FilterChipRow,
   MobilePage,
   MobileSearchField,
+  MobileTabHeader,
   PressableScale,
   StatusBadge,
   type StatusTone,
@@ -65,22 +66,7 @@ const STATUS_FILTERS: readonly { value: OrderStatusFilter; labelKey: StringKey }
 ];
 
 function ScreenTitle({ title }: { title: string }): React.JSX.Element {
-  const colors = useMobileColors();
-  const { isRTL } = useTheme();
-  return (
-    <View style={{ paddingHorizontal: mobileMetrics.screenPadding, paddingVertical: 8 }}>
-      <Text
-        style={{
-          fontSize: mobileType.titleSize,
-          fontWeight: '700',
-          color: colors.text,
-          textAlign: isRTL ? 'right' : 'left',
-        }}
-      >
-        {title}
-      </Text>
-    </View>
-  );
+  return <MobileTabHeader title={title} />;
 }
 
 function OrderRow({

@@ -18,6 +18,7 @@ import {
   FilterChipRow,
   MobilePage,
   MobileSearchField,
+  MobileTabHeader,
   PressableScale,
   StatusBadge,
   type StatusTone,
@@ -63,47 +64,30 @@ function ScreenTitle({
   addLabel?: string;
 }): React.JSX.Element {
   const colors = useMobileColors();
-  const { rowDirection, isRTL } = useTheme();
   return (
-    <View
-      style={{
-        flexDirection: rowDirection,
-        alignItems: 'center',
-        gap: 12,
-        paddingHorizontal: mobileMetrics.screenPadding,
-        paddingVertical: 8,
-      }}
-    >
-      <Text
-        style={{
-          flex: 1,
-          fontSize: mobileType.titleSize,
-          fontWeight: '700',
-          color: colors.text,
-          textAlign: isRTL ? 'right' : 'left',
-        }}
-      >
-        {title}
-      </Text>
-      {onAdd ? (
-        <PressableScale
-          onPress={onAdd}
-          accessibilityLabel={addLabel}
-          testID="product-add"
-          pressScale={0.92}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: colors.primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons name="add" size={24} color={colors.onPrimary} />
-        </PressableScale>
-      ) : null}
-    </View>
+    <MobileTabHeader
+      title={title}
+      trailing={
+        onAdd ? (
+          <PressableScale
+            onPress={onAdd}
+            accessibilityLabel={addLabel}
+            testID="product-add"
+            pressScale={0.92}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="add" size={24} color={colors.onPrimary} />
+          </PressableScale>
+        ) : undefined
+      }
+    />
   );
 }
 

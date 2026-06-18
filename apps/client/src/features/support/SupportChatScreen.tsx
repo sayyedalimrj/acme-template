@@ -127,7 +127,7 @@ export function SupportChatScreen(): React.JSX.Element {
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={{ paddingTop: insets.top }}>
+      <View style={{ paddingTop: insets.top, backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.separator, zIndex: 10 }}>
         <MobileSubHeader
           title={t('csupport.chat.title')}
           onBack={onBack}

@@ -1,13 +1,11 @@
 /**
- * MobilePage — in-frame scrollable page.
+ * MobilePage — in-frame scrollable page with a fixed header.
  *
- * A plain scrollable page used by the mobile screens. The app frame, soft desktop backdrop,
- * and the bottom tab bar are owned by `AppShell` (single source of layout), so this component
- * just renders an optional fixed header + a scroll area with safe-area handling. RTL-safe; RN
- * primitives only.
+ * The optional header stays pinned above the scroll area (does not scroll with content).
+ * Safe-area top inset is applied to the header only. RTL-safe; RN primitives only.
  */
 import React, { type ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMobileColors } from '../mobileTokens';
@@ -32,12 +30,24 @@ export function MobilePage({
 
   return (
     <View testID={testID} style={{ flex: 1, backgroundColor: colors.background }}>
-      {header ? <View style={{ paddingTop: insets.top }}>{header}</View> : null}
+      {header ? (
+        <View
+          style={{
+            paddingTop: insets.top,
+            backgroundColor: colors.background,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colors.separator,
+            zIndex: 10,
+          }}
+        >
+          {header}
+        </View>
+      ) : null}
 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingTop: header ? 6 : insets.top + 6,
+          paddingTop: header ? 8 : insets.top + 6,
           paddingBottom: scrollBottomPadding,
         }}
         showsVerticalScrollIndicator={false}

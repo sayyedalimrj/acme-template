@@ -17,6 +17,7 @@ import {
   EmptySiteCard,
   MobilePage,
   MobileSearchField,
+  MobileTabHeader,
   PressableScale,
   StatusBadge,
   type StatusTone,
@@ -189,22 +190,7 @@ function PaymentRow({
 }
 
 function SectionTitle({ title }: { title: string }): React.JSX.Element {
-  const colors = useMobileColors();
-  const { isRTL } = useTheme();
-  return (
-    <View style={{ paddingHorizontal: mobileMetrics.screenPadding, paddingVertical: 8 }}>
-      <Text
-        style={{
-          fontSize: mobileType.titleSize,
-          fontWeight: '700',
-          color: colors.text,
-          textAlign: isRTL ? 'right' : 'left',
-        }}
-      >
-        {title}
-      </Text>
-    </View>
-  );
+  return <MobileTabHeader title={title} />;
 }
 
 export function PaymentsScreen(): React.JSX.Element {

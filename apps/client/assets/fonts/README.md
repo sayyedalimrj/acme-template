@@ -1,11 +1,15 @@
-# Persian fonts
+# IRANYekanX Pro (Farsi numerals)
 
-## IRANYekanX (preferred)
+Licensed font files extracted from `IRANYekanX Pro.rar` (see repo root).  
+License text: `FontLicense.txt` in this folder.
 
-IRANYekanX is a licensed font from [fontiran.com](https://fontiran.com/fonts/iranyekan).
-Place your licensed `.ttf` files here, then enable them in `src/theme/fonts.ts`:
+Bundled weights used by the app:
 
-1. Add files such as `IRANYekanX-Regular.ttf`, `IRANYekanX-Bold.ttf`, …
-2. Set `USE_IRANYEKANX = true` and wire the `require()` entries in `appFontMap`.
+| File | Role |
+| --- | --- |
+| `IRANYekanXFaNum-Regular.ttf` | body / 400 |
+| `IRANYekanXFaNum-Medium.ttf` | 500 |
+| `IRANYekanXFaNum-DemiBold.ttf` | 600 |
+| `IRANYekanXFaNum-Bold.ttf` | 700+ |
 
-Until those files are added, the app bundles **Vazirmatn** (OFL) via `@expo-google-fonts/vazirmatn`.
+Wired in `src/theme/fonts.ts` via `expo-font`.

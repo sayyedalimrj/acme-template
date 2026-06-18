@@ -9,13 +9,6 @@ jest.mock('expo-font', () => ({
   loadAsync: jest.fn(() => Promise.resolve()),
 }));
 
-jest.mock('@expo-google-fonts/vazirmatn', () => ({
-  Vazirmatn_400Regular: 'Vazirmatn_400Regular',
-  Vazirmatn_500Medium: 'Vazirmatn_500Medium',
-  Vazirmatn_600SemiBold: 'Vazirmatn_600SemiBold',
-  Vazirmatn_700Bold: 'Vazirmatn_700Bold',
-}));
-
 jest.mock('@expo/vector-icons', () => {
   const React = require('react');
   const { Text } = require('react-native');

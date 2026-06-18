@@ -14,7 +14,7 @@ import { easing, motion, motionDuration } from './motion';
 import { lightMobileColors, mobileMetrics, mobileType } from './mobileTokens';
 
 export const PERSIAN_FONT_STACK =
-  "'Vazirmatn', 'B Yekan', 'IRANYekanX', 'Vazir', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+  "'IRANYekanX', 'Vazirmatn', 'Vazir', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
 /** Web fallback when expo-font has not finished loading yet. */
 export const MOBILE_FONT_FAMILY = Platform.OS === 'web' ? PERSIAN_FONT_STACK : undefined;
@@ -68,5 +68,5 @@ export const mobileUxSpec = {
     easing: Object.keys(easing),
   },
   transition: ROUTE_TRANSITION,
-  font: { stack: PERSIAN_FONT_STACK, family: 'Vazirmatn (OFL stand-in for IRANYekanX)' },
+  font: { stack: PERSIAN_FONT_STACK, family: 'IRANYekanX Pro (Farsi numerals)' },
 } as const;

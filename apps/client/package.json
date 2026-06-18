@@ -19,7 +19,6 @@
     "test:ci": "jest --ci --runInBand --forceExit"
   },
   "dependencies": {
-    "@expo-google-fonts/vazirmatn": "^0.4.1",
     "@expo/vector-icons": "^15.0.2",
     "@tanstack/react-query": "^5.101.0",
     "expo": "^56.0.12",

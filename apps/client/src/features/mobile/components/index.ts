@@ -5,6 +5,7 @@ export { AnimatedCard } from './AnimatedCard';
 export { MobilePage } from './MobilePage';
 export { MobileHeader } from './MobileHeader';
 export { MobileSubHeader } from './MobileSubHeader';
+export { MobileTabHeader } from './MobileTabHeader';
 export { BottomNav } from './BottomNav';
 export { HeroSiteCard, siteInitials } from './HeroSiteCard';
 export { EmptySiteCard } from './EmptySiteCard';

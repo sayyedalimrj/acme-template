@@ -10,6 +10,7 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { ThemeToggleButton } from '@/components/ui/ThemeToggleButton';
 import { useTheme } from '@/theme';
 
 import { mobileMetrics, mobileType, useMobileColors, type MobileColorTokens } from '../mobileTokens';
@@ -158,6 +159,7 @@ export function MobileHeader({
       </View>
 
       <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 10 }}>
+        <ThemeToggleButton />
         <IconButton
           icon="notifications-outline"
           badge={unreadNotifications}
