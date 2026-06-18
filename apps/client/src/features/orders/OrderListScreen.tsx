@@ -105,15 +105,17 @@ function OrderRow({
       style={{
         flexDirection: rowDirection,
         alignItems: 'center',
-        gap: 12,
+        gap: 10,
         minHeight: mobileMetrics.listRowHeight,
         paddingVertical: 12,
       }}
     >
-      <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+      <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+        {/* Line 1: order number (leading) + total (trailing) on the same baseline. */}
         <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
           <Text
             style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: mobileColors.text }}
+            numberOfLines={1}
           >
             #{order.number}
           </Text>
@@ -122,7 +124,16 @@ function OrderRow({
               style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mobileColors.badge }}
             />
           ) : null}
+          <View style={{ flex: 1 }} />
+          <Text
+            style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: mobileColors.text }}
+            numberOfLines={1}
+          >
+            {fmt.money(order.total, order.currency)}
+          </Text>
         </View>
+
+        {/* Line 2: customer name. */}
         <Text
           style={{
             fontSize: mobileType.captionSize,
@@ -131,23 +142,27 @@ function OrderRow({
           }}
           numberOfLines={1}
         >
-          {customerLabel(order, customerFallback)} · {fmt.date(order.dateCreated)}
+          {customerLabel(order, customerFallback)}
         </Text>
-        <StatusBadge tone={toStatusTone(status.tone)} label={t(status.labelKey)} />
+
+        {/* Line 3: status chip (leading) + date (trailing). */}
+        <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
+          <StatusBadge tone={toStatusTone(status.tone)} label={t(status.labelKey)} />
+          <View style={{ flex: 1 }} />
+          <Text
+            style={{ fontSize: mobileType.captionSize, color: mobileColors.mutedSoft }}
+            numberOfLines={1}
+          >
+            {fmt.date(order.dateCreated)}
+          </Text>
+        </View>
       </View>
 
-      <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end', gap: 2 }}>
-        <Text
-          style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: mobileColors.text }}
-        >
-          {fmt.money(order.total, order.currency)}
-        </Text>
-        <Ionicons
-          name={isRTL ? 'chevron-back' : 'chevron-forward'}
-          size={16}
-          color={mobileColors.mutedSoft}
-        />
-      </View>
+      <Ionicons
+        name={isRTL ? 'chevron-back' : 'chevron-forward'}
+        size={16}
+        color={mobileColors.mutedSoft}
+      />
     </PressableScale>
   );
 }
