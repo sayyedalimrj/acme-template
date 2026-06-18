@@ -17,6 +17,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  MockActionButton,
   Screen,
   Text,
 } from '@/components/ui';
@@ -151,6 +152,23 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
         </View>
       </View>
 
+      <Card title={t('product.section.manage')}>
+        <Text tone="muted" variant="caption">
+          {t('product.manageNote')}
+        </Text>
+        <View
+          style={{
+            flexDirection: rowDirection,
+            gap: tokens.spacing.sm,
+            flexWrap: 'wrap',
+            marginTop: tokens.spacing.xs,
+          }}
+        >
+          <MockActionButton label={t('product.action.manage')} note={t('mock.comingSoonActive')} />
+          <MockActionButton label={t('product.action.edit')} note={t('mock.comingSoonActive')} />
+        </View>
+      </Card>
+
       <Card title={t('product.section.pricing')}>
         <DetailRow
           label={t('product.label.price')}
@@ -173,9 +191,7 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
         />
         <DetailRow
           label={t('product.label.stockQty')}
-          value={
-            typeof product.stockQuantity === 'number' ? fmt.num(product.stockQuantity) : none
-          }
+          value={typeof product.stockQuantity === 'number' ? fmt.num(product.stockQuantity) : none}
         />
       </Card>
 

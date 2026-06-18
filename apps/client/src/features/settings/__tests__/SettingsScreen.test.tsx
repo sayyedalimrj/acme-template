@@ -47,14 +47,14 @@ describe('SettingsScreen', () => {
     renderWithProviders(<SettingsScreen />);
     expect(screen.getByTestId('settings-screen')).toBeTruthy();
     expect(screen.getByText('0.1.0')).toBeTruthy();
-    expect(screen.getByText('Expo · React Native · Web-ready')).toBeTruthy();
+    expect(screen.getByText('اپلیکیشن موبایل')).toBeTruthy();
     // Active site summary section (Persian copy).
     expect(screen.getByText('فروشگاه فعال')).toBeTruthy();
   });
 
-  it('renders the security / backend-proxy warning (Persian)', () => {
+  it('renders the security / connections warning (Persian)', () => {
     renderWithProviders(<SettingsScreen />);
-    expect(screen.getByText(/وارد یا ذخیره نمی‌شوند/)).toBeTruthy();
+    expect(screen.getByText(/وارد یا ذخیره نمی‌شود/)).toBeTruthy();
   });
 
   it('renders the team & roles placeholder (Persian role names)', () => {

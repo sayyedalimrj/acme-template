@@ -130,7 +130,7 @@ export const planFeatures: PlanFeature[] = [
   {
     id: 'feat_managed_launch',
     category: 'managed',
-    label: 'راه‌اندازی فروشگاه وردپرس مدیریت‌شده',
+    label: 'راه‌اندازی فروشگاه آنلاین مدیریت‌شده',
     availability: { starter: 'none', growth: 'none', pro: 'none', managed: 'included' },
   },
   {

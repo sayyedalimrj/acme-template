@@ -218,6 +218,6 @@ export const automationSafetyNotices: AutomationSafetyNotice[] = [
     id: 'asn_provider',
     severity: 'info',
     message:
-      'ارسال واقعی در آینده از طریق backend و ارائه‌دهنده امن (مثل کاوه‌نگار/توییلیو) انجام می‌شود.',
+      'ارسال واقعی در آینده از طریق سرویس و ارائه‌دهنده امن (مثل کاوه‌نگار/توییلیو) انجام می‌شود.',
   },
 ];

@@ -24,6 +24,7 @@ import {
   Text,
 } from '@/components/ui';
 import { useActiveSite } from '@/features/site/useSites';
+import { AddActionButton } from '@/features/mobile/components';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
@@ -125,7 +126,7 @@ const SEGMENT_FILTERS: { value: SegmentFilter; labelKey: StringKey }[] = [
 ];
 
 export function CustomerListScreen(): React.JSX.Element {
-  const { tokens } = useTheme();
+  const { tokens, rowDirection } = useTheme();
   const t = useT();
   const fmt = useFormatters();
   const router = useRouter();
@@ -161,9 +162,22 @@ export function CustomerListScreen(): React.JSX.Element {
 
   return (
     <Screen testID="customer-list-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('customers.title')}</Text>
-        <Text tone="muted">{t('customers.subtitle')}</Text>
+      <View
+        style={{
+          flexDirection: rowDirection,
+          alignItems: 'center',
+          gap: tokens.spacing.md,
+        }}
+      >
+        <View style={{ flex: 1, gap: tokens.spacing.xs }}>
+          <Text variant="title">{t('customers.title')}</Text>
+          <Text tone="muted">{t('customers.subtitle')}</Text>
+        </View>
+        <AddActionButton
+          label={t('customers.add')}
+          comingSoonLabel={t('mock.comingSoonActive')}
+          testID="customer-add"
+        />
       </View>
 
       <Card padding="md" contentStyle={{ gap: tokens.spacing.sm }}>

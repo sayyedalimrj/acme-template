@@ -18,6 +18,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  MockActionButton,
   Screen,
   Text,
 } from '@/components/ui';
@@ -201,6 +202,26 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps):
           <Badge tone={segment.tone} label={t(segment.labelKey)} />
         </View>
       </View>
+
+      <Card title={t('customer.section.actions')}>
+        <Text tone="muted" variant="caption">
+          {t('customer.actionsNote')}
+        </Text>
+        <View
+          style={{
+            flexDirection: rowDirection,
+            gap: tokens.spacing.sm,
+            flexWrap: 'wrap',
+            marginTop: tokens.spacing.xs,
+          }}
+        >
+          <MockActionButton
+            label={t('customer.action.message')}
+            note={t('mock.comingSoonActive')}
+          />
+          <MockActionButton label={t('customer.action.edit')} note={t('mock.comingSoonActive')} />
+        </View>
+      </Card>
 
       <Card title={t('customer.section.contact')}>
         <DetailRow label={t('customer.label.email')} value={customer.email} />
