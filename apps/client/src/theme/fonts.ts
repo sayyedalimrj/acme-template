@@ -2,6 +2,12 @@
  * App font loading — IRANYekanX Pro (Farsi numerals) bundled from licensed assets.
  *
  * Source: `IRANYekanX Pro.rar` in the repo root (FontIran license — see assets/fonts/iranyekan/FontLicense.txt).
+ *
+ * IMPORTANT (web): `expo-font` registers each face under a CSS `font-family` equal to its
+ * key in `appFontMap` (e.g. `IRANYekanXRegular`, `IRANYekanXBold`). There is no combined
+ * `IRANYekanX` family on web, so every resolver must reference the actual per-weight family
+ * names — on web exactly like on native — otherwise the browser can't find the font and
+ * silently falls back to a system font.
  */
 import { useFonts } from 'expo-font';
 import { Platform } from 'react-native';
@@ -16,14 +22,29 @@ export const appFontMap = {
 export type AppFontFamily = keyof typeof appFontMap;
 
 const WEB_FALLBACK_STACK =
-  "'IRANYekanX', 'Vazirmatn', 'Vazir', 'IRANSansX', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+  "'Vazirmatn', 'Vazir', 'IRANSansX', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
-/** CSS font stack for <Text> on web (supports fallbacks). */
+/**
+ * Map an RN fontWeight to the matching bundled IRANYekanX face. The returned name is also the
+ * CSS `font-family` that `expo-font` registers for that face on web.
+ */
+function faceForWeight(fontWeight?: string | number): AppFontFamily {
+  const w = typeof fontWeight === 'number' ? fontWeight : Number(fontWeight);
+  if (w >= 700) return 'IRANYekanXBold';
+  if (w >= 600) return 'IRANYekanXSemiBold';
+  if (w >= 500) return 'IRANYekanXMedium';
+  return 'IRANYekanXRegular';
+}
+
+/** CSS font stack for <Text>. On web the loaded face comes first, then graceful fallbacks. */
 export function resolveTextFontFamily(fontsLoaded: boolean): string | undefined {
-  if (Platform.OS !== 'web') {
-    return fontsLoaded ? 'IRANYekanXRegular' : undefined;
+  if (!fontsLoaded) {
+    return Platform.OS === 'web' ? WEB_FALLBACK_STACK : undefined;
   }
-  return fontsLoaded ? `'IRANYekanX', ${WEB_FALLBACK_STACK}` : WEB_FALLBACK_STACK;
+  if (Platform.OS === 'web') {
+    return `'IRANYekanXRegular', ${WEB_FALLBACK_STACK}`;
+  }
+  return 'IRANYekanXRegular';
 }
 
 /** Single font family for TextInput (comma stacks break RN TextInput on web). */
@@ -34,28 +55,23 @@ export function resolveInputFontFamily(
   if (!fontsLoaded) {
     return undefined;
   }
-  if (Platform.OS === 'web') {
-    return 'IRANYekanX';
-  }
-  return resolveFontFamilyForWeight(fontsLoaded, fontWeight);
+  // Web and native both reference the per-weight family registered by expo-font.
+  return faceForWeight(fontWeight);
 }
 
-/** Map RN fontWeight to the matching bundled IRANYekanX face on native. */
+/** Map RN fontWeight to the matching bundled IRANYekanX face (web + native). */
 export function resolveFontFamilyForWeight(
   fontsLoaded: boolean,
   fontWeight?: string | number,
 ): string | undefined {
   if (!fontsLoaded) {
-    return undefined;
+    return Platform.OS === 'web' ? WEB_FALLBACK_STACK : undefined;
   }
+  const face = faceForWeight(fontWeight);
   if (Platform.OS === 'web') {
-    return 'IRANYekanX';
+    return `'${face}', ${WEB_FALLBACK_STACK}`;
   }
-  const w = typeof fontWeight === 'number' ? fontWeight : Number(fontWeight);
-  if (w >= 700) return 'IRANYekanXBold';
-  if (w >= 600) return 'IRANYekanXSemiBold';
-  if (w >= 500) return 'IRANYekanXMedium';
-  return 'IRANYekanXRegular';
+  return face;
 }
 
 /** @deprecated Use resolveTextFontFamily or resolveInputFontFamily. */

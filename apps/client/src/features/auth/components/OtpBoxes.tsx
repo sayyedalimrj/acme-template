@@ -15,7 +15,7 @@ import {
   type TextInputKeyPressEventData,
 } from 'react-native';
 
-import { resolveFontFamilyForWeight, useAppFont } from '@/theme';
+import { resolveInputFontFamily, useAppFont } from '@/theme';
 
 import { NO_WEB_OUTLINE } from '../../mobile/mobileUxSpec';
 import { authColors, authMetrics, authType } from '../authTokens';
@@ -36,7 +36,9 @@ export function OtpBoxes({
 }: OtpBoxesProps): React.JSX.Element {
   const inputs = useRef<(TextInput | null)[]>([]);
   const { fontsLoaded } = useAppFont();
-  const otpFontFamily = resolveFontFamilyForWeight(fontsLoaded, '700');
+  // OTP boxes are TextInputs: use a single registered family on web (comma stacks can break
+  // RN TextInput on web); the bold face is selected via the '700' weight mapping.
+  const otpFontFamily = resolveInputFontFamily(fontsLoaded, '700');
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
   const focusBox = (index: number): void => {
