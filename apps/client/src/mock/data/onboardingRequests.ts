@@ -40,7 +40,7 @@ export const onboardingRequests: OnboardingRequest[] = [
     siteUrl: 'https://digimarket-pars.example.test',
     platform: 'not_sure',
     requestType: 'managed_handover',
-    contactNote: 'مطمئن نیستیم فروشگاه روی ووکامرس است؛ به بررسی و راهنمایی نیاز داریم.',
+    contactNote: 'مطمئن نیستیم فروشگاه آنلاین ما درست کار می‌کند؛ به بررسی و راهنمایی نیاز داریم.',
     status: 'needs_customer_action',
     statusHistory: [
       { status: 'submitted', date: '2026-06-05T14:00:00Z', note: 'درخواست واگذاری مدیریت ثبت شد.' },
@@ -48,7 +48,7 @@ export const onboardingRequests: OnboardingRequest[] = [
       {
         status: 'needs_customer_action',
         date: '2026-06-08T08:45:00Z',
-        note: 'لطفاً نسخه وردپرس/ووکامرس را تأیید کنید (بدون نیاز به ورود اطلاعات حساس در برنامه).',
+        note: 'لطفاً وضعیت فروشگاه آنلاین خود را تأیید کنید (بدون نیاز به ورود اطلاعات حساس در برنامه).',
       },
     ],
     createdAt: '2026-06-05T14:00:00Z',

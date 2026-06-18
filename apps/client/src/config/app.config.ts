@@ -31,6 +31,6 @@ export const appConfig: AppConfig = {
   apiBaseUrl: '',
   defaultLocale: 'fa',
   defaultDirection: 'rtl',
-  appName: 'WordPress Commerce OS',
+  appName: 'Store Manager',
   appVersion: '0.1.0',
 };

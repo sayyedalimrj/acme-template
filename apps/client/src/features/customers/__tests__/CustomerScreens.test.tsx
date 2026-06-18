@@ -63,6 +63,12 @@ describe('CustomerListScreen', () => {
     await waitFor(() => expect(screen.queryByText('Maya Brennan')).toBeNull());
     expect(screen.getByText('Priya Nair')).toBeTruthy();
   });
+
+  it('shows an obvious add-customer action', async () => {
+    renderWithProviders(<CustomerListScreen />);
+    await screen.findByText('Maya Brennan', {}, { timeout: 4000 });
+    expect(screen.getByTestId('customer-add')).toBeTruthy();
+  });
 });
 
 describe('CustomerDetailScreen', () => {

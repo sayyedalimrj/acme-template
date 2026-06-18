@@ -64,6 +64,12 @@ describe('ProductListScreen', () => {
     await waitFor(() => expect(screen.queryByText('Aurora Cotton Crew Tee')).toBeNull());
     expect(screen.getByText('Northwind Canvas Tote')).toBeTruthy();
   });
+
+  it('shows an obvious add-product action', async () => {
+    renderWithProviders(<ProductListScreen />);
+    await screen.findByText('Aurora Cotton Crew Tee', {}, { timeout: 4000 });
+    expect(screen.getByTestId('product-add')).toBeTruthy();
+  });
 });
 
 describe('ProductDetailScreen', () => {

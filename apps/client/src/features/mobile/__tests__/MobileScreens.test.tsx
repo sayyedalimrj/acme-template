@@ -1,13 +1,16 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { render, screen, type RenderResult } from '@testing-library/react-native';
+import { render, screen, fireEvent, type RenderResult } from '@testing-library/react-native';
 import { type ReactElement, type ReactNode } from 'react';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import { resetAdaptersForTests } from '@/adapters';
+import { MobileComingSoonScreen } from '@/features/mobile/MobileComingSoonScreen';
 import { MobileHomeScreen } from '@/features/mobile/MobileHomeScreen';
 import { MoreFeaturesScreen } from '@/features/mobile/MoreFeaturesScreen';
 import { NotificationsShellScreen } from '@/features/mobile/NotificationsShellScreen';
+import { SupportChatShellScreen } from '@/features/mobile/SupportChatShellScreen';
+import { SupportRequestFormScreen } from '@/features/mobile/SupportRequestFormScreen';
 import { SupportShellScreen } from '@/features/mobile/SupportShellScreen';
 import { BottomNav } from '@/features/mobile/components';
 import { siteInitials } from '@/features/mobile/components/HeroSiteCard';
@@ -95,6 +98,48 @@ describe('Support & Notifications shells', () => {
     renderMobile(<NotificationsShellScreen />);
     expect(screen.getByTestId('notifications-screen')).toBeTruthy();
     expect(screen.getByTestId('notif-n_order_1')).toBeTruthy();
+  });
+});
+
+describe('Support conversation + request flows', () => {
+  it('renders the mock support chat shell with a composer', () => {
+    renderMobile(<SupportChatShellScreen />);
+    expect(screen.getByTestId('support-chat-screen')).toBeTruthy();
+    expect(screen.getByTestId('support-chat-input')).toBeTruthy();
+    expect(screen.getByTestId('support-chat-send')).toBeTruthy();
+    // The support intro message is shown.
+    expect(screen.getByText('Hi! How can we help with your store today?')).toBeTruthy();
+  });
+
+  it('shows a success state after submitting a new support request', () => {
+    renderMobile(<SupportRequestFormScreen />);
+    expect(screen.getByTestId('support-new-screen')).toBeTruthy();
+    fireEvent.changeText(screen.getByTestId('support-new-subject'), 'Order help');
+    fireEvent.changeText(screen.getByTestId('support-new-message'), 'I need help with an order');
+    fireEvent.press(screen.getByTestId('support-new-submit'));
+    expect(screen.getByTestId('support-new-success')).toBeTruthy();
+    expect(screen.getByText('Request sent')).toBeTruthy();
+  });
+
+  it('blocks submitting an empty support request', () => {
+    renderMobile(<SupportRequestFormScreen />);
+    fireEvent.press(screen.getByTestId('support-new-submit'));
+    // Still on the form (no success card).
+    expect(screen.queryByTestId('support-new-success')).toBeNull();
+  });
+});
+
+describe('MobileComingSoonScreen (payments)', () => {
+  it('frames customer payments as store payments, not subscription billing', () => {
+    renderMobile(
+      <MobileComingSoonScreen
+        testID="payments-screen"
+        title="Payments"
+        subtitle="Your store customer payments will appear here."
+      />,
+    );
+    expect(screen.getByTestId('payments-screen')).toBeTruthy();
+    expect(screen.getByText('Your store customer payments will appear here.')).toBeTruthy();
   });
 });
 

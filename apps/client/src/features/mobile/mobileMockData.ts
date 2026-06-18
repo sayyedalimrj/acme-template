@@ -42,7 +42,7 @@ export const QUICK_ACTIONS: readonly QuickAction[] = [
     icon: 'people-outline',
     href: '/customers',
   },
-  { key: 'payments', labelKey: 'home.quick.payments', icon: 'card-outline', href: '/plans' },
+  { key: 'payments', labelKey: 'home.quick.payments', icon: 'card-outline', href: '/payments' },
 ];
 
 /** A tool entry inside the More features grid. */
@@ -79,7 +79,7 @@ export const FEATURE_SECTIONS: readonly FeatureSection[] = [
         icon: 'people-outline',
         href: '/customers',
       },
-      { key: 'payments', labelKey: 'home.quick.payments', icon: 'card-outline', href: '/plans' },
+      { key: 'payments', labelKey: 'home.quick.payments', icon: 'card-outline', href: '/payments' },
     ],
   },
   {
@@ -126,8 +126,13 @@ export const FEATURE_SECTIONS: readonly FeatureSection[] = [
     key: 'support',
     titleKey: 'more.section.support',
     items: [
-      { key: 'chat', labelKey: 'more.chat', icon: 'chatbubbles-outline', href: '/support' },
-      { key: 'newRequest', labelKey: 'more.newRequest', icon: 'create-outline', href: '/support' },
+      { key: 'chat', labelKey: 'more.chat', icon: 'chatbubbles-outline', href: '/support/chat' },
+      {
+        key: 'newRequest',
+        labelKey: 'more.newRequest',
+        icon: 'create-outline',
+        href: '/support/new',
+      },
       { key: 'guide', labelKey: 'more.guide', icon: 'help-buoy-outline', href: '/support' },
     ],
   },

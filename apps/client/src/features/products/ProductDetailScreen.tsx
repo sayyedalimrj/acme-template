@@ -151,6 +151,24 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
         </View>
       </View>
 
+      {/* Manage product — clearly-disabled mock actions (no mutations yet). */}
+      <Card title={t('product.section.manage')}>
+        <Text tone="muted" variant="caption">
+          {t('product.manageNote')}
+        </Text>
+        <View
+          style={{
+            flexDirection: rowDirection,
+            gap: tokens.spacing.sm,
+            flexWrap: 'wrap',
+            marginTop: tokens.spacing.xs,
+          }}
+        >
+          <Button label={t('product.action.manage')} variant="secondary" size="sm" disabled />
+          <Button label={t('product.action.edit')} variant="secondary" size="sm" disabled />
+        </View>
+      </Card>
+
       <Card title={t('product.section.pricing')}>
         <DetailRow
           label={t('product.label.price')}
@@ -173,9 +191,7 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
         />
         <DetailRow
           label={t('product.label.stockQty')}
-          value={
-            typeof product.stockQuantity === 'number' ? fmt.num(product.stockQuantity) : none
-          }
+          value={typeof product.stockQuantity === 'number' ? fmt.num(product.stockQuantity) : none}
         />
       </Card>
 

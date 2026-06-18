@@ -13,6 +13,7 @@ import { Pressable, View } from 'react-native';
 
 import {
   Badge,
+  Button,
   Card,
   Divider,
   EmptyState,
@@ -201,6 +202,24 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps):
           <Badge tone={segment.tone} label={t(segment.labelKey)} />
         </View>
       </View>
+
+      {/* Actions — clearly-disabled mock actions (no mutations yet). */}
+      <Card title={t('customer.section.actions')}>
+        <Text tone="muted" variant="caption">
+          {t('customer.actionsNote')}
+        </Text>
+        <View
+          style={{
+            flexDirection: rowDirection,
+            gap: tokens.spacing.sm,
+            flexWrap: 'wrap',
+            marginTop: tokens.spacing.xs,
+          }}
+        >
+          <Button label={t('customer.action.message')} variant="secondary" size="sm" disabled />
+          <Button label={t('customer.action.edit')} variant="secondary" size="sm" disabled />
+        </View>
+      </Card>
 
       <Card title={t('customer.section.contact')}>
         <DetailRow label={t('customer.label.email')} value={customer.email} />

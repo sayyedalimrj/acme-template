@@ -21,10 +21,10 @@ export const supportAssignees: SupportAssignee[] = [
 /** Existing-site playbook steps. */
 const EXISTING_CHECKLIST: { id: string; label: string }[] = [
   { id: 'chk_site_url', label: 'بررسی آدرس سایت' },
-  { id: 'chk_is_woo', label: 'تأیید WordPress/WooCommerce بودن سایت' },
+  { id: 'chk_is_woo', label: 'تأیید فعال بودن فروشگاه آنلاین سایت' },
   { id: 'chk_conn_needs', label: 'بررسی نیازهای اتصال' },
   { id: 'chk_no_secrets', label: 'تأیید اینکه اطلاعات ورود داخل اپ دریافت نشده است' },
-  { id: 'chk_secure_plan', label: 'برنامه‌ریزی اتصال امن از طریق backend/proxy یا پلاگین' },
+  { id: 'chk_secure_plan', label: 'برنامه‌ریزی اتصال امن از طریق سرویس اتصال امن' },
   { id: 'chk_handoff', label: 'آماده‌سازی تحویل به داشبورد' },
 ];
 
@@ -61,7 +61,7 @@ export const supportQueueItems: SupportQueueItem[] = [
     assignee: supportAssignees[0],
     createdAt: '2026-06-10T09:00:00Z',
     updatedAt: '2026-06-11T11:30:00Z',
-    nextAction: { summary: 'بررسی فنی سایت و تأیید ووکامرس', owner: 'support' },
+    nextAction: { summary: 'بررسی فنی فروشگاه آنلاین سایت', owner: 'support' },
     risks: [],
     checklist: buildChecklist(EXISTING_CHECKLIST, 2),
     timeline: [
@@ -76,7 +76,7 @@ export const supportQueueItems: SupportQueueItem[] = [
       {
         id: 'note_1',
         author: 'سارا محمدی',
-        body: 'سایت در دسترس است و به نظر ووکامرس می‌رسد؛ منتظر تأیید نسخه.',
+        body: 'سایت در دسترس است و به نظر فعال می‌رسد؛ منتظر تأیید نسخه.',
         createdAt: '2026-06-11T11:35:00Z',
       },
     ],
@@ -189,7 +189,7 @@ export const supportQueueItems: SupportQueueItem[] = [
     assignee: supportAssignees[0],
     createdAt: '2026-05-30T08:00:00Z',
     updatedAt: '2026-06-09T16:00:00Z',
-    nextAction: { summary: 'اجرای اتصال امن از طریق backend/proxy', owner: 'support' },
+    nextAction: { summary: 'اجرای اتصال امن از طریق سرویس اتصال امن', owner: 'support' },
     risks: [],
     checklist: buildChecklist(EXISTING_CHECKLIST, 5),
     timeline: [

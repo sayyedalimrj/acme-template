@@ -83,12 +83,12 @@ export function SupportShellScreen(): React.JSX.Element {
             </View>
 
             <PressableScale
-              onPress={() => router.navigate('/support' as never)}
+              onPress={() => router.navigate('/support/chat' as never)}
               accessibilityLabel={t('csupport.chat')}
               testID="support-chat"
               style={{
                 height: mobileMetrics.tapTargetMin,
-                borderRadius: 10,
+                borderRadius: mobileMetrics.buttonRadius,
                 backgroundColor: mobileColors.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -100,12 +100,12 @@ export function SupportShellScreen(): React.JSX.Element {
             </PressableScale>
 
             <PressableScale
-              onPress={() => router.navigate('/support' as never)}
+              onPress={() => router.navigate('/support/new' as never)}
               accessibilityLabel={t('csupport.newRequest')}
               testID="support-new-request"
               style={{
-                height: 44,
-                borderRadius: 10,
+                height: 46,
+                borderRadius: mobileMetrics.buttonRadius,
                 backgroundColor: mobileColors.heroLayer,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -149,6 +149,7 @@ export function SupportShellScreen(): React.JSX.Element {
                 title={t(item.titleKey)}
                 caption={t(item.captionKey)}
                 unread={item.unread}
+                onPress={() => router.navigate('/support/chat' as never)}
                 testID={`support-preview-${item.id}`}
               />
             ))}
