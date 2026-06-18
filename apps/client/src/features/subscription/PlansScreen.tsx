@@ -20,6 +20,8 @@ import type { BillingInterval } from '@/domain/types';
 import { CurrentPlanCard } from './components/CurrentPlanCard';
 import { FeatureMatrix } from './components/FeatureMatrix';
 import { PlanCard } from './components/PlanCard';
+import { DurationPricingTable } from './durationPricing/DurationPricingTable';
+import { durationPricingConfig } from './durationPricing/durationPricingConfig';
 import { BILLING_INTERVALS, findPricing, planActionState } from './subscriptionHelpers';
 import { useSubscriptionOverview } from './useSubscription';
 
@@ -82,6 +84,10 @@ export function PlansScreen(): React.JSX.Element {
               plans={overviewQuery.data.plans}
               features={overviewQuery.data.features}
             />
+          </Card>
+
+          <Card title={durationPricingConfig.subscriptionName}>
+            <DurationPricingTable />
           </Card>
         </>
       )}
