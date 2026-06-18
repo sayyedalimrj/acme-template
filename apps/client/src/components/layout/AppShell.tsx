@@ -11,9 +11,9 @@
 import React, { type ReactNode } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
+import { BottomNav } from '@/features/mobile/components';
 import { useTheme } from '@/theme';
 
-import { MobileNav } from './MobileNav';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 
@@ -43,11 +43,12 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
     );
   }
 
+  // Mobile / narrow: a clean app shell — content + bottom tab bar (no desktop sidebar/topbar).
+  // Each mobile screen renders its own header via MobilePage/MobileHeader.
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
-      <TopBar showBrand />
-      <MobileNav />
       <View style={{ flex: 1 }}>{children}</View>
+      <BottomNav />
     </View>
   );
 }

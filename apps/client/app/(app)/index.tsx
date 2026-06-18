@@ -1,13 +1,10 @@
 /**
- * Dashboard overview route ("/").
- *
- * Thin route wrapper that renders the dashboard feature screen. Routes stay declarative;
- * screen logic lives in the feature module.
+ * Home route ("/"). Thin wrapper around the mobile-first customer home screen.
  */
 import React from 'react';
 
-import { DashboardScreen } from '@/features/dashboard/DashboardScreen';
+import { MobileHomeScreen } from '@/features/mobile/MobileHomeScreen';
 
-export default function DashboardRoute(): React.JSX.Element {
-  return <DashboardScreen />;
+export default function HomeRoute(): React.JSX.Element {
+  return <MobileHomeScreen />;
 }
