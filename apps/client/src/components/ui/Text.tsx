@@ -58,12 +58,25 @@ export function Text({
     onPrimary: tokens.color.onPrimary,
   };
 
+  // Prevent Persian glyph clipping on native: when a caller overrides `fontSize` via `style`
+  // (common on the mobile screens) but not `lineHeight`, the variant's smaller line height
+  // would clip ascenders/descenders on iOS/Android. Derive a safe line height from the
+  // effective font size in that case; otherwise keep the designed variant line height.
+  const flat = (StyleSheet.flatten(style) ?? {}) as { fontSize?: number; lineHeight?: number };
+  const hasCustomFontSize = typeof flat.fontSize === 'number';
+  const lineHeight =
+    typeof flat.lineHeight === 'number'
+      ? flat.lineHeight
+      : hasCustomFontSize
+        ? Math.round((flat.fontSize as number) * 1.45)
+        : typography.lineHeight;
+
   return (
     <RNText
       style={StyleSheet.flatten([
         {
           fontSize: typography.fontSize,
-          lineHeight: typography.lineHeight,
+          lineHeight,
           fontWeight: typography.fontWeight,
           fontFamily: FONT_FAMILY,
           color: toneColor[tone],

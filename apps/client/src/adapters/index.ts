@@ -24,6 +24,7 @@ import { createMockProductAdapter } from './mock/mockProductAdapter';
 import { createMockReportsAnalyticsAdapter } from './mock/mockReportsAnalyticsAdapter';
 import { createMockSiteAdapter } from './mock/mockSiteAdapter';
 import { createMockSupportAdapter } from './mock/mockSupportAdapter';
+import { createMockSupportMessagingAdapter } from './mock/mockSupportMessagingAdapter';
 import type { Adapters } from './types';
 
 let cached: Adapters | null = null;
@@ -38,6 +39,7 @@ function createMockAdapters(): Adapters {
     customers: createMockCustomerAdapter(),
     onboarding: createMockOnboardingAdapter(),
     support: createMockSupportAdapter(),
+    supportMessaging: createMockSupportMessagingAdapter(),
     billing: createMockBillingAdapter(),
     advisor: createMockAIAdvisorAdapter(),
     mediaStudio: createMockMediaStudioAdapter(),
@@ -83,6 +85,7 @@ export type {
   CustomerAdapter,
   OnboardingAdapter,
   SupportAdapter,
+  SupportMessagingAdapter,
   BillingAdapter,
   AIAdvisorAdapter,
   MediaStudioAdapter,

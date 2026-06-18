@@ -7,6 +7,11 @@ boundaries next, backend/proxy + real integrations last and only after security 
 Each phase is one or more small, reviewable PRs. Every new domain ships behind a typed
 adapter/service seam with a mock implementation.
 
+> **Going-to-production:** the ordered, PR-by-PR plan for real data, auth/RBAC, plugin signed
+> delivery, billing, and hardening lives in **`production-execution-plan.md`**. The selected SMS
+> provider is **IPPanel** — see **`sms-ippanel-integration.md`** (key stays server-side; OTP via
+> IPPanel pattern; consent/opt-out for marketing).
+
 ## Phases
 
 ### Phase 0 — Current foundation ✅ (shipped)
@@ -145,7 +150,9 @@ customer notes/tags. Strict server-side permission checks + audit + idempotency.
 disabled placeholders already present in Products/Orders/Fulfillment.
 
 ### Phase 13 — Real providers
-Real SMS provider · real billing provider · real AI provider · advanced automation.
+Real SMS provider (**IPPanel** — see `sms-ippanel-integration.md`) · real billing provider ·
+real AI provider · advanced automation. SMS sending is **server-side only**; OTP uses an IPPanel
+**pattern**; marketing requires consent + opt-out.
 
 ## Feature backlog (priorities)
 

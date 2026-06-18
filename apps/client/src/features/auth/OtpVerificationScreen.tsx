@@ -7,7 +7,7 @@
  * UI-only: no code is sent or validated against any provider; the demo code is 1234.
  */
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
@@ -50,6 +50,8 @@ export function OtpVerificationScreen(): React.JSX.Element {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState<string | undefined>();
   const [resent, setResent] = useState(false);
+  // Guards against the auto-submit firing more than once for a single completed code.
+  const submittedRef = useRef(false);
 
   const masked = identifier ? maskIdentifier(identifier, channel) : undefined;
 
@@ -57,11 +59,13 @@ export function OtpVerificationScreen(): React.JSX.Element {
     router.replace('/sign-in' as Href);
   };
 
-  const onVerify = (): void => {
-    if (!isOtpComplete(digits)) {
-      setError(t('otp.errorIncomplete'));
+  // Submit once per completed code. The ref guard means the auto-submit (effect) and a manual
+  // tap on the verify button can never double-navigate / double-sign-in.
+  const submit = (): void => {
+    if (submittedRef.current) {
       return;
     }
+    submittedRef.current = true;
     setError(undefined);
     const user = findMockUser(identifier, channel);
     if (user) {
@@ -75,6 +79,28 @@ export function OtpVerificationScreen(): React.JSX.Element {
       params: { identifier, channel: channel ?? '' },
     } as unknown as Href);
   };
+
+  const onVerify = (): void => {
+    if (!isOtpComplete(digits)) {
+      setError(t('otp.errorIncomplete'));
+      return;
+    }
+    submit();
+  };
+
+  // Auto-submit as soon as all digits are entered (no extra tap needed); reset the guard if the
+  // user clears/edits so a corrected code can submit again.
+  const complete = isOtpComplete(digits);
+  useEffect(() => {
+    if (complete) {
+      submit();
+    } else {
+      submittedRef.current = false;
+    }
+    // We intentionally key only on completion so the auto-submit fires once when the code
+    // becomes complete; `submit` reads the latest identifier/channel each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [complete]);
 
   const onResend = (): void => {
     // Mock only — regenerates the deterministic demo code; nothing is delivered.

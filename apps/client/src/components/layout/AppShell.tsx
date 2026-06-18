@@ -30,6 +30,13 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
         flex: 1,
         backgroundColor: wide ? mobileColors.pageBackdrop : mobileColors.background,
         alignItems: 'center',
+        justifyContent: 'center',
+        // Clip so the page itself never scrolls (esp. on large iPad/desktop viewports): only the
+        // inner page ScrollView scrolls; the centered frame stays put.
+        overflow: 'hidden',
+        // Vertical breathing room on wide screens lives on the parent (padding, not child
+        // margin) so the frame can't push the layout taller than the viewport.
+        paddingVertical: wide ? 24 : 0,
       }}
     >
       <View
@@ -43,7 +50,6 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
           },
           wide
             ? {
-                marginVertical: 24,
                 borderRadius: mobileMetrics.frameRadius,
                 borderWidth: 1,
                 borderColor: mobileColors.frameBorder,

@@ -19,6 +19,7 @@ import {
 
 import { LoadingState, Text } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
+import { useFormatters } from '@/i18n/useFormatters';
 import { useSites } from '@/features/site/useSites';
 import { useTheme } from '@/theme';
 import type { SiteConnection } from '@/domain/types';
@@ -26,15 +27,28 @@ import type { SiteConnection } from '@/domain/types';
 import {
   AnimatedSection,
   EmptySiteCard,
+  FilterChipRow,
   HeroSiteCard,
   MiniActivityRow,
   MobileHeader,
   MobilePage,
+  OverviewChart,
   PressableScale,
   QuickActionCard,
   siteInitials,
+  type OverviewPoint,
 } from './components';
-import { QUICK_ACTIONS, RECENT_ACTIVITY, SITE_RENEWAL_KEYS, UNREAD } from './mobileMockData';
+import {
+  buildOverviewSeries,
+  OVERVIEW_METRICS,
+  OVERVIEW_RANGES,
+  QUICK_ACTIONS,
+  RECENT_ACTIVITY,
+  SITE_RENEWAL_KEYS,
+  UNREAD,
+  type OverviewMetric,
+  type OverviewRange,
+} from './mobileMockData';
 import { mobileColors, mobileMetrics, mobileShadow, mobileType } from './mobileTokens';
 
 function SectionTitle({ title }: { title: string }): React.JSX.Element {
@@ -215,6 +229,101 @@ function MoreEntryCard({ onPress }: { onPress: () => void }): React.JSX.Element 
   );
 }
 
+/** "At a glance" overview card: a metric + range selector over a calm bar chart. */
+function OverviewSection({ currency }: { currency: string }): React.JSX.Element {
+  const t = useT();
+  const fmt = useFormatters();
+  const { rowDirection, isRTL } = useTheme();
+  const [metric, setMetric] = useState<OverviewMetric>('sales');
+  const [range, setRange] = useState<OverviewRange>('week');
+
+  const series = buildOverviewSeries(metric, range);
+
+  const labels: string[] =
+    range === 'week'
+      ? t('home.overview.days').split(',')
+      : range === 'year'
+        ? t('home.overview.months').split(',')
+        : series.values.map((_, i) => `${t('home.overview.weekShort')}${fmt.num(i + 1)}`);
+
+  const points: OverviewPoint[] = series.values.map((value, index) => ({
+    label: labels[index] ?? '',
+    value,
+    highlight: index === series.values.length - 1,
+  }));
+
+  const totalLabel =
+    metric === 'sales' ? fmt.money(String(series.total), currency) : fmt.num(series.total);
+  const up = series.trendPercent >= 0;
+  const trendColor = up ? mobileColors.statusActive : mobileColors.statusDanger;
+  const trendBg = up ? mobileColors.statusActiveSoft : mobileColors.statusDangerSoft;
+
+  return (
+    <View
+      style={[
+        {
+          borderRadius: mobileMetrics.cardRadius,
+          backgroundColor: mobileColors.card,
+          padding: 16,
+          gap: 14,
+        },
+        mobileShadow,
+      ]}
+    >
+      {/* Metric selector */}
+      <FilterChipRow
+        options={OVERVIEW_METRICS.map((m) => ({ value: m.value, label: t(m.labelKey) }))}
+        value={metric}
+        onChange={setMetric}
+      />
+
+      {/* Headline total + trend */}
+      <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 10 }}>
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: '700',
+            color: mobileColors.text,
+            textAlign: isRTL ? 'right' : 'left',
+          }}
+          numberOfLines={1}
+        >
+          {totalLabel}
+        </Text>
+        <View
+          style={{
+            flexDirection: rowDirection,
+            alignItems: 'center',
+            gap: 3,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: 999,
+            backgroundColor: trendBg,
+          }}
+        >
+          <Ionicons name={up ? 'arrow-up' : 'arrow-down'} size={12} color={trendColor} />
+          <Text style={{ fontSize: 12, fontWeight: '700', color: trendColor }}>
+            {fmt.num(Math.abs(series.trendPercent))}%
+          </Text>
+        </View>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 11, color: mobileColors.textSecondary }} numberOfLines={1}>
+          {t('home.overview.vsPrev')}
+        </Text>
+      </View>
+
+      <OverviewChart data={points} testID="home-overview-chart" />
+
+      {/* Range selector */}
+      <FilterChipRow
+        options={OVERVIEW_RANGES.map((r) => ({ value: r.value, label: t(r.labelKey) }))}
+        value={range}
+        onChange={setRange}
+      />
+    </View>
+  );
+}
+
 export function MobileHomeScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
@@ -310,8 +419,14 @@ export function MobileHomeScreen(): React.JSX.Element {
           <MoreEntryCard onPress={() => go('/more')} />
         </AnimatedSection>
 
-        {/* Short recent activity */}
+        {/* At-a-glance overview chart (metric + range options) */}
         <AnimatedSection index={3}>
+          <SectionTitle title={t('home.overview.title')} />
+          <OverviewSection currency={selectedSite?.currency ?? 'IRR'} />
+        </AnimatedSection>
+
+        {/* Short recent activity */}
+        <AnimatedSection index={4}>
           <SectionTitle title={t('home.activity.title')} />
           <View
             style={[

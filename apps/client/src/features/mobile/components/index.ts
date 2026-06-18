@@ -15,3 +15,4 @@ export { MiniActivityRow, type ActivityTint } from './MiniActivityRow';
 export { MobileSearchField } from './MobileSearchField';
 export { FilterChipRow, type FilterChipOption } from './FilterChipRow';
 export { StatusBadge, type StatusTone } from './StatusBadge';
+export { OverviewChart, type OverviewPoint } from './OverviewChart';

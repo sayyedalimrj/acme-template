@@ -68,19 +68,22 @@ beforeEach(() => {
 });
 
 describe('AuthEntryScreen', () => {
-  it('renders the welcome screen with a single identifier field and CTA', () => {
+  it('renders the entry screen with a single identifier field and CTA', () => {
     renderAuth(<AuthEntryScreen />);
     expect(screen.getByTestId('auth-entry-screen')).toBeTruthy();
-    expect(screen.getByText('Welcome')).toBeTruthy();
+    expect(screen.getByText('Sign in to manage your connected stores.')).toBeTruthy();
     expect(screen.getByTestId('auth-entry-input')).toBeTruthy();
     expect(screen.getByTestId('auth-entry-submit')).toBeTruthy();
   });
 
-  it('shows an inline error for invalid input and does not navigate', () => {
+  it('keeps the continue button disabled for invalid input and does not navigate', () => {
     renderAuth(<AuthEntryScreen />);
+    // Empty → disabled.
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(true);
     fireEvent.changeText(screen.getByTestId('auth-entry-input'), 'not valid');
+    // Non-empty but invalid → still disabled; pressing must not navigate.
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(true);
     fireEvent.press(screen.getByTestId('auth-entry-submit'));
-    expect(screen.getByText('Enter a valid mobile number or email.')).toBeTruthy();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -146,14 +149,19 @@ describe('OtpVerificationScreen (mock)', () => {
 });
 
 describe('RegisterProfileScreen (mock)', () => {
-  it('requires first name, last name and a valid mobile', () => {
+  it('keeps submit disabled until first name, last name and a valid mobile are entered', () => {
     mockParams = { identifier: 'new.person@store.example', channel: 'email' };
     renderAuth(<RegisterProfileScreen />);
+    // No required fields yet → disabled, and pressing must not create a session.
+    expect(screen.getByTestId('register-submit').props.accessibilityState?.disabled).toBe(true);
     fireEvent.press(screen.getByTestId('register-submit'));
-    expect(screen.getByText('Please enter your first name.')).toBeTruthy();
-    expect(screen.getByText('Please enter your last name.')).toBeTruthy();
-    expect(screen.getByText('Enter a valid mobile number.')).toBeTruthy();
     expect(mockSignIn).not.toHaveBeenCalled();
+
+    // Fill required fields → enabled.
+    fireEvent.changeText(screen.getByTestId('register-first-name'), 'Ali');
+    fireEvent.changeText(screen.getByTestId('register-last-name'), 'Karimi');
+    fireEvent.changeText(screen.getByTestId('register-mobile'), '09123000111');
+    expect(screen.getByTestId('register-submit').props.accessibilityState?.disabled).toBe(false);
   });
 
   it('creates a mock session when required fields are valid', () => {

@@ -1781,3 +1781,40 @@ export interface ReportRecommendation {
   /** Optional in-app link for a read-only follow-up (e.g. /inventory, /automations). */
   href?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Customer support messaging (client ↔ support team)
+//
+// The merchant-facing chat thread. Frontend-safe only. This intentionally mirrors the admin
+// support-inbox author model (`customer | agent | system`) so a future backend can bridge the
+// same conversation between the client app and the internal admin inbox (`apps/admin`) without
+// a UI rewrite: the client posts customer messages and reads agent/system replies through the
+// `SupportMessagingAdapter`, the backend persists them in the shared support tables, and the
+// admin inbox reads/replies on the other side. MOCK-ONLY for now (no backend, nothing sent).
+// ---------------------------------------------------------------------------
+
+/** Who authored a support chat message. Mirrors the admin inbox author model. */
+export type SupportChatAuthor = 'customer' | 'agent' | 'system';
+
+/** A single message in the merchant-facing support conversation (frontend-safe). */
+export interface SupportChatMessage {
+  id: string;
+  author: SupportChatAuthor;
+  /** Frontend-safe message text (never secrets/credentials). */
+  body: string;
+  createdAt: ISODate;
+  /** Optional display label for the author (e.g. the support agent name). */
+  authorLabel?: string;
+}
+
+/** Lifecycle of a merchant support conversation. */
+export type SupportConversationStatus = 'open' | 'waiting_support' | 'resolved';
+
+/** The merchant-facing support conversation thread. */
+export interface SupportConversation {
+  id: string;
+  /** Short subject/topic (frontend-safe). */
+  subject: string;
+  status: SupportConversationStatus;
+  messages: SupportChatMessage[];
+}

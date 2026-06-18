@@ -7,6 +7,7 @@ export { orderService } from './orderService';
 export { customerService } from './customerService';
 export { onboardingService } from './onboardingService';
 export { supportService } from './supportService';
+export { supportMessagingService } from './supportMessagingService';
 export { subscriptionService } from './subscriptionService';
 export type { SubscriptionOverview } from './subscriptionService';
 export { aiAdvisorService } from './aiAdvisorService';

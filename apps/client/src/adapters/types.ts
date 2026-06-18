@@ -83,6 +83,7 @@ import type {
   StoreTemplate,
   SubscriptionPlan,
   SubscriptionPlanId,
+  SupportConversation,
   SupportQueueItem,
   SupportRequestStatus,
 } from '@/domain/types';
@@ -176,6 +177,23 @@ export interface SupportAdapter {
   toggleChecklistItem(id: string, checklistItemId: string): Promise<SupportQueueItem>;
   /** Add a frontend-safe internal note (mock-only). */
   addInternalNote(id: string, input: AddInternalNoteInput): Promise<SupportQueueItem>;
+}
+
+/**
+ * Support messaging adapter — the seam for the merchant-facing support chat.
+ *
+ * Mock-only and in-memory for now: it reads the merchant's support conversation and appends a
+ * customer message (returning a canned agent reply). It is the bridge point to the internal
+ * admin support inbox: a future `http` implementation posts/reads through OUR backend, which
+ * persists messages in the shared support tables that `apps/admin` reads and replies to — so
+ * the same conversation is mirrored on both sides with NO UI rework. Frontend-safe only; no
+ * method accepts or returns credentials, and nothing is sent to any external provider.
+ */
+export interface SupportMessagingAdapter {
+  /** The merchant's current support conversation (seeded with a greeting in the mock). */
+  getConversation(): Promise<SupportConversation>;
+  /** Append a customer message; returns the updated thread (mock adds a canned agent reply). */
+  sendMessage(body: string): Promise<SupportConversation>;
 }
 
 /**
@@ -360,6 +378,7 @@ export interface Adapters {
   customers: CustomerAdapter;
   onboarding: OnboardingAdapter;
   support: SupportAdapter;
+  supportMessaging: SupportMessagingAdapter;
   billing: BillingAdapter;
   advisor: AIAdvisorAdapter;
   mediaStudio: MediaStudioAdapter;
