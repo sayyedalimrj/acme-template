@@ -39,12 +39,11 @@ export function Card({
 
   const cardStyle: ViewStyle = {
     backgroundColor: tokens.color.surface,
-    borderColor: tokens.color.border,
-    borderWidth: tokens.borderWidth.hairline,
     borderRadius: tokens.radius.lg,
     padding: tokens.spacing[padding],
     gap: tokens.spacing.md,
-    // Subtle, platform-aware elevation (web box-shadow / native shadow+elevation).
+    // No hard border — definition comes from a soft, platform-aware shadow (web box-shadow /
+    // native shadow+elevation), matching the premium-mobile card language.
     ...shadow(elevation),
   };
 

@@ -118,11 +118,11 @@ export function FulfillmentScreen(): React.JSX.Element {
   const queue = filterFulfillmentQueue(ordersQuery.data?.items ?? []);
 
   return (
-    <Screen testID="fulfillment-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('fulfillment.title')}</Text>
-        <Text tone="muted">{t('fulfillment.subtitle')}</Text>
-      </View>
+    <Screen
+      testID="fulfillment-screen"
+      title={t('fulfillment.title')}
+      subtitle={t('fulfillment.subtitle')}
+    >
 
       {ordersQuery.isPending ? (
         <LoadingState label={t('common.loading')} />

@@ -6,10 +6,9 @@
  * fulfilled, add tracking) are shown as clearly-disabled placeholders — no mutations here.
  * Active-site-aware via `useOrder`.
  */
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import {
   Badge,
@@ -102,27 +101,6 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps): React.JS
   const activeSite = useActiveSite();
   const { data: order, isPending, isError, refetch } = useOrder(orderId);
 
-  const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.navigate('/orders' as never);
-    }
-  };
-
-  const BackLink = (
-    <Pressable
-      accessibilityRole="button"
-      onPress={goBack}
-      style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.xs }}
-    >
-      <Ionicons name="chevron-back" size={18} color={tokens.color.primary} />
-      <Text variant="label" tone="primary">
-        {t('order.back')}
-      </Text>
-    </Pressable>
-  );
-
   if (!activeSite.isPending && !activeSite.data) {
     return (
       <Screen scroll={false} padded={false}>
@@ -149,8 +127,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps): React.JS
 
   if (isError || !order) {
     return (
-      <Screen testID="order-detail-screen">
-        {BackLink}
+      <Screen testID="order-detail-screen" title={t('order.notFound.title')}>
         <ErrorState
           title={t('order.notFound.title')}
           body={t('order.notFound.body')}
@@ -170,20 +147,16 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps): React.JS
   const shipping = order.shipping;
 
   return (
-    <Screen testID="order-detail-screen">
-      {BackLink}
-
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">#{order.number}</Text>
-        <Text variant="caption" tone="muted">
-          {fmt.date(order.dateCreated)}
-        </Text>
-        <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
-          <Badge tone={status.tone} label={t(status.labelKey)} />
-          <Badge tone={payment.tone} label={t(payment.labelKey)} />
-          <Badge tone={fulfillment.tone} label={t(fulfillment.labelKey)} />
-          {needsAttention(order) ? <Badge tone="danger" label={t('orders.attention')} /> : null}
-        </View>
+    <Screen
+      testID="order-detail-screen"
+      title={`#${order.number}`}
+      subtitle={fmt.date(order.dateCreated)}
+    >
+      <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
+        <Badge tone={status.tone} label={t(status.labelKey)} />
+        <Badge tone={payment.tone} label={t(payment.labelKey)} />
+        <Badge tone={fulfillment.tone} label={t(fulfillment.labelKey)} />
+        {needsAttention(order) ? <Badge tone="danger" label={t('orders.attention')} /> : null}
       </View>
 
       {/* Future actions — clearly disabled placeholders (no mutations yet). */}

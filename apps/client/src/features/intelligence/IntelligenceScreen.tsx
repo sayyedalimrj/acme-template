@@ -119,11 +119,7 @@ export function IntelligenceScreen(): React.JSX.Element {
   const groups = groupRecommendations(recommendationsQuery.data ?? []);
 
   return (
-    <Screen testID="intelligence-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('intel.title')}</Text>
-        <Text tone="muted">{t('intel.subtitle')}</Text>
-      </View>
+    <Screen testID="intelligence-screen" title={t('intel.title')} subtitle={t('intel.subtitle')}>
 
       <SecurityNote messageKey="intel.safety.note" />
 

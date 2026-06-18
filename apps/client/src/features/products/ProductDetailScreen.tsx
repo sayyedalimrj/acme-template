@@ -8,7 +8,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import {
   Badge,
@@ -72,27 +72,6 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
   const activeSite = useActiveSite();
   const { data: product, isPending, isError, refetch } = useProduct(productId);
 
-  const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.navigate('/products' as never);
-    }
-  };
-
-  const BackLink = (
-    <Pressable
-      accessibilityRole="button"
-      onPress={goBack}
-      style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.xs }}
-    >
-      <Ionicons name="chevron-back" size={18} color={tokens.color.primary} />
-      <Text variant="label" tone="primary">
-        {t('product.back')}
-      </Text>
-    </Pressable>
-  );
-
   if (!activeSite.isPending && !activeSite.data) {
     return (
       <Screen scroll={false} padded={false}>
@@ -119,8 +98,7 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
 
   if (isError || !product) {
     return (
-      <Screen testID="product-detail-screen">
-        {BackLink}
+      <Screen testID="product-detail-screen" title={t('product.notFound.title')}>
         <ErrorState
           title={t('product.notFound.title')}
           body={t('product.notFound.body')}
@@ -137,18 +115,10 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
   const none = t('product.value.none');
 
   return (
-    <Screen testID="product-detail-screen">
-      {BackLink}
-
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{product.name}</Text>
-        <Text variant="caption" tone="muted">
-          {product.sku}
-        </Text>
-        <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
-          <Badge tone={stock.tone} label={t(stock.labelKey)} />
-          <Badge tone={status.tone} label={t(status.labelKey)} />
-        </View>
+    <Screen testID="product-detail-screen" title={product.name} subtitle={product.sku}>
+      <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
+        <Badge tone={stock.tone} label={t(stock.labelKey)} />
+        <Badge tone={status.tone} label={t(status.labelKey)} />
       </View>
 
       <Card title={t('product.section.pricing')}>

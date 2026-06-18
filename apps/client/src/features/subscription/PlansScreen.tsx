@@ -10,7 +10,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 
-import { Card, ErrorState, LoadingState, Screen, Text } from '@/components/ui';
+import { Card, ErrorState, LoadingState, Screen } from '@/components/ui';
 import { ChoiceGroup } from '@/features/onboarding/components/ChoiceGroup';
 import { SecurityNote } from '@/features/onboarding/components/SecurityNote';
 import { useT } from '@/i18n/I18nProvider';
@@ -30,12 +30,7 @@ export function PlansScreen(): React.JSX.Element {
   const [interval, setInterval] = useState<BillingInterval>('monthly');
 
   return (
-    <Screen testID="plans-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('plans.title')}</Text>
-        <Text tone="muted">{t('plans.subtitle')}</Text>
-      </View>
-
+    <Screen testID="plans-screen" title={t('plans.title')} subtitle={t('plans.subtitle')}>
       <SecurityNote messageKey="plans.billing.note" />
 
       {overviewQuery.isPending ? (

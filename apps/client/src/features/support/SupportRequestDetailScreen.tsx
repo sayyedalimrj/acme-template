@@ -7,10 +7,8 @@
  * teammate, toggle checklist items, and add an internal note. No backend, no real
  * notification, no provisioning, no connection (see security-model.md).
  */
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import React, { type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Badge, Card, ErrorState, LoadingState, Screen, Text } from '@/components/ui';
 import { ChoiceGroup } from '@/features/onboarding/components/ChoiceGroup';
@@ -73,34 +71,12 @@ export function SupportRequestDetailScreen({
 }: SupportRequestDetailScreenProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
   const t = useT();
-  const router = useRouter();
 
   const { data: item, isPending, isError, refetch } = useSupportRequest(requestId);
   const statusMutation = useUpdateSupportStatus(requestId);
   const assignMutation = useAssignSupportRequest(requestId);
   const checklistMutation = useToggleChecklistItem(requestId);
   const noteMutation = useAddInternalNote(requestId);
-
-  const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.navigate('/support' as never);
-    }
-  };
-
-  const BackLink = (
-    <Pressable
-      accessibilityRole="button"
-      onPress={goBack}
-      style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.xs }}
-    >
-      <Ionicons name="chevron-back" size={18} color={tokens.color.primary} />
-      <Text variant="label" tone="primary">
-        {t('support.detail.back')}
-      </Text>
-    </Pressable>
-  );
 
   if (isPending) {
     return (
@@ -112,8 +88,7 @@ export function SupportRequestDetailScreen({
 
   if (isError || !item) {
     return (
-      <Screen testID="support-detail-screen">
-        {BackLink}
+      <Screen testID="support-detail-screen" title={t('support.detail.notFound.title')}>
         <ErrorState
           title={t('support.detail.notFound.title')}
           body={t('support.detail.notFound.body')}
@@ -141,16 +116,11 @@ export function SupportRequestDetailScreen({
   ];
 
   return (
-    <Screen testID="support-detail-screen">
-      {BackLink}
-
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{item.storeName}</Text>
-        <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
-          <Badge tone="neutral" label={typeLabel} />
-          <Badge tone={status.tone} label={t(status.labelKey)} />
-          <Badge tone={priority.tone} label={t(priority.labelKey)} />
-        </View>
+    <Screen testID="support-detail-screen" title={item.storeName}>
+      <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
+        <Badge tone="neutral" label={typeLabel} />
+        <Badge tone={status.tone} label={t(status.labelKey)} />
+        <Badge tone={priority.tone} label={t(priority.labelKey)} />
       </View>
 
       {/* Store information */}

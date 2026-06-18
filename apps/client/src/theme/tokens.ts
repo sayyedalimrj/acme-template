@@ -162,10 +162,10 @@ const spacing: SpacingScale = {
 
 const radius: RadiusScale = {
   none: 0,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 22,
   pill: 999,
 };
 
@@ -186,10 +186,12 @@ const typography: TypographyScale = {
 };
 
 const elevation: ElevationScale = {
+  // Soft, "premium-mobile" shadows: wide blur, low opacity, gentle vertical offset so cards
+  // float on a white page without a harsh box. Matches the mobile design language.
   none: { shadowOpacity: 0, shadowRadius: 0, offsetY: 0, elevation: 0 },
-  sm: { shadowOpacity: 0.06, shadowRadius: 6, offsetY: 2, elevation: 2 },
-  md: { shadowOpacity: 0.1, shadowRadius: 12, offsetY: 4, elevation: 6 },
-  lg: { shadowOpacity: 0.16, shadowRadius: 24, offsetY: 10, elevation: 12 },
+  sm: { shadowOpacity: 0.08, shadowRadius: 16, offsetY: 6, elevation: 2 },
+  md: { shadowOpacity: 0.1, shadowRadius: 24, offsetY: 10, elevation: 4 },
+  lg: { shadowOpacity: 0.14, shadowRadius: 36, offsetY: 18, elevation: 10 },
 };
 
 const zIndex: ZIndexScale = {
@@ -202,30 +204,31 @@ const zIndex: ZIndexScale = {
 };
 
 const lightColors: ColorTokens = {
-  // Ecme-aligned: soft neutral background, white panels, hairline neutral borders.
-  background: '#f5f6f8',
+  // Unified with the mobile design language: clean white surfaces, a calm ink-blue text color,
+  // very soft hairline separators, and a single brand blue. Status tones are soft, not harsh.
+  background: '#ffffff',
   chrome: '#ffffff',
   surface: '#ffffff',
-  surfaceAlt: '#f6f7f9',
-  border: '#e5e7eb',
-  borderStrong: '#d4d4d4',
-  text: '#171717',
-  textMuted: '#737373',
-  textPlaceholder: '#a3a3a3',
-  primary: '#2a85ff',
-  primaryStrong: '#0069f6',
+  surfaceAlt: '#f1f2f4',
+  border: 'rgba(35,48,59,0.08)',
+  borderStrong: 'rgba(35,48,59,0.16)',
+  text: '#23303b',
+  textMuted: '#8e949a',
+  textPlaceholder: '#a4a9ae',
+  primary: '#456efe',
+  primaryStrong: '#3457d8',
   onPrimary: '#ffffff',
-  primarySoft: '#eaf2ff',
-  focusRing: '#2a85ff',
-  overlay: 'rgba(23,23,23,0.45)',
-  success: '#10b981',
-  successSoft: '#e6f7f0',
-  warning: '#f59e0b',
-  warningSoft: '#fef3df',
-  danger: '#ff6a55',
-  dangerSoft: '#ffe9e6',
-  info: '#2a85ff',
-  infoSoft: '#eaf2ff',
+  primarySoft: 'rgba(69,110,254,0.10)',
+  focusRing: '#456efe',
+  overlay: 'rgba(35,48,59,0.45)',
+  success: '#2ba770',
+  successSoft: 'rgba(43,167,112,0.12)',
+  warning: '#d9971b',
+  warningSoft: 'rgba(217,151,27,0.14)',
+  danger: '#e5575b',
+  dangerSoft: 'rgba(229,87,91,0.12)',
+  info: '#456efe',
+  infoSoft: 'rgba(69,110,254,0.10)',
 };
 
 const darkColors: ColorTokens = {
@@ -239,20 +242,20 @@ const darkColors: ColorTokens = {
   text: '#f5f5f5',
   textMuted: '#a3a3a3',
   textPlaceholder: '#6b7280',
-  primary: '#4996ff',
-  primaryStrong: '#2a85ff',
+  primary: '#6e8cff',
+  primaryStrong: '#456efe',
   onPrimary: '#ffffff',
-  primarySoft: '#16243d',
-  focusRing: '#4996ff',
+  primarySoft: 'rgba(69,110,254,0.18)',
+  focusRing: '#6e8cff',
   overlay: 'rgba(0,0,0,0.6)',
-  success: '#10b981',
-  successSoft: '#12281f',
-  warning: '#f59e0b',
-  warningSoft: '#332811',
-  danger: '#ff6a55',
-  dangerSoft: '#3a1f1c',
-  info: '#4996ff',
-  infoSoft: '#16243d',
+  success: '#2ba770',
+  successSoft: 'rgba(43,167,112,0.16)',
+  warning: '#d9971b',
+  warningSoft: 'rgba(217,151,27,0.18)',
+  danger: '#e5575b',
+  dangerSoft: 'rgba(229,87,91,0.18)',
+  info: '#6e8cff',
+  infoSoft: 'rgba(69,110,254,0.18)',
 };
 
 export const lightTokens: ThemeTokens = {
@@ -264,7 +267,7 @@ export const lightTokens: ThemeTokens = {
   typography,
   elevation,
   zIndex,
-  shadowColor: '#101828',
+  shadowColor: '#6e7588',
 };
 
 export const darkTokens: ThemeTokens = {

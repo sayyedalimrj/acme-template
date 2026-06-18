@@ -93,11 +93,7 @@ export function SettingsScreen(): React.JSX.Element {
   const { data: site } = useActiveSite();
 
   return (
-    <Screen testID="settings-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('settings.title')}</Text>
-        <Text tone="muted">{t('settings.subtitle')}</Text>
-      </View>
+    <Screen testID="settings-screen" title={t('settings.title')} subtitle={t('settings.subtitle')}>
 
       {/* A. App overview */}
       <Card title={t('settings.section.app')}>

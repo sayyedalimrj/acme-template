@@ -16,6 +16,14 @@ import {
 
 import { easing, motion, motionDuration, useReducedMotion } from '../motion';
 
+/**
+ * Animated Pressable so that layout-affecting styles (flex, width, padding, background) AND the
+ * press-scale transform live on the SAME element. Previously the style was applied to an inner
+ * Animated.View while the outer Pressable had none — which broke flex distribution (e.g. the
+ * bottom-nav tabs collapsed together instead of each taking equal width).
+ */
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export interface PressableScaleProps {
   onPress?: (event: GestureResponderEvent) => void;
   children: ReactNode;
@@ -56,7 +64,7 @@ export function PressableScale({
   };
 
   return (
-    <Pressable
+    <AnimatedPressable
       testID={testID}
       onPress={onPress}
       disabled={disabled}
@@ -65,8 +73,9 @@ export function PressableScale({
       accessibilityState={{ disabled, ...accessibilityState }}
       onPressIn={() => animateTo(pressScale)}
       onPressOut={() => animateTo(1)}
+      style={[style, { transform: [{ scale }] }]}
     >
-      <Animated.View style={[{ transform: [{ scale }] }, style]}>{children}</Animated.View>
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }

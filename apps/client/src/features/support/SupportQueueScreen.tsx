@@ -7,9 +7,8 @@
  */
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from '@/components/ui';
+import { Card, EmptyState, ErrorState, Input, LoadingState, Screen } from '@/components/ui';
 import { SecurityNote } from '@/features/onboarding/components/SecurityNote';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
@@ -52,12 +51,7 @@ export function SupportQueueScreen(): React.JSX.Element {
   }, [items, filters, search]);
 
   return (
-    <Screen testID="support-queue-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('support.title')}</Text>
-        <Text tone="muted">{t('support.subtitle')}</Text>
-      </View>
-
+    <Screen testID="support-queue-screen" title={t('support.title')} subtitle={t('support.subtitle')}>
       <SecurityNote messageKey="support.security.note" />
 
       <SupportSummaryCards summary={summary} />

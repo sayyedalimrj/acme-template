@@ -26,8 +26,11 @@ export interface MobileHeaderProps {
   unreadSupport?: number;
   onPressNotifications: () => void;
   onPressSupport: () => void;
+  /** Opens account settings when the avatar is tapped. */
+  onPressAvatar?: () => void;
   notificationsLabel: string;
   supportLabel: string;
+  accountLabel: string;
 }
 
 function IconButton({
@@ -89,8 +92,10 @@ export function MobileHeader({
   unreadSupport = 0,
   onPressNotifications,
   onPressSupport,
+  onPressAvatar,
   notificationsLabel,
   supportLabel,
+  accountLabel,
 }: MobileHeaderProps): React.JSX.Element {
   const { rowDirection, isRTL } = useTheme();
 
@@ -104,7 +109,11 @@ export function MobileHeader({
         paddingHorizontal: mobileMetrics.screenPadding,
       }}
     >
-      <View
+      <PressableScale
+        onPress={onPressAvatar}
+        accessibilityLabel={accountLabel}
+        testID="home-avatar"
+        pressScale={0.92}
         style={{
           width: mobileMetrics.avatarSize,
           height: mobileMetrics.avatarSize,
@@ -117,7 +126,7 @@ export function MobileHeader({
         <Text style={{ color: mobileColors.onPrimary, fontWeight: '700', fontSize: 16 }}>
           {initials}
         </Text>
-      </View>
+      </PressableScale>
 
       <View style={{ flex: 1, minWidth: 0 }}>
         {greeting ? (

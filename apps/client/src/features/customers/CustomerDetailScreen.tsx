@@ -129,27 +129,6 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps):
   const activeSite = useActiveSite();
   const { data: customer, isPending, isError, refetch } = useCustomer(customerId);
 
-  const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.navigate('/customers' as never);
-    }
-  };
-
-  const BackLink = (
-    <Pressable
-      accessibilityRole="button"
-      onPress={goBack}
-      style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.xs }}
-    >
-      <Ionicons name="chevron-back" size={18} color={tokens.color.primary} />
-      <Text variant="label" tone="primary">
-        {t('customer.back')}
-      </Text>
-    </Pressable>
-  );
-
   if (!activeSite.isPending && !activeSite.data) {
     return (
       <Screen scroll={false} padded={false}>
@@ -176,8 +155,7 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps):
 
   if (isError || !customer) {
     return (
-      <Screen testID="customer-detail-screen">
-        {BackLink}
+      <Screen testID="customer-detail-screen" title={t('customer.notFound.title')}>
         <ErrorState
           title={t('customer.notFound.title')}
           body={t('customer.notFound.body')}
@@ -192,14 +170,9 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps):
   const segment = segmentBadge(customerSegment(customer));
 
   return (
-    <Screen testID="customer-detail-screen">
-      {BackLink}
-
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{customerFullName(customer)}</Text>
-        <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
-          <Badge tone={segment.tone} label={t(segment.labelKey)} />
-        </View>
+    <Screen testID="customer-detail-screen" title={customerFullName(customer)}>
+      <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
+        <Badge tone={segment.tone} label={t(segment.labelKey)} />
       </View>
 
       <Card title={t('customer.section.contact')}>

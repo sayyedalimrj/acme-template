@@ -53,12 +53,29 @@ const STOCK_FILTERS: readonly { value: StockFilter; labelKey: StringKey }[] = [
   { value: 'outofstock', labelKey: 'products.filter.outOfStock' },
 ];
 
-function ScreenTitle({ title }: { title: string }): React.JSX.Element {
-  const { isRTL } = useTheme();
+function ScreenTitle({
+  title,
+  onAdd,
+  addLabel,
+}: {
+  title: string;
+  onAdd?: () => void;
+  addLabel?: string;
+}): React.JSX.Element {
+  const { rowDirection, isRTL } = useTheme();
   return (
-    <View style={{ paddingHorizontal: mobileMetrics.screenPadding, paddingVertical: 8 }}>
+    <View
+      style={{
+        flexDirection: rowDirection,
+        alignItems: 'center',
+        gap: 12,
+        paddingHorizontal: mobileMetrics.screenPadding,
+        paddingVertical: 8,
+      }}
+    >
       <Text
         style={{
+          flex: 1,
           fontSize: mobileType.titleSize,
           fontWeight: '700',
           color: mobileColors.text,
@@ -67,6 +84,24 @@ function ScreenTitle({ title }: { title: string }): React.JSX.Element {
       >
         {title}
       </Text>
+      {onAdd ? (
+        <PressableScale
+          onPress={onAdd}
+          accessibilityLabel={addLabel}
+          testID="product-add"
+          pressScale={0.92}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: mobileColors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="add" size={24} color={mobileColors.onPrimary} />
+        </PressableScale>
+      ) : null}
     </View>
   );
 }
@@ -179,7 +214,16 @@ export function ProductListScreen(): React.JSX.Element {
   }
 
   return (
-    <MobilePage testID="product-list-screen" header={<ScreenTitle title={t('products.title')} />}>
+    <MobilePage
+      testID="product-list-screen"
+      header={
+        <ScreenTitle
+          title={t('products.title')}
+          onAdd={() => router.navigate('/products/new' as never)}
+          addLabel={t('products.addNew')}
+        />
+      }
+    >
       <View style={{ paddingHorizontal: mobileMetrics.screenPadding, gap: 16 }}>
         <AnimatedSection index={0}>
           <View style={{ gap: 12 }}>
