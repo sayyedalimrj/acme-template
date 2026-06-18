@@ -4,7 +4,7 @@
  * Matches the Figma reference: tall (~65px), soft gray fill, rounded, with a blue focus
  * border and a clean inline error state. RTL/LTR safe; email/mobile values render LTR.
  */
-import React, { useState } from 'react';
+import React, { forwardRef, useState } from 'react';
 import {
   TextInput,
   View,
@@ -31,6 +31,11 @@ export interface AuthFieldProps {
   editable?: boolean;
   returnKeyType?: ReturnKeyTypeOptions;
   onSubmitEditing?: () => void;
+  /**
+   * Keep the keyboard open after submit (used when Enter should jump to the next field rather
+   * than dismiss the keyboard). Defaults to false for `returnKeyType="next"`.
+   */
+  blurOnSubmit?: boolean;
   /** Force LTR text (email / phone values) even in an RTL UI. */
   forceLtrValue?: boolean;
   maxLength?: number;
@@ -39,26 +44,32 @@ export interface AuthFieldProps {
   accessibilityLabel?: string;
 }
 
-export function AuthField({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  error,
-  keyboardType,
-  autoCapitalize = 'none',
-  secureTextEntry,
-  editable = true,
-  returnKeyType,
-  onSubmitEditing,
-  forceLtrValue = false,
-  maxLength,
-  autoFocus,
-  testID,
-  accessibilityLabel,
-}: AuthFieldProps): React.JSX.Element {
+export const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField(
+  {
+    label,
+    value,
+    onChangeText,
+    placeholder,
+    error,
+    keyboardType,
+    autoCapitalize = 'none',
+    secureTextEntry,
+    editable = true,
+    returnKeyType,
+    onSubmitEditing,
+    blurOnSubmit,
+    forceLtrValue = false,
+    maxLength,
+    autoFocus,
+    testID,
+    accessibilityLabel,
+  }: AuthFieldProps,
+  ref,
+): React.JSX.Element {
   const { isRTL } = useTheme();
   const [focused, setFocused] = useState(false);
+  // When Enter should advance to the next field, keep the keyboard open.
+  const keepKeyboard = blurOnSubmit ?? returnKeyType === 'next';
 
   const borderColor = error
     ? authColors.danger
@@ -93,6 +104,7 @@ export function AuthField({
         }}
       >
         <TextInput
+          ref={ref}
           testID={testID}
           accessibilityLabel={accessibilityLabel ?? label}
           value={value}
@@ -105,6 +117,8 @@ export function AuthField({
           editable={editable}
           returnKeyType={returnKeyType}
           onSubmitEditing={onSubmitEditing}
+          blurOnSubmit={keepKeyboard ? false : undefined}
+          submitBehavior={keepKeyboard ? 'submit' : undefined}
           maxLength={maxLength}
           autoFocus={autoFocus}
           onFocus={() => setFocused(true)}
@@ -133,4 +147,4 @@ export function AuthField({
       ) : null}
     </View>
   );
-}
+});

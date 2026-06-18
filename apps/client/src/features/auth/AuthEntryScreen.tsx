@@ -23,6 +23,10 @@ export function AuthEntryScreen(): React.JSX.Element {
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | undefined>();
 
+  // Live validity → the continue button is disabled until a valid mobile/email is entered.
+  const trimmedValue = value.trim();
+  const canContinue = trimmedValue.length > 0 && detectIdentifier(trimmedValue) !== 'unknown';
+
   const onContinue = (): void => {
     const trimmed = value.trim();
     if (trimmed.length === 0) {
@@ -47,7 +51,7 @@ export function AuthEntryScreen(): React.JSX.Element {
     <AuthFrame
       testID="auth-entry-screen"
       iconName="storefront-outline"
-      title={t('auth.entry.title')}
+      title=""
       subtitle={t('auth.entry.subtitle')}
       footer={
         <Text
@@ -84,6 +88,7 @@ export function AuthEntryScreen(): React.JSX.Element {
         testID="auth-entry-submit"
         label={t('auth.entry.continue')}
         onPress={onContinue}
+        disabled={!canContinue}
       />
     </AuthFrame>
   );

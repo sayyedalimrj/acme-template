@@ -138,16 +138,18 @@ export function AuthFrame({
             />
           </View>
 
-          <Text
-            style={{
-              fontSize: authType.titleSize,
-              fontWeight: authType.titleWeight,
-              color: authColors.text,
-              textAlign: 'center',
-            }}
-          >
-            {title}
-          </Text>
+          {title ? (
+            <Text
+              style={{
+                fontSize: authType.titleSize,
+                fontWeight: authType.titleWeight,
+                color: authColors.text,
+                textAlign: 'center',
+              }}
+            >
+              {title}
+            </Text>
+          ) : null}
           <Text
             style={{
               fontSize: authType.subtitleSize,

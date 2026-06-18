@@ -94,7 +94,22 @@ export const FEATURE_SECTIONS: readonly FeatureSection[] = [
         href: '/automations',
       },
       { key: 'sms', labelKey: 'more.sms', icon: 'chatbox-outline', href: '/automations' },
+    ],
+  },
+  {
+    // Smart/AI services get their own clearly-labeled section so the "grow sales" group stays
+    // simple and uncluttered (one purpose per card).
+    key: 'smart',
+    titleKey: 'more.section.smart',
+    items: [
       { key: 'smartTips', labelKey: 'more.smartTips', icon: 'sparkles-outline', href: '/advisor' },
+      { key: 'media', labelKey: 'more.media', icon: 'color-palette-outline', href: '/media-studio' },
+      {
+        key: 'behavior',
+        labelKey: 'more.behavior',
+        icon: 'people-circle-outline',
+        href: '/intelligence',
+      },
     ],
   },
   {

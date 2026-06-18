@@ -79,8 +79,9 @@ export function OtpBoxes({
 
   return (
     <View
-      // OTP digits always read left-to-right, even in the RTL (Persian) UI.
-      style={{ flexDirection: 'row', justifyContent: 'center', gap: 12 }}
+      // OTP digits always read left-to-right, even in the RTL (Persian) UI. Boxes flex to fill
+      // the row so the group lines up with the full-width verify button beneath it.
+      style={{ flexDirection: 'row', gap: 12 }}
       accessibilityLabel={`${OTP_LENGTH}-digit verification code`}
     >
       {Array.from({ length: OTP_LENGTH }).map((_, index) => {
@@ -107,7 +108,7 @@ export function OtpBoxes({
             returnKeyType="next"
             accessibilityLabel={`Digit ${index + 1}`}
             style={{
-              width: authMetrics.otpBoxWidth,
+              flex: 1,
               height: authMetrics.otpBoxHeight,
               textAlign: 'center',
               writingDirection: 'ltr',

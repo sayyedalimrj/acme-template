@@ -9,7 +9,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useT } from '@/i18n/I18nProvider';
@@ -69,6 +69,10 @@ export function BottomNav(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { rowDirection } = useTheme();
 
+  // On the web (iPhone Safari especially) the safe-area inset is often 0 while the browser's
+  // bottom toolbar overlaps the bar, so keep a comfortable minimum bottom gap there.
+  const bottomInset = Platform.OS === 'web' ? Math.max(insets.bottom, 16) : insets.bottom;
+
   return (
     <View
       style={{
@@ -76,10 +80,10 @@ export function BottomNav(): React.JSX.Element {
         backgroundColor: mobileColors.bottomNav,
         borderTopWidth: 1,
         borderTopColor: mobileColors.separator,
-        paddingBottom: insets.bottom,
+        paddingBottom: bottomInset,
         paddingTop: 8,
         paddingHorizontal: 6,
-        height: mobileMetrics.bottomNavHeight + insets.bottom,
+        height: mobileMetrics.bottomNavHeight + bottomInset,
       }}
     >
       {TABS.map((tab) => {
