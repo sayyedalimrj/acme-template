@@ -1,20 +1,21 @@
 /**
- * BottomNav — mobile bottom tab bar.
+ * BottomNav — mobile bottom tab bar (4 tabs).
  *
- * Four tabs (Home / Orders / Products / More). The active tab is clearly blue (filled icon +
- * accent), inactive tabs are muted. Press feedback via PressableScale; bottom safe-area inset
- * respected. Active route is derived from the pathname. RN primitives + Expo Router only.
+ * Home / Orders / Products / More. Support and notifications live in the header/More, not here.
+ * Active tab is clearly blue (filled icon + accent dot + bold label), inactive muted; labels
+ * are short and single-line so they never overlap. Bottom safe-area inset is included. Soft
+ * press feedback via PressableScale. Active route derived from the pathname.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Text } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
 import type { StringKey } from '@/i18n/strings';
 
+import { MOBILE_FONT_FAMILY } from '../mobileUxSpec';
 import { mobileColors, mobileMetrics } from '../mobileTokens';
 import { PressableScale } from './PressableScale';
 
@@ -75,6 +76,7 @@ export function BottomNav(): React.JSX.Element {
         borderTopColor: mobileColors.separator,
         paddingBottom: insets.bottom,
         paddingTop: 8,
+        paddingHorizontal: 6,
         height: mobileMetrics.bottomNavHeight + insets.bottom,
       }}
     >
@@ -88,24 +90,39 @@ export function BottomNav(): React.JSX.Element {
             accessibilityState={{ selected: active }}
             accessibilityLabel={t(tab.labelKey)}
             testID={`tab-${tab.key}`}
+            pressScale={0.92}
             onPress={() => {
               if (!active) {
                 router.navigate(tab.href as never);
               }
             }}
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+            }}
           >
             <View
               style={{
-                width: 28,
+                width: 20,
                 height: 3,
                 borderRadius: 2,
-                marginBottom: 3,
                 backgroundColor: active ? mobileColors.navActive : 'transparent',
               }}
             />
-            <Ionicons name={active ? tab.iconActive : tab.icon} size={22} color={color} />
-            <Text style={{ fontSize: 12, fontWeight: active ? '700' : '500', color }}>
+            <Ionicons name={active ? tab.iconActive : tab.icon} size={23} color={color} />
+            <Text
+              numberOfLines={1}
+              style={{
+                fontSize: 11,
+                fontWeight: active ? '700' : '500',
+                color,
+                fontFamily: MOBILE_FONT_FAMILY,
+                textAlign: 'center',
+              }}
+            >
               {t(tab.labelKey)}
             </Text>
           </PressableScale>

@@ -1,82 +1,49 @@
 /**
- * MobilePage — mobile-first page shell.
+ * MobilePage — in-frame scrollable page.
  *
- * A scrollable page that is full-bleed on phones and a centered "mobile frame" on wide/desktop
- * viewports (the frame is centered, never stretched). Handles safe-area insets and an optional
- * fixed bottom navigation. RTL-safe; RN primitives only.
+ * A plain scrollable page used by the mobile screens. The app frame, soft desktop backdrop,
+ * and the bottom tab bar are owned by `AppShell` (single source of layout), so this component
+ * just renders an optional fixed header + a scroll area with safe-area handling. RTL-safe; RN
+ * primitives only.
  */
 import React, { type ReactNode } from 'react';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { mobileColors, mobileMetrics } from '../mobileTokens';
+import { mobileColors } from '../mobileTokens';
 
 export interface MobilePageProps {
   children: ReactNode;
   /** Fixed header rendered above the scroll area (optional). */
   header?: ReactNode;
-  /** Fixed bottom navigation rendered below the scroll area (optional). */
-  bottomNav?: ReactNode;
   testID?: string;
-  /** Extra bottom padding inside the scroll content (e.g. when a bottom nav is present). */
+  /** Extra bottom padding inside the scroll content. */
   scrollBottomPadding?: number;
 }
 
 export function MobilePage({
   children,
   header,
-  bottomNav,
   testID,
-  scrollBottomPadding = 32,
+  scrollBottomPadding = 28,
 }: MobilePageProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const wide = width >= mobileMetrics.desktopBreakpoint;
 
   return (
-    <View
-      testID={testID}
-      style={{
-        flex: 1,
-        backgroundColor: wide ? mobileColors.pageBackdrop : mobileColors.background,
-        alignItems: 'center',
-      }}
-    >
-      <View
-        style={[
-          {
-            flex: 1,
-            width: '100%',
-            maxWidth: mobileMetrics.frameMaxWidth,
-            backgroundColor: mobileColors.background,
-            overflow: 'hidden',
-          },
-          wide
-            ? {
-                marginVertical: 20,
-                borderRadius: mobileMetrics.frameRadius,
-                borderWidth: 1,
-                borderColor: mobileColors.frameBorder,
-              }
-            : null,
-        ]}
+    <View testID={testID} style={{ flex: 1, backgroundColor: mobileColors.background }}>
+      {header ? <View style={{ paddingTop: insets.top }}>{header}</View> : null}
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: header ? 6 : insets.top + 6,
+          paddingBottom: scrollBottomPadding,
+        }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {header ? <View style={{ paddingTop: wide ? 14 : insets.top }}>{header}</View> : null}
-
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            paddingTop: header ? 8 : wide ? 14 : insets.top + 8,
-            paddingBottom: scrollBottomPadding,
-          }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {children}
-        </ScrollView>
-
-        {bottomNav}
-      </View>
+        {children}
+      </ScrollView>
     </View>
   );
 }

@@ -174,7 +174,7 @@ export function AuthFrame({
         </View>
 
         {/* Body */}
-        <View style={{ marginTop: 28, gap: 18 }}>{children}</View>
+        <View style={{ marginTop: 22, gap: 14 }}>{children}</View>
 
         {/* Footer (helper text) pushed below the body, with breathing room. */}
         {footer ? <View style={{ marginTop: 20, alignItems: 'center' }}>{footer}</View> : null}

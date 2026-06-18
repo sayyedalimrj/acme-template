@@ -1,221 +1,255 @@
 /**
- * Order list screen.
+ * Order list screen (mobile-first).
  *
- * Active-site-aware order operations view: search (order #, customer name/email) + status
- * and fulfillment filters over the mocked orders, with loading/empty/error states. Rows
- * surface payment/fulfillment/status visibility and an "action needed" flag, and navigate
- * to order detail. Filtering is client-side for snappy UX; `useOrders` also accepts
- * server-side query params for future real-data scale.
+ * Calm orders view: a soft search field, a single low-density status filter row, and tidy
+ * order cards (order number, customer name label, date, total, one status chip, and a small
+ * "needs attention" dot). The customer label uses the name only — no raw email is shown on the
+ * card. RTL-correct. Mock-only data via useOrders; rows deep-link to order detail.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, View, type ViewStyle } from 'react-native';
+import { View } from 'react-native';
 
+import { Text } from '@/components/ui';
 import {
-  Badge,
-  Card,
-  EmptyState,
-  ErrorState,
-  Input,
-  LoadingState,
-  Screen,
-  SegmentedControl,
-  Text,
-} from '@/components/ui';
+  AnimatedSection,
+  EmptySiteCard,
+  FilterChipRow,
+  MobilePage,
+  MobileSearchField,
+  PressableScale,
+  StatusBadge,
+  type StatusTone,
+} from '@/features/mobile/components';
+import {
+  mobileColors,
+  mobileMetrics,
+  mobileShadow,
+  mobileType,
+} from '@/features/mobile/mobileTokens';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
+import type { BadgeTone } from '@/components/ui';
 import type { Order } from '@/domain/types';
 import type { StringKey } from '@/i18n/strings';
 
 import {
   filterOrders,
-  fulfillmentBadge,
   needsAttention,
-  orderItemCount,
   orderStatusBadge,
-  paymentBadge,
-  type FulfillmentFilter,
   type OrderStatusFilter,
 } from './orderHelpers';
 import { useOrders } from './useOrders';
 
-interface OrderRowProps {
-  order: Order;
-  onPress: () => void;
+function toStatusTone(tone: BadgeTone): StatusTone {
+  if (tone === 'success' || tone === 'warning' || tone === 'danger' || tone === 'info') {
+    return tone;
+  }
+  return 'neutral';
 }
 
-function OrderRow({ order, onPress }: OrderRowProps): React.JSX.Element {
-  const { tokens, rowDirection } = useTheme();
-  const t = useT();
-  const fmt = useFormatters();
-  const status = orderStatusBadge(order.status);
-  const payment = paymentBadge(order.status);
-  const fulfillment = fulfillmentBadge(order.fulfillment);
-  const attention = needsAttention(order);
-
-  const rowStyle: ViewStyle = {
-    flexDirection: rowDirection,
-    alignItems: 'center',
-    gap: tokens.spacing.md,
-    padding: tokens.spacing.md,
-    borderRadius: tokens.radius.md,
-    borderWidth: tokens.borderWidth.hairline,
-    borderColor: tokens.color.border,
-    backgroundColor: tokens.color.surface,
-  };
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Order ${order.number}`}
-      onPress={onPress}
-      style={({ pressed }) => [
-        rowStyle,
-        pressed ? { backgroundColor: tokens.color.surfaceAlt } : null,
-      ]}
-    >
-      <View style={{ flex: 1, gap: 4 }}>
-        <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.xs }}>
-          <Text variant="subheading">#{order.number}</Text>
-          {attention ? <Badge tone="danger" label={t('orders.attention')} /> : null}
-        </View>
-        <Text variant="caption" tone="muted" numberOfLines={1}>
-          {order.billing.firstName} {order.billing.lastName} · {order.billing.email}
-        </Text>
-        <Text variant="caption" tone="muted">
-          {fmt.date(order.dateCreated)} · {fmt.num(orderItemCount(order))}{' '}
-          {t('orders.items')}
-        </Text>
-        <View
-          style={{
-            flexDirection: rowDirection,
-            alignItems: 'center',
-            gap: tokens.spacing.xs,
-            flexWrap: 'wrap',
-          }}
-        >
-          <Badge tone={status.tone} label={t(status.labelKey)} />
-          <Badge tone={payment.tone} label={t(payment.labelKey)} />
-          <Badge tone={fulfillment.tone} label={t(fulfillment.labelKey)} />
-        </View>
-      </View>
-
-      <View style={{ alignItems: 'flex-end', gap: 2 }}>
-        <Text variant="label" style={{ fontWeight: '700' }}>
-          {fmt.money(order.total, order.currency)}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={tokens.color.textMuted} />
-    </Pressable>
-  );
+/** Customer name label (no raw email shown on the card). Falls back to a generic label. */
+function customerLabel(order: Order, fallback: string): string {
+  const name = `${order.billing.firstName} ${order.billing.lastName}`.trim();
+  return name.length > 0 ? name : fallback;
 }
 
-const STATUS_FILTERS: { value: OrderStatusFilter; labelKey: StringKey }[] = [
+const STATUS_FILTERS: readonly { value: OrderStatusFilter; labelKey: StringKey }[] = [
   { value: 'all', labelKey: 'orders.filter.allStatus' },
   { value: 'processing', labelKey: 'orders.status.processing' },
   { value: 'pending', labelKey: 'orders.status.pending' },
-  { value: 'on-hold', labelKey: 'orders.status.on-hold' },
   { value: 'completed', labelKey: 'orders.status.completed' },
-  { value: 'refunded', labelKey: 'orders.status.refunded' },
 ];
 
-const FULFILLMENT_FILTERS: { value: FulfillmentFilter; labelKey: StringKey }[] = [
-  { value: 'all', labelKey: 'orders.filter.allFulfillment' },
-  { value: 'unfulfilled', labelKey: 'orders.fulfillment.unfulfilled' },
-  { value: 'partial', labelKey: 'orders.fulfillment.partial' },
-  { value: 'fulfilled', labelKey: 'orders.fulfillment.fulfilled' },
-];
+function ScreenTitle({ title }: { title: string }): React.JSX.Element {
+  const { isRTL } = useTheme();
+  return (
+    <View style={{ paddingHorizontal: mobileMetrics.screenPadding, paddingVertical: 8 }}>
+      <Text
+        style={{
+          fontSize: mobileType.titleSize,
+          fontWeight: '700',
+          color: mobileColors.text,
+          textAlign: isRTL ? 'right' : 'left',
+        }}
+      >
+        {title}
+      </Text>
+    </View>
+  );
+}
 
-export function OrderListScreen(): React.JSX.Element {
-  const { tokens } = useTheme();
+function OrderRow({
+  order,
+  onPress,
+  customerFallback,
+}: {
+  order: Order;
+  onPress: () => void;
+  customerFallback: string;
+}): React.JSX.Element {
+  const { rowDirection, isRTL } = useTheme();
   const t = useT();
   const fmt = useFormatters();
+  const status = orderStatusBadge(order.status);
+  const attention = needsAttention(order);
+
+  return (
+    <PressableScale
+      onPress={onPress}
+      accessibilityLabel={`#${order.number}`}
+      pressScale={0.985}
+      style={{
+        flexDirection: rowDirection,
+        alignItems: 'center',
+        gap: 12,
+        minHeight: mobileMetrics.listRowHeight,
+        paddingVertical: 12,
+      }}
+    >
+      <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+        <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
+          <Text
+            style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: mobileColors.text }}
+          >
+            #{order.number}
+          </Text>
+          {attention ? (
+            <View
+              style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mobileColors.badge }}
+            />
+          ) : null}
+        </View>
+        <Text
+          style={{
+            fontSize: mobileType.captionSize,
+            color: mobileColors.textSecondary,
+            textAlign: isRTL ? 'right' : 'left',
+          }}
+          numberOfLines={1}
+        >
+          {customerLabel(order, customerFallback)} · {fmt.date(order.dateCreated)}
+        </Text>
+        <StatusBadge tone={toStatusTone(status.tone)} label={t(status.labelKey)} />
+      </View>
+
+      <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end', gap: 2 }}>
+        <Text
+          style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: mobileColors.text }}
+        >
+          {fmt.money(order.total, order.currency)}
+        </Text>
+        <Ionicons
+          name={isRTL ? 'chevron-back' : 'chevron-forward'}
+          size={16}
+          color={mobileColors.mutedSoft}
+        />
+      </View>
+    </PressableScale>
+  );
+}
+
+export function OrderListScreen(): React.JSX.Element {
+  const t = useT();
   const router = useRouter();
+  const { isRTL } = useTheme();
 
   const activeSite = useActiveSite();
   const ordersQuery = useOrders();
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<OrderStatusFilter>('all');
-  const [fulfillment, setFulfillment] = useState<FulfillmentFilter>('all');
 
   const items = ordersQuery.data?.items;
   const filtered = useMemo(
-    () => filterOrders(items ?? [], { search, status, fulfillment }),
-    [items, search, status, fulfillment],
+    () => filterOrders(items ?? [], { search, status }),
+    [items, search, status],
   );
-  const total = items?.length ?? 0;
 
   if (!activeSite.isPending && !activeSite.data) {
     return (
-      <Screen scroll={false} padded={false}>
-        <EmptyState
-          title={t('orders.noSite.title')}
-          body={t('orders.noSite.body')}
-          icon="storefront-outline"
-          action={{
-            label: t('site.connectCta'),
-            onPress: () => router.navigate('/connect-site' as never),
-          }}
-        />
-      </Screen>
+      <MobilePage testID="order-list-screen" header={<ScreenTitle title={t('orders.title')} />}>
+        <View style={{ paddingHorizontal: mobileMetrics.screenPadding }}>
+          <EmptySiteCard
+            onPrimary={() => router.navigate('/onboarding' as never)}
+            onSecondary={() => router.navigate('/connect-site' as never)}
+          />
+        </View>
+      </MobilePage>
     );
   }
 
   return (
-    <Screen testID="order-list-screen">
-      <View style={{ gap: tokens.spacing.xs }}>
-        <Text variant="title">{t('orders.title')}</Text>
-        <Text tone="muted">{t('orders.subtitle')}</Text>
-      </View>
-
-      <Card padding="md" contentStyle={{ gap: tokens.spacing.sm }}>
-        <Input
-          value={search}
-          onChangeText={setSearch}
-          placeholder={t('orders.searchPlaceholder')}
-          autoCapitalize="none"
-          testID="order-search"
-        />
-        <SegmentedControl
-          options={STATUS_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
-          value={status}
-          onChange={setStatus}
-        />
-        <SegmentedControl
-          options={FULFILLMENT_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
-          value={fulfillment}
-          onChange={setFulfillment}
-        />
-      </Card>
-
-      {ordersQuery.isPending ? (
-        <LoadingState label={t('common.loading')} />
-      ) : ordersQuery.isError ? (
-        <ErrorState
-          title={t('orders.error')}
-          retryLabel={t('common.retry')}
-          onRetry={() => ordersQuery.refetch()}
-        />
-      ) : filtered.length === 0 ? (
-        <EmptyState title={t('orders.empty')} icon="receipt-outline" fill={false} />
-      ) : (
-        <View style={{ gap: tokens.spacing.sm }} testID="order-list">
-          <Text variant="caption" tone="muted">
-            {fmt.num(filtered.length)} / {fmt.num(total)}
-          </Text>
-          {filtered.map((order) => (
-            <OrderRow
-              key={order.id}
-              order={order}
-              onPress={() => router.navigate(`/orders/${order.id}` as never)}
+    <MobilePage testID="order-list-screen" header={<ScreenTitle title={t('orders.title')} />}>
+      <View style={{ paddingHorizontal: mobileMetrics.screenPadding, gap: 16 }}>
+        <AnimatedSection index={0}>
+          <View style={{ gap: 12 }}>
+            <MobileSearchField
+              value={search}
+              onChangeText={setSearch}
+              placeholder={t('orders.searchPlaceholder')}
+              testID="order-search"
             />
-          ))}
-        </View>
-      )}
-    </Screen>
+            <FilterChipRow
+              options={STATUS_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+              value={status}
+              onChange={setStatus}
+            />
+          </View>
+        </AnimatedSection>
+
+        {ordersQuery.isPending ? (
+          <Text style={{ color: mobileColors.muted, textAlign: isRTL ? 'right' : 'left' }}>
+            {t('common.loading')}
+          </Text>
+        ) : ordersQuery.isError ? (
+          <PressableScale
+            onPress={() => ordersQuery.refetch()}
+            accessibilityLabel={t('common.retry')}
+            style={{ paddingVertical: 24, alignItems: 'center' }}
+          >
+            <Text style={{ color: mobileColors.primary, fontWeight: '700' }}>
+              {t('orders.error')} · {t('common.retry')}
+            </Text>
+          </PressableScale>
+        ) : filtered.length === 0 ? (
+          <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+            <Ionicons name="receipt-outline" size={34} color={mobileColors.mutedSoft} />
+            <Text style={{ color: mobileColors.muted, marginTop: 10 }}>{t('orders.empty')}</Text>
+          </View>
+        ) : (
+          <AnimatedSection index={1}>
+            <View
+              testID="order-list"
+              style={[
+                {
+                  borderRadius: mobileMetrics.cardRadius,
+                  backgroundColor: mobileColors.card,
+                  paddingHorizontal: 16,
+                  paddingVertical: 4,
+                },
+                mobileShadow,
+              ]}
+            >
+              {filtered.map((order, index) => (
+                <View key={order.id}>
+                  {index > 0 ? (
+                    <View style={{ height: 1, backgroundColor: mobileColors.separator }} />
+                  ) : null}
+                  <OrderRow
+                    order={order}
+                    customerFallback={t('orders.customerFallback')}
+                    onPress={() => router.navigate(`/orders/${order.id}` as never)}
+                  />
+                </View>
+              ))}
+            </View>
+          </AnimatedSection>
+        )}
+      </View>
+    </MobilePage>
   );
 }

@@ -6,7 +6,6 @@
  */
 import React, { useState } from 'react';
 import {
-  Platform,
   TextInput,
   View,
   type KeyboardTypeOptions,
@@ -17,12 +16,8 @@ import {
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
+import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '../../mobile/mobileUxSpec';
 import { authColors, authMetrics, authType } from '../authTokens';
-
-/** Web-only Persian-first font stack (mirrors the Text primitive); no-op on native. */
-const WEB_FONT_STACK =
-  "'Vazirmatn', 'Vazir', 'IRANSansX', 'IRANSans', 'Tahoma', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
-const FONT_FAMILY = Platform.OS === 'web' ? WEB_FONT_STACK : undefined;
 
 export interface AuthFieldProps {
   label: string;
@@ -117,10 +112,11 @@ export function AuthField({
           style={{
             fontSize: authType.inputSize,
             color: authColors.text,
-            fontFamily: FONT_FAMILY,
+            fontFamily: MOBILE_FONT_FAMILY,
             padding: 0,
             textAlign,
             writingDirection,
+            ...NO_WEB_OUTLINE,
           }}
         />
       </View>

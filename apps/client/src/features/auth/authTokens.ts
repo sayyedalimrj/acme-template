@@ -49,32 +49,32 @@ export const authMetrics = {
   /** Max width of the centered mobile frame (desktop centers this instead of stretching). */
   frameMaxWidth: 430,
   /** Mobile card/frame corner radius. */
-  frameRadius: 35,
-  /** Primary circular icon diameter. */
-  iconCircleSize: 120,
+  frameRadius: 30,
+  /** Primary circular icon diameter (kept modest so the frame doesn't feel oversized). */
+  iconCircleSize: 84,
   /** Inner icon glyph size. */
-  iconGlyphSize: 54,
+  iconGlyphSize: 38,
   /** Primary button height + radius. */
-  buttonHeight: 63,
-  buttonRadius: 10,
+  buttonHeight: 56,
+  buttonRadius: 14,
   /** Text input height + radius. */
-  inputHeight: 65,
-  inputRadius: 7,
+  inputHeight: 56,
+  inputRadius: 12,
   /** OTP box dimensions + radius. */
-  otpBoxWidth: 60,
-  otpBoxHeight: 59,
-  otpRadius: 5,
+  otpBoxWidth: 56,
+  otpBoxHeight: 58,
+  otpRadius: 12,
   /** Circular back button diameter. */
-  backButtonSize: 44,
+  backButtonSize: 42,
   /** Horizontal screen padding. */
-  screenPadding: 24,
+  screenPadding: 22,
   /** Width at/above which we render the centered desktop frame. */
   desktopBreakpoint: 600,
 } as const;
 
 /** Typography sizing for the auth flow (weights/sizes only; family comes from the app stack). */
 export const authType = {
-  titleSize: 26,
+  titleSize: 22,
   titleWeight: '700' as const,
   subtitleSize: 15,
   labelSize: 14,
