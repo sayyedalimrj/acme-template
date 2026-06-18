@@ -13,6 +13,7 @@ import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useT } from '@/i18n/I18nProvider';
+import { useTheme } from '@/theme';
 import type { StringKey } from '@/i18n/strings';
 
 import { MOBILE_FONT_FAMILY } from '../mobileUxSpec';
@@ -66,11 +67,12 @@ export function BottomNav(): React.JSX.Element {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { rowDirection } = useTheme();
 
   return (
     <View
       style={{
-        flexDirection: 'row',
+        flexDirection: rowDirection,
         backgroundColor: mobileColors.bottomNav,
         borderTopWidth: 1,
         borderTopColor: mobileColors.separator,
@@ -102,6 +104,7 @@ export function BottomNav(): React.JSX.Element {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 4,
+              paddingHorizontal: 4,
             }}
           >
             <View
