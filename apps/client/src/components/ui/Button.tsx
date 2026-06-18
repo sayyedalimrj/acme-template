@@ -44,8 +44,9 @@ export function Button({
   const { tokens, rowDirection } = useTheme();
   const isDisabled = disabled || loading;
 
-  const paddingVertical = size === 'sm' ? tokens.spacing.xs + 2 : tokens.spacing.sm + 2;
+  const paddingVertical = size === 'sm' ? tokens.spacing.xs + 2 : tokens.spacing.sm + 4;
   const paddingHorizontal = size === 'sm' ? tokens.spacing.md : tokens.spacing.lg;
+  const minHeight = size === 'sm' ? 38 : 52;
 
   const background: Record<ButtonVariant, string> = {
     primary: tokens.color.primary,
@@ -63,11 +64,12 @@ export function Button({
     alignItems: 'center',
     justifyContent: 'center',
     gap: tokens.spacing.sm,
+    minHeight,
     paddingVertical,
     paddingHorizontal,
     borderRadius: tokens.radius.md,
     backgroundColor: background[variant],
-    borderWidth: variant === 'secondary' ? StyleSheet.hairlineWidth : 0,
+    borderWidth: variant === 'secondary' ? tokens.borderWidth.thin : 0,
     borderColor: tokens.color.border,
     opacity: isDisabled ? 0.55 : 1,
   };
@@ -90,7 +92,7 @@ export function Button({
       ) : (
         <>
           {leading ? <View>{leading}</View> : null}
-          <Text variant="label" tone={textTone[variant]} style={{ fontWeight: '600' }}>
+          <Text variant="label" tone={textTone[variant]} style={{ fontWeight: '700' }}>
             {label}
           </Text>
         </>

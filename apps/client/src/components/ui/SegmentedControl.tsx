@@ -42,10 +42,8 @@ export function SegmentedControl<T extends string>({
     flexDirection: rowDirection,
     backgroundColor: tokens.color.surfaceAlt,
     borderRadius: tokens.radius.md,
-    borderWidth: tokens.borderWidth.hairline,
-    borderColor: tokens.color.border,
-    padding: 3,
-    gap: 3,
+    padding: 4,
+    gap: 4,
   };
 
   const segments = options.map((option) => {
@@ -58,9 +56,9 @@ export function SegmentedControl<T extends string>({
         onPress={() => onChange(option.value)}
         style={[
           {
-            paddingVertical: tokens.spacing.xs + 2,
+            paddingVertical: tokens.spacing.xs + 3,
             paddingHorizontal: tokens.spacing.md,
-            borderRadius: tokens.radius.md - 3,
+            borderRadius: tokens.radius.md - 4,
             alignItems: 'center',
             justifyContent: 'center',
             flex: stretch ? 1 : undefined,
