@@ -57,8 +57,18 @@ const HEAD = `
     </script>
   `;
 
-// 1) Persian-first, RTL document shell + customer-friendly tab title.
-html = html.replace('<html lang="en">', '<html lang="fa" dir="rtl">');
+// 1) Persian-first document shell + customer-friendly tab title.
+//
+// IMPORTANT: the document direction is intentionally kept LTR even though the UI is Persian.
+// The app implements RTL *itself* (in JS) via direction-aware flex rows (`row-reverse`) and
+// explicit `textAlign`, with a deterministic LTR ambient on every platform (web + native).
+// If we also set `dir="rtl"` here, the browser flips the inline axis a SECOND time, so every
+// `row-reverse` becomes visually LTR again (a double-flip) — that is what made the deployed
+// build look mirrored/broken (header, bottom nav, filter chips, product rows, and the hero
+// carousel/swipe). Keeping the document LTR makes prod match dev (`expo start --web`) and the
+// native apps, where the ambient direction is already LTR. `lang="fa"` stays for correct
+// language semantics, fonts, and number/date shaping.
+html = html.replace('<html lang="en">', '<html lang="fa" dir="ltr">');
 html = html.replace(
   /<title>[\s\S]*?<\/title>/,
   '<title>داشبورد فروشگاه</title>',
