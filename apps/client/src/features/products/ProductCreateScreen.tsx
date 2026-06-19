@@ -24,6 +24,8 @@ import { mobileColors, mobileMetrics, mobileShadow, mobileType } from '@/feature
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 
+import { ProductImagePicker } from './components/ProductImagePicker';
+
 type ProductDraftStatus = 'publish' | 'draft';
 
 function Field({
@@ -125,6 +127,7 @@ export function ProductCreateScreen(): React.JSX.Element {
   const [stock, setStock] = useState('');
   const [status, setStatus] = useState<ProductDraftStatus>('publish');
   const [description, setDescription] = useState('');
+  const [imageId, setImageId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(false);
 
@@ -225,6 +228,12 @@ export function ProductCreateScreen(): React.JSX.Element {
         </AnimatedSection>
 
         <AnimatedSection index={2}>
+          <FormCard title={t('product.new.media')}>
+            <ProductImagePicker selectedId={imageId} onSelect={setImageId} />
+          </FormCard>
+        </AnimatedSection>
+
+        <AnimatedSection index={3}>
           <FormCard title={t('product.new.pricingStock')}>
             <Field
               label={t('product.new.price')}
@@ -250,7 +259,7 @@ export function ProductCreateScreen(): React.JSX.Element {
           </FormCard>
         </AnimatedSection>
 
-        <AnimatedSection index={3}>
+        <AnimatedSection index={4}>
           <PressableScale
             onPress={onSave}
             accessibilityLabel={t('product.new.save')}
