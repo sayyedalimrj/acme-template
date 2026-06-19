@@ -20,7 +20,7 @@ export function AffiliateMoreScreen(): React.JSX.Element {
     { key: 'referrals', icon: 'people-outline', label: 'معرفی‌ها', href: '/affiliate/referrals' },
     { key: 'earnings', icon: 'cash-outline', label: 'درآمد', href: '/affiliate/earnings' },
     { key: 'payouts', icon: 'wallet-outline', label: 'تسویه حساب', href: '/affiliate/payouts' },
-    { key: 'support', icon: 'chatbubble-ellipses-outline', label: 'پشتیبانی', href: '/support' },
+    { key: 'profile', icon: 'person-outline', label: 'پروفایل', href: '/affiliate/profile' },
   ];
 
   return (

@@ -17,10 +17,10 @@ export function AdminMoreScreen(): React.JSX.Element {
   const go = (href: string): void => router.navigate(href as never);
 
   const tools: { key: string; icon: React.ComponentProps<typeof FeatureCard>['icon']; label: string; href: string }[] = [
+    { key: 'merchants', icon: 'storefront-outline', label: 'فروشندگان', href: '/admin/merchants' },
     { key: 'marketers', icon: 'megaphone-outline', label: 'بازاریاب‌ها', href: '/admin/marketers' },
     { key: 'payouts', icon: 'cash-outline', label: 'تسویه پورسانت', href: '/admin/payouts' },
-    { key: 'support', icon: 'chatbubble-ellipses-outline', label: 'پشتیبانی', href: '/support' },
-    { key: 'plans', icon: 'pricetag-outline', label: 'پلن‌ها', href: '/plans' },
+    { key: 'settings', icon: 'settings-outline', label: 'تنظیمات', href: '/admin/settings' },
   ];
 
   return (
