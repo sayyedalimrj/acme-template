@@ -22,6 +22,7 @@ import React, {
   type ReactNode,
 } from 'react';
 
+import { ACTIVE_PORTAL } from '@/config/portal.config';
 import { authService } from '@/services';
 import type { AppPortal, AuthStatus, AuthUser } from '@/domain/types';
 
@@ -54,7 +55,8 @@ export interface SessionProviderProps {
 export function SessionProvider({ children }: SessionProviderProps): React.JSX.Element {
   const [status, setStatus] = useState<AuthStatus>('unauthenticated');
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [portal, setPortal] = useState<AppPortal>('merchant');
+  // Each deployment is fixed to ONE portal (its subdomain); default to this build's portal.
+  const [portal, setPortal] = useState<AppPortal>(ACTIVE_PORTAL);
 
   const signIn = useCallback(async (input?: SignInInput) => {
     setStatus('loading');
@@ -62,7 +64,7 @@ export function SessionProvider({ children }: SessionProviderProps): React.JSX.E
       const session = await authService.signInMock({ name: input?.name, email: input?.email });
       setUser(session.user);
       setStatus(session.status);
-      setPortal(input?.portal ?? 'merchant');
+      setPortal(input?.portal ?? ACTIVE_PORTAL);
     } catch {
       setUser(null);
       setStatus('unauthenticated');
@@ -73,7 +75,7 @@ export function SessionProvider({ children }: SessionProviderProps): React.JSX.E
     const session = await authService.signOut();
     setUser(session.user);
     setStatus(session.status);
-    setPortal('merchant');
+    setPortal(ACTIVE_PORTAL);
   }, []);
 
   const value = useMemo<SessionContextValue>(

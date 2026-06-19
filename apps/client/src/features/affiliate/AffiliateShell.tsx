@@ -48,7 +48,6 @@ export function AffiliateShell({ children }: { children: ReactNode }): React.JSX
           subtitle={user?.name ?? 'خوش آمدید'}
           initials={initials}
           onPressAvatar={() => go('/affiliate/more')}
-          onPressSwitch={() => go('/affiliate/more')}
         />
       }
       bottomNav={<PortalBottomNav tabs={AFFILIATE_TABS} homeHref="/affiliate" />}

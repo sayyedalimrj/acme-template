@@ -50,7 +50,6 @@ export function AdminShell({ children }: { children: ReactNode }): React.JSX.Ele
           subtitle={user?.name ?? 'خوش آمدید'}
           initials={initials}
           onPressAvatar={() => go('/admin/more')}
-          onPressSwitch={() => go('/admin/more')}
         />
       }
       bottomNav={<PortalBottomNav tabs={ADMIN_TABS} homeHref="/admin" />}

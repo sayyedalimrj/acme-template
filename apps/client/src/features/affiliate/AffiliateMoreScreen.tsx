@@ -1,11 +1,11 @@
 /**
  * AffiliateMoreScreen — marketing tools, portal switcher, and sign out ("/affiliate/more").
  */
-import { useRouter, type Href } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
 
-import { PortalRowCard, PortalSectionTitle } from '@/components/portal/PortalUI';
+import { PortalSectionTitle } from '@/components/portal/PortalUI';
 import { Button } from '@/components/ui';
 import { AnimatedSection, FeatureCard, MobilePage, MobileTabHeader } from '@/features/mobile/components';
 import { mobileMetrics } from '@/features/mobile/mobileTokens';
@@ -13,13 +13,8 @@ import { useSession } from '@/session/SessionProvider';
 
 export function AffiliateMoreScreen(): React.JSX.Element {
   const router = useRouter();
-  const { signOut, setPortal } = useSession();
+  const { signOut } = useSession();
   const go = (href: string): void => router.navigate(href as never);
-
-  const switchTo = (portal: 'merchant' | 'admin', href: string): void => {
-    setPortal(portal);
-    router.replace(href as Href);
-  };
 
   const tools: { key: string; icon: React.ComponentProps<typeof FeatureCard>['icon']; label: string; href: string }[] = [
     { key: 'referrals', icon: 'people-outline', label: 'معرفی‌ها', href: '/affiliate/referrals' },
@@ -50,26 +45,6 @@ export function AffiliateMoreScreen(): React.JSX.Element {
         </AnimatedSection>
 
         <AnimatedSection index={1}>
-          <View style={{ gap: 12 }}>
-            <PortalSectionTitle title="تغییر نسخه" />
-            <PortalRowCard
-              icon="storefront-outline"
-              title="پنل فروشنده"
-              subtitle="مدیریت یک فروشگاه"
-              onPress={() => switchTo('merchant', '/')}
-              testID="affiliate-switch-merchant"
-            />
-            <PortalRowCard
-              icon="grid-outline"
-              title="پنل مدیریت"
-              subtitle="مدیریت کل پلتفرم"
-              onPress={() => switchTo('admin', '/admin')}
-              testID="affiliate-switch-admin"
-            />
-          </View>
-        </AnimatedSection>
-
-        <AnimatedSection index={2}>
           <Button label="خروج از حساب" variant="secondary" onPress={() => void signOut()} testID="affiliate-sign-out" />
         </AnimatedSection>
       </View>

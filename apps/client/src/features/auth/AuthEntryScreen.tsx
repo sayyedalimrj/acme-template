@@ -9,11 +9,10 @@
  */
 import { useRouter, type Href } from 'expo-router';
 import React, { useState } from 'react';
-import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { ACTIVE_PORTAL, ACTIVE_PORTAL_META } from '@/config/portal.config';
 import { useT } from '@/i18n/I18nProvider';
-import type { AppPortal } from '@/domain/types';
 
 import { AuthField } from './components/AuthField';
 import { AuthFrame } from './components/AuthFrame';
@@ -21,83 +20,10 @@ import { AuthPrimaryButton } from './components/AuthPrimaryButton';
 import { authColors, authType } from './authTokens';
 import { isValidMobile, sendOtpMock } from './authHelpers';
 
-/** The three sign-in experiences offered on the demo entry screen (frontend-safe only). */
-const PORTAL_OPTIONS: readonly { value: AppPortal; label: string }[] = [
-  { value: 'merchant', label: 'فروشنده' },
-  { value: 'admin', label: 'مدیریت' },
-  { value: 'affiliate', label: 'بازاریاب' },
-];
-
-/** Compact 3-way selector that lets the demo user pick which portal to sign into. */
-function PortalChoice({
-  value,
-  onChange,
-}: {
-  value: AppPortal;
-  onChange: (next: AppPortal) => void;
-}): React.JSX.Element {
-  return (
-    <View style={{ gap: 8 }}>
-      <Text
-        style={{
-          fontSize: authType.labelSize,
-          fontWeight: authType.labelWeight,
-          color: authColors.text,
-          textAlign: 'right',
-        }}
-      >
-        ورود به
-      </Text>
-      <View
-        style={{
-          flexDirection: 'row-reverse',
-          backgroundColor: authColors.inputBackground,
-          borderRadius: authType.labelSize,
-          padding: 4,
-          gap: 4,
-        }}
-      >
-        {PORTAL_OPTIONS.map((option) => {
-          const active = option.value === value;
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={option.label}
-              testID={`auth-portal-${option.value}`}
-              onPress={() => onChange(option.value)}
-              style={{
-                flex: 1,
-                height: 40,
-                borderRadius: 10,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: active ? authColors.primary : 'transparent',
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: authType.helperSize,
-                  fontWeight: '700',
-                  color: active ? authColors.onPrimary : authColors.textSecondary,
-                }}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 export function AuthEntryScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const [value, setValue] = useState('');
-  const [portal, setPortal] = useState<AppPortal>('merchant');
   const [error, setError] = useState<string | undefined>();
 
   // Mobile-only sign in: the continue button stays disabled until a valid mobile is entered.
@@ -119,16 +45,16 @@ export function AuthEntryScreen(): React.JSX.Element {
     sendOtpMock(trimmed, 'mobile');
     router.navigate({
       pathname: '/verify',
-      params: { identifier: trimmed, channel: 'mobile', portal },
+      params: { identifier: trimmed, channel: 'mobile', portal: ACTIVE_PORTAL },
     } as unknown as Href);
   };
 
   return (
     <AuthFrame
       testID="auth-entry-screen"
-      iconName="storefront-outline"
-      title=""
-      subtitle={t('auth.entry.subtitle')}
+      iconName={ACTIVE_PORTAL_META.authIcon}
+      title={ACTIVE_PORTAL === 'merchant' ? '' : ACTIVE_PORTAL_META.name}
+      subtitle={ACTIVE_PORTAL === 'merchant' ? t('auth.entry.subtitle') : ACTIVE_PORTAL_META.loginSubtitle}
       footer={
         <Text
           style={{
@@ -142,7 +68,6 @@ export function AuthEntryScreen(): React.JSX.Element {
         </Text>
       }
     >
-      <PortalChoice value={portal} onChange={setPortal} />
       <AuthField
         testID="auth-entry-input"
         label={t('auth.entry.identifierLabel')}
