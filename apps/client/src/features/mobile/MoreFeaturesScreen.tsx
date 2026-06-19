@@ -5,13 +5,16 @@
  * Customer-friendly labels only — no technical platform terms. Mock-only navigation into the
  * existing feature routes.
  */
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
 
+import { PortalRowCard, PortalSectionTitle } from '@/components/portal/PortalUI';
 import { Text } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
+import { useSession } from '@/session/SessionProvider';
 import { useTheme } from '@/theme';
+import type { AppPortal } from '@/domain/types';
 
 import { AnimatedSection, FeatureCard, MobilePage, MobileTabHeader } from './components';
 import { FEATURE_SECTIONS } from './mobileMockData';
@@ -22,7 +25,12 @@ export function MoreFeaturesScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { isRTL } = useTheme();
+  const { setPortal } = useSession();
   const go = (href: string): void => router.navigate(href as never);
+  const switchTo = (portal: AppPortal, href: string): void => {
+    setPortal(portal);
+    router.replace(href as Href);
+  };
   return (
     <MobilePage
       testID="more-screen"
@@ -58,6 +66,26 @@ export function MoreFeaturesScreen(): React.JSX.Element {
             </View>
           </AnimatedSection>
         ))}
+
+        <AnimatedSection index={FEATURE_SECTIONS.length}>
+          <View style={{ gap: 12 }}>
+            <PortalSectionTitle title="تغییر نسخه" />
+            <PortalRowCard
+              icon="grid-outline"
+              title="پنل مدیریت"
+              subtitle="مدیریت فروشندگان، سفارش‌ها و بازاریاب‌ها"
+              onPress={() => switchTo('admin', '/admin')}
+              testID="merchant-switch-admin"
+            />
+            <PortalRowCard
+              icon="megaphone-outline"
+              title="پنل بازاریاب"
+              subtitle="معرفی فروشنده و دریافت پورسانت"
+              onPress={() => switchTo('affiliate', '/affiliate')}
+              testID="merchant-switch-affiliate"
+            />
+          </View>
+        </AnimatedSection>
       </View>
     </MobilePage>
   );
