@@ -11,8 +11,16 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 
-import { Badge, Card, ErrorState, LoadingState, MockActionButton, Screen, Text } from '@/components/ui';
-import { SegmentedControl } from '@/components/ui';
+import {
+  Badge,
+  Card,
+  ErrorState,
+  LoadingState,
+  MockActionButton,
+  Screen,
+  SegmentedControl,
+  Text,
+} from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 

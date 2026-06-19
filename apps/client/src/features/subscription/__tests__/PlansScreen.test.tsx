@@ -40,16 +40,25 @@ beforeEach(() => {
 });
 
 describe('PlansScreen', () => {
-  it('renders the interval toggle, all plan names, and the feature matrix', async () => {
+  it('renders the current plan and a 1/3/6/12-month duration selector with a price', async () => {
     renderWithProviders(<PlansScreen />);
-    expect(await screen.findByTestId('plans-interval-toggle', {}, { timeout: 4000 })).toBeTruthy();
-    expect(screen.getByTestId('plans-feature-matrix')).toBeTruthy();
-    expect(screen.getByTestId('plans-current')).toBeTruthy();
-    // Plan names appear (cards + matrix header) — at least once each.
-    ['پایه', 'رشد', 'حرفه‌ای', 'مدیریت‌شده'].forEach((name) => {
-      expect(screen.getAllByText(name).length).toBeGreaterThan(0);
+    expect(await screen.findByTestId('plans-current', {}, { timeout: 4000 })).toBeTruthy();
+    expect(screen.getByTestId('plans-renew')).toBeTruthy();
+    expect(screen.getByTestId('plans-duration-selector')).toBeTruthy();
+    // The four duration labels are present.
+    ['۱ ماهه', '۳ ماهه', '۶ ماهه', '۱۲ ماهه'].forEach((label) => {
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     });
-    // A key feature label from the matrix.
-    expect(screen.getByText('داشبورد مدیریت')).toBeTruthy();
+    // Default duration (12 months) price is shown.
+    expect(screen.getByText('۴٬۹۰۰٬۰۰۰')).toBeTruthy();
+    // The renew CTA is present.
+    expect(screen.getByTestId('plans-renew-cta')).toBeTruthy();
+  });
+
+  it('does not render the old comparison matrix or interval toggle', async () => {
+    renderWithProviders(<PlansScreen />);
+    await screen.findByTestId('plans-renew', {}, { timeout: 4000 });
+    expect(screen.queryByTestId('plans-feature-matrix')).toBeNull();
+    expect(screen.queryByTestId('plans-interval-toggle')).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { render, screen, type RenderResult } from '@testing-library/react-native';
+import { fireEvent, render, screen, type RenderResult } from '@testing-library/react-native';
 import { type ReactElement, type ReactNode } from 'react';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
@@ -41,18 +41,17 @@ beforeEach(() => {
 });
 
 describe('MediaStudioScreen', () => {
-  it('renders the product selector and task chooser', () => {
+  it('renders the simplified photo-or-prompt chat composer', () => {
     renderWithProviders(<MediaStudioScreen />);
     expect(screen.getByTestId('media-studio-screen')).toBeTruthy();
-    expect(screen.getByTestId('media-product-selector')).toBeTruthy();
-    expect(screen.getByTestId('media-task-chooser')).toBeTruthy();
+    // Composer controls: attach toggle + send button.
+    expect(screen.getByTestId('studio-attach-toggle')).toBeTruthy();
+    expect(screen.getByTestId('studio-send')).toBeTruthy();
   });
 
-  it('renders seeded output variants for the default product', async () => {
+  it('opens the attach panel with sample images', () => {
     renderWithProviders(<MediaStudioScreen />);
-    // The seeded variant title for the first product renders once variants load.
-    expect(
-      await screen.findByText('Aurora Cotton Crew Tee — نسخه بهبودیافته', {}, { timeout: 4000 }),
-    ).toBeTruthy();
+    fireEvent.press(screen.getByTestId('studio-attach-toggle'));
+    expect(screen.getByTestId('studio-attach-0')).toBeTruthy();
   });
 });
