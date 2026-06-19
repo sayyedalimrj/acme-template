@@ -110,3 +110,12 @@ if (isProduction && !env.CREDENTIAL_ENCRYPTION_KEY) {
   console.error('CREDENTIAL_ENCRYPTION_KEY is required in production (32-byte hex or base64).');
   process.exit(1);
 }
+
+// Fail fast if CORS is unset in production (browsers would block all portals anyway).
+if (isProduction && corsOrigins.length === 0) {
+  // eslint-disable-next-line no-console
+  console.error(
+    'CORS_ORIGINS is required in production — set a comma-separated list of portal origins (e.g. https://app.example,https://admin.example,https://partner.example).',
+  );
+  process.exit(1);
+}

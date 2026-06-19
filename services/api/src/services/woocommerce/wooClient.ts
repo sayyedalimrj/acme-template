@@ -8,6 +8,7 @@
  */
 import { env } from '../../env';
 import { badGateway } from '../../util/errors';
+import { assertSafeOutboundUrl, safeFetch } from '../../util/ssrf';
 import { toMinorUnits } from '../money';
 
 export interface WooCredentials {
@@ -74,6 +75,7 @@ async function wooFetch(
   path: string,
   query: Record<string, string | number | undefined> = {},
 ): Promise<{ json: unknown; total: number }> {
+  await assertSafeOutboundUrl(baseUrl(creds.storeUrl));
   const url = new URL(`${baseUrl(creds.storeUrl)}/wp-json/wc/v3${path}`);
   for (const [k, v] of Object.entries(query)) {
     if (v !== undefined) url.searchParams.set(k, String(v));
@@ -81,14 +83,11 @@ async function wooFetch(
 
   let lastErr: unknown;
   for (let attempt = 0; attempt <= env.WOO_MAX_RETRIES; attempt += 1) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), env.WOO_HTTP_TIMEOUT_MS);
     try {
-      const res = await fetch(url, {
+      const res = await safeFetch(url.href, {
         headers: { Authorization: authHeader(creds), Accept: 'application/json' },
-        signal: controller.signal,
+        timeoutMs: env.WOO_HTTP_TIMEOUT_MS,
       });
-      clearTimeout(timer);
       if (res.status === 401 || res.status === 403) {
         throw badGateway('اعتبارنامه ووکامرس نامعتبر است.', 'woo_auth_failed');
       }
@@ -108,7 +107,6 @@ async function wooFetch(
       const json = await res.json().catch(() => null);
       return { json, total };
     } catch (err) {
-      clearTimeout(timer);
       // AbortError or network error → retry, else rethrow safe errors.
       if ((err as { name?: string }).name === 'AbortError' || isNetworkError(err)) {
         lastErr = err;
@@ -303,10 +301,9 @@ async function wooPut(
   body: Record<string, unknown>,
 ): Promise<{ json: unknown }> {
   const url = `${baseUrl(creds.storeUrl)}/wp-json/wc/v3${path}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), env.WOO_HTTP_TIMEOUT_MS);
+  await assertSafeOutboundUrl(url);
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       method: 'PUT',
       headers: {
         Authorization: authHeader(creds),
@@ -314,16 +311,14 @@ async function wooPut(
         Accept: 'application/json',
       },
       body: JSON.stringify(body),
-      signal: controller.signal,
+      timeoutMs: env.WOO_HTTP_TIMEOUT_MS,
     });
-    clearTimeout(timer);
     if (res.status === 401 || res.status === 403) {
       throw badGateway('اعتبارنامه ووکامرس اجازه این عملیات را ندارد.', 'woo_auth_failed');
     }
     if (!res.ok) throw badGateway('بروزرسانی در ووکامرس ناموفق بود.', 'woo_request_failed');
     return { json: await res.json().catch(() => null) };
   } catch (err) {
-    clearTimeout(timer);
     if ((err as { name?: string }).name === 'AbortError' || isNetworkError(err)) {
       throw badGateway('ارتباط با فروشگاه ووکامرس برقرار نشد.', 'woo_unreachable');
     }

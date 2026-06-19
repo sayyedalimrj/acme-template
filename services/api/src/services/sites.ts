@@ -13,6 +13,7 @@ import { randomBytes } from 'node:crypto';
 
 import { pool, query, queryOne } from '../db';
 import { badRequest, conflict, notFound } from '../util/errors';
+import { normalizeAndValidateStoreUrl } from '../util/ssrf';
 import { openSecret, sealSecret, type SealedSecret } from './security/credentialVault';
 import {
   listCoupons,
@@ -21,6 +22,7 @@ import {
   listProducts,
   verifyWooCredentials,
   type WooCredentials,
+  type WooPage,
 } from './woocommerce/wooClient';
 
 export type ConnectionMode = 'woo_rest' | 'plugin';
@@ -65,7 +67,7 @@ export async function startConnection(input: {
   url: string;
   mode: ConnectionMode;
 }): Promise<{ siteId: string; connectionId: string; signingSecret?: string }> {
-  const url = normalizeUrl(input.url);
+  const url = await normalizeAndValidateStoreUrl(input.url);
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -129,6 +131,7 @@ export async function verifyWooConnection(input: {
     consumerKey: input.consumerKey,
     consumerSecret: input.consumerSecret,
   };
+  await normalizeAndValidateStoreUrl(creds.storeUrl);
   const verified = await verifyWooCredentials(creds); // throws safe error on failure
 
   const sealed = sealSecret(creds);
@@ -260,61 +263,65 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
   )[0];
 
   const stats: SyncStats = { products: 0, orders: 0, customers: 0, coupons: 0 };
+  const pageSize = 100;
   try {
-    // Bounded first sync (avoid pulling unbounded history; webhooks/cron keep it fresh).
-    const products = await listProducts(creds, { page: 1, pageSize: 100 });
-    for (const p of products.items) {
-      await query(
-        `INSERT INTO synced_product (site_id, tenant_id, external_id, name, sku, status, price_minor, currency, stock_status, stock_qty, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now())
-         ON CONFLICT (site_id, external_id) DO UPDATE SET
-           name = EXCLUDED.name, sku = EXCLUDED.sku, status = EXCLUDED.status,
-           price_minor = EXCLUDED.price_minor, stock_status = EXCLUDED.stock_status,
-           stock_qty = EXCLUDED.stock_qty, updated_at = now()`,
-        [siteId, site.tenant_id, p.externalId, p.name, p.sku, p.status, p.priceMinor, p.currency, p.stockStatus, p.stockQty],
-      );
-      stats.products += 1;
-    }
-
-    const orders = await listOrders(creds, { page: 1, pageSize: 100 });
-    for (const o of orders.items) {
-      await query(
-        `INSERT INTO synced_order (site_id, tenant_id, external_id, number, status, total_minor, currency, customer_name, external_created_at, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
-         ON CONFLICT (site_id, external_id) DO UPDATE SET
-           number = EXCLUDED.number, status = EXCLUDED.status, total_minor = EXCLUDED.total_minor,
-           customer_name = EXCLUDED.customer_name, external_created_at = EXCLUDED.external_created_at, updated_at = now()`,
-        [siteId, site.tenant_id, o.externalId, o.number, o.status, o.totalMinor, o.currency, o.customerName, o.createdAt],
-      );
-      stats.orders += 1;
-    }
-
-    const customers = await listCustomers(creds, { page: 1, pageSize: 100 });
-    for (const c of customers.items) {
-      await query(
-        `INSERT INTO synced_customer (site_id, tenant_id, external_id, display_name, orders_count, total_spent_minor, currency, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7, now())
-         ON CONFLICT (site_id, external_id) DO UPDATE SET
-           display_name = EXCLUDED.display_name, orders_count = EXCLUDED.orders_count,
-           total_spent_minor = EXCLUDED.total_spent_minor, updated_at = now()`,
-        [siteId, site.tenant_id, c.externalId, c.displayName, c.ordersCount, c.totalSpentMinor, c.currency],
-      );
-      stats.customers += 1;
-    }
-
-    try {
-      const coupons = await listCoupons(creds, { page: 1, pageSize: 100 });
-      for (const c of coupons.items) {
+    stats.products = await syncAllWooPages(
+      (page) => listProducts(creds, { page, pageSize }),
+      async (p) => {
         await query(
-          `INSERT INTO synced_coupon (site_id, tenant_id, external_id, code, discount_type, amount_minor, currency, updated_at)
+          `INSERT INTO synced_product (site_id, tenant_id, external_id, name, sku, status, price_minor, currency, stock_status, stock_qty, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now())
+           ON CONFLICT (site_id, external_id) DO UPDATE SET
+             name = EXCLUDED.name, sku = EXCLUDED.sku, status = EXCLUDED.status,
+             price_minor = EXCLUDED.price_minor, stock_status = EXCLUDED.stock_status,
+             stock_qty = EXCLUDED.stock_qty, updated_at = now()`,
+          [siteId, site.tenant_id, p.externalId, p.name, p.sku, p.status, p.priceMinor, p.currency, p.stockStatus, p.stockQty],
+        );
+      },
+    );
+
+    stats.orders = await syncAllWooPages(
+      (page) => listOrders(creds, { page, pageSize }),
+      async (o) => {
+        await query(
+          `INSERT INTO synced_order (site_id, tenant_id, external_id, number, status, total_minor, currency, customer_name, external_created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
+           ON CONFLICT (site_id, external_id) DO UPDATE SET
+             number = EXCLUDED.number, status = EXCLUDED.status, total_minor = EXCLUDED.total_minor,
+             customer_name = EXCLUDED.customer_name, external_created_at = EXCLUDED.external_created_at, updated_at = now()`,
+          [siteId, site.tenant_id, o.externalId, o.number, o.status, o.totalMinor, o.currency, o.customerName, o.createdAt],
+        );
+      },
+    );
+
+    stats.customers = await syncAllWooPages(
+      (page) => listCustomers(creds, { page, pageSize }),
+      async (c) => {
+        await query(
+          `INSERT INTO synced_customer (site_id, tenant_id, external_id, display_name, orders_count, total_spent_minor, currency, updated_at)
              VALUES ($1,$2,$3,$4,$5,$6,$7, now())
            ON CONFLICT (site_id, external_id) DO UPDATE SET
-             code = EXCLUDED.code, discount_type = EXCLUDED.discount_type,
-             amount_minor = EXCLUDED.amount_minor, updated_at = now()`,
-          [siteId, site.tenant_id, c.externalId, c.code, c.discountType, c.amountMinor, c.currency],
+             display_name = EXCLUDED.display_name, orders_count = EXCLUDED.orders_count,
+             total_spent_minor = EXCLUDED.total_spent_minor, updated_at = now()`,
+          [siteId, site.tenant_id, c.externalId, c.displayName, c.ordersCount, c.totalSpentMinor, c.currency],
         );
-        stats.coupons += 1;
-      }
+      },
+    );
+
+    try {
+      stats.coupons = await syncAllWooPages(
+        (page) => listCoupons(creds, { page, pageSize }),
+        async (c) => {
+          await query(
+            `INSERT INTO synced_coupon (site_id, tenant_id, external_id, code, discount_type, amount_minor, currency, updated_at)
+               VALUES ($1,$2,$3,$4,$5,$6,$7, now())
+             ON CONFLICT (site_id, external_id) DO UPDATE SET
+               code = EXCLUDED.code, discount_type = EXCLUDED.discount_type,
+               amount_minor = EXCLUDED.amount_minor, updated_at = now()`,
+            [siteId, site.tenant_id, c.externalId, c.code, c.discountType, c.amountMinor, c.currency],
+          );
+        },
+      );
     } catch {
       /* coupons optional */
     }
@@ -336,8 +343,27 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
   }
 }
 
-function normalizeUrl(url: string): string {
-  let u = url.trim();
-  if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
-  return u.replace(/\/+$/, '');
+/** Walk every WooCommerce list page (100 items/page) until exhausted. */
+async function syncAllWooPages<T>(
+  fetchPage: (page: number) => Promise<WooPage<T>>,
+  upsert: (item: T) => Promise<void>,
+): Promise<number> {
+  let page = 1;
+  let synced = 0;
+  let reportedTotal = 0;
+
+  while (true) {
+    const batch = await fetchPage(page);
+    reportedTotal = Math.max(reportedTotal, batch.total);
+    for (const item of batch.items) {
+      await upsert(item);
+      synced += 1;
+    }
+    if (batch.items.length === 0) break;
+    if (batch.items.length < batch.pageSize) break;
+    if (reportedTotal > 0 && synced >= reportedTotal) break;
+    page += 1;
+  }
+
+  return synced;
 }
