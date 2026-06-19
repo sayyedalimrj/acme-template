@@ -12,6 +12,7 @@ import { SupportShellScreen } from '@/features/mobile/SupportShellScreen';
 import { BottomNav } from '@/features/mobile/components';
 import { siteInitials } from '@/features/mobile/components/HeroSiteCard';
 import { I18nProvider } from '@/i18n/I18nProvider';
+import { SessionProvider } from '@/session/SessionProvider';
 import { FontProvider, ThemeProvider } from '@/theme';
 
 jest.mock('expo-router', () => ({
@@ -38,7 +39,9 @@ function renderMobile(ui: ReactElement): RenderResult {
         <QueryClientProvider client={client}>
           <ThemeProvider>
             <FontProvider>
-              <I18nProvider locale="en">{children}</I18nProvider>
+              <I18nProvider locale="en">
+                <SessionProvider>{children}</SessionProvider>
+              </I18nProvider>
             </FontProvider>
           </ThemeProvider>
         </QueryClientProvider>
