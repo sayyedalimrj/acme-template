@@ -9,7 +9,10 @@ Reproducible clean-machine gates for customer deployment. Re-run with:
 CI equivalent: `.github/workflows/ci.yml` (runs the same commands on GitHub Actions with Postgres 16).
 
 **Environment:** Node `v22.14.0`, npm `10.9.7`.  
-**Verified:** 2026-06-19T14:54:01Z (UTC).
+**Verified locally:** 2026-06-19T15:30:00Z (UTC).  
+**GitHub Actions CI:** green on commit `83f3f95` — [run #27834616941](https://github.com/sayyedalimrj/acme-template/actions/runs/27834616941) (Backend 51s, Frontend 2m2s).
+
+CI uses non-secret dummy backend env vars (see `.github/workflows/ci.yml`): `NODE_ENV=test`, `DATABASE_URL`, `JWT_SECRET`, `OTP_HASH_SECRET`, `CREDENTIAL_ENCRYPTION_KEY`, `CORS_ORIGINS`, `SMS_DRY_RUN=true`, `ADMIN_MOBILE_ALLOWLIST`.
 
 ---
 
