@@ -1,9 +1,13 @@
--- Portal platform schema (Postgres).
+-- Migration 001 — baseline platform schema (Postgres).
 --
 -- Auth/OTP + the three portals' core data (merchants, marketers, referrals, commissions,
 -- payouts, platform orders) with strong foreign keys. Money is stored as integer minor units
 -- (`*_amount` BIGINT, e.g. rials) — never floats, never card data. Raw OTP codes are NEVER
--- stored (only a salted hash). Apply with: `npm run migrate`.
+-- stored (only a salted hash). Applied by `npm run migrate` (ordered, tracked).
+--
+-- Rollback: this baseline is destructive to drop. To roll back a fresh environment, drop the
+-- tables created here in reverse dependency order (audit_log, platform_order, payout,
+-- commission, referral, merchant, marketer, otp_code, app_user). Do NOT drop in production.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 

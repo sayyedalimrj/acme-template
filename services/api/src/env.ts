@@ -23,7 +23,14 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 chars'),
-  JWT_EXPIRES_IN: z.string().default('7d'),
+  // Access token lifetime (short-lived); refresh tokens extend the session.
+  JWT_EXPIRES_IN: z.string().default('1h'),
+  REFRESH_TOKEN_EXPIRES_DAYS: z.coerce.number().int().positive().default(30),
+
+  // AES-256-GCM master key for the credential vault. 32 bytes as hex (64 chars) or base64.
+  // REQUIRED in production. In dev, a deterministic key is derived from JWT_SECRET if unset.
+  CREDENTIAL_ENCRYPTION_KEY: z.string().optional().default(''),
+  CREDENTIAL_KEY_VERSION: z.coerce.number().int().positive().default(1),
 
   OTP_HASH_SECRET: z.string().min(16, 'OTP_HASH_SECRET must be at least 16 chars'),
   OTP_TTL_SECONDS: z.coerce.number().int().positive().default(120),
@@ -42,7 +49,32 @@ const schema = z.object({
   IPPANEL_AUTH_SCHEME: z.enum(['accesskey', 'apikey']).default('accesskey'),
 
   ADMIN_MOBILE_ALLOWLIST: z.string().default(''),
+  SUPPORT_MOBILE_ALLOWLIST: z.string().default(''),
   AFFILIATE_OPEN_SIGNUP: boolish(true),
+
+  // --- WooCommerce client (server-side proxy) ---
+  WOO_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  WOO_MAX_RETRIES: z.coerce.number().int().nonnegative().default(2),
+
+  // --- Plugin signed sync ---
+  PLUGIN_TIMESTAMP_SKEW_SECONDS: z.coerce.number().int().positive().default(300),
+  PLUGIN_HANDSHAKE_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+
+  // --- Caching for read-heavy dashboard/summary endpoints ---
+  CACHE_TTL_SECONDS: z.coerce.number().int().nonnegative().default(30),
+
+  // --- Platform subscription billing ---
+  BILLING_PROVIDER: z.enum(['manual', 'zarinpal', 'mock']).default('manual'),
+  ZARINPAL_MERCHANT_ID: z.string().optional().default(''),
+  ZARINPAL_BASE_URL: z.string().default('https://payment.zarinpal.com'),
+  ZARINPAL_SANDBOX: boolish(false),
+  // Shared secret for verifying inbound payment-provider webhooks (HMAC-SHA256 over raw body).
+  PAYMENT_WEBHOOK_SECRET: z.string().optional().default(''),
+
+  // --- Public URLs (for building gateway return URLs + referral links; non-secret) ---
+  PUBLIC_API_BASE_URL: z.string().optional().default(''),
+  PORTAL_MERCHANT_URL: z.string().optional().default(''),
+  PORTAL_AFFILIATE_URL: z.string().optional().default(''),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -65,4 +97,16 @@ export const adminAllowlist: string[] = env.ADMIN_MOBILE_ALLOWLIST.split(',')
   .map((s) => s.replace(/\D/g, ''))
   .filter(Boolean);
 
+/** Parsed allow-list of support-admin mobiles (read-only admin). */
+export const supportAllowlist: string[] = env.SUPPORT_MOBILE_ALLOWLIST.split(',')
+  .map((s) => s.replace(/\D/g, ''))
+  .filter(Boolean);
+
 export const isProduction = env.NODE_ENV === 'production';
+
+// Fail fast if the credential vault has no key in production.
+if (isProduction && !env.CREDENTIAL_ENCRYPTION_KEY) {
+  // eslint-disable-next-line no-console
+  console.error('CREDENTIAL_ENCRYPTION_KEY is required in production (32-byte hex or base64).');
+  process.exit(1);
+}
