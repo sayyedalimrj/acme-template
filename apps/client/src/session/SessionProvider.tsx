@@ -24,6 +24,7 @@ import React, {
 
 import { ACTIVE_PORTAL } from '@/config/portal.config';
 import { authService } from '@/services';
+import { setAuthToken } from '@/services/authApi';
 import type { AppPortal, AuthStatus, AuthUser } from '@/domain/types';
 
 export interface SignInInput {
@@ -40,6 +41,8 @@ export interface SessionContextValue {
   portal: AppPortal;
   /** Establish a mock session via AuthService. */
   signIn: (input?: SignInInput) => Promise<void>;
+  /** Establish a real session from a backend OTP verification (user + JWT). */
+  signInWithSession: (input: { user: AuthUser; token: string }) => void;
   /** Clear the session via AuthService. */
   signOut: () => Promise<void>;
   /** Switch the active portal in-app (mock convenience; persisted in memory only). */
@@ -71,7 +74,15 @@ export function SessionProvider({ children }: SessionProviderProps): React.JSX.E
     }
   }, []);
 
+  const signInWithSession = useCallback((input: { user: AuthUser; token: string }) => {
+    setAuthToken(input.token);
+    setUser(input.user);
+    setStatus('authenticated');
+    setPortal(ACTIVE_PORTAL);
+  }, []);
+
   const signOut = useCallback(async () => {
+    setAuthToken(null);
     const session = await authService.signOut();
     setUser(session.user);
     setStatus(session.status);
@@ -79,8 +90,8 @@ export function SessionProvider({ children }: SessionProviderProps): React.JSX.E
   }, []);
 
   const value = useMemo<SessionContextValue>(
-    () => ({ status, user, portal, signIn, signOut, setPortal }),
-    [status, user, portal, signIn, signOut],
+    () => ({ status, user, portal, signIn, signInWithSession, signOut, setPortal }),
+    [status, user, portal, signIn, signInWithSession, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

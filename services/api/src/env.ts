@@ -27,7 +27,8 @@ const schema = z.object({
 
   OTP_HASH_SECRET: z.string().min(16, 'OTP_HASH_SECRET must be at least 16 chars'),
   OTP_TTL_SECONDS: z.coerce.number().int().positive().default(120),
-  OTP_LENGTH: z.coerce.number().int().min(4).max(8).default(6),
+  // 4 matches the app's OTP UI out of the box. If you raise it, also update the app's OTP boxes.
+  OTP_LENGTH: z.coerce.number().int().min(4).max(8).default(4),
   OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().int().nonnegative().default(60),
   OTP_REQUESTS_PER_HOUR: z.coerce.number().int().positive().default(10),

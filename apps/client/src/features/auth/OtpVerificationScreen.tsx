@@ -15,7 +15,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { isApiConfigured } from '@/config/api.config';
 import { useT } from '@/i18n/I18nProvider';
+import { requestOtp, verifyOtp } from '@/services/authApi';
 import { useSession } from '@/session/SessionProvider';
 import { useTheme } from '@/theme';
 
@@ -53,7 +55,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { rowDirection } = useTheme();
-  const { signIn } = useSession();
+  const { signIn, signInWithSession } = useSession();
   const params = useLocalSearchParams<{ identifier?: string; channel?: string; portal?: string }>();
 
   const identifier = firstParam(params.identifier);
@@ -88,6 +90,24 @@ export function OtpVerificationScreen(): React.JSX.Element {
     }
     submittedRef.current = true;
     setError(undefined);
+
+    if (isApiConfigured) {
+      // Real OTP: verify with the backend; on success it returns a user + JWT session.
+      void (async () => {
+        try {
+          const res = await verifyOtp(identifier, digits.join(''), undefined, portal);
+          signInWithSession({
+            user: { id: res.user.id, name: res.user.name ?? '', email: '' },
+            token: res.token,
+          });
+        } catch (e) {
+          submittedRef.current = false;
+          setError(e instanceof Error ? e.message : t('otp.errorIncomplete'));
+        }
+      })();
+      return;
+    }
+
     if (knownUser) {
       // Known mock user → mock session; the (auth) layout redirects to the chosen portal.
       void signIn({ name: knownUser.name, email: knownUser.email, portal });
@@ -126,10 +146,15 @@ export function OtpVerificationScreen(): React.JSX.Element {
   }, [complete, mode]);
 
   const onResend = (): void => {
-    // Mock only — regenerates the deterministic demo code; nothing is delivered.
-    sendOtpMock(identifier, channel);
+    if (isApiConfigured) {
+      void requestOtp(identifier, portal).catch(() => {});
+    } else {
+      // Mock only — regenerates the deterministic demo code; nothing is delivered.
+      sendOtpMock(identifier, channel);
+    }
     setDigits(Array(OTP_LENGTH).fill(''));
     setResent(true);
+    submittedRef.current = false;
   };
 
   const onPasswordSignIn = (): void => {

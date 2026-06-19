@@ -11,8 +11,10 @@ import { useRouter, type Href } from 'expo-router';
 import React, { useState } from 'react';
 
 import { Text } from '@/components/ui';
+import { isApiConfigured } from '@/config/api.config';
 import { ACTIVE_PORTAL, ACTIVE_PORTAL_META } from '@/config/portal.config';
 import { useT } from '@/i18n/I18nProvider';
+import { requestOtp } from '@/services/authApi';
 
 import { AuthField } from './components/AuthField';
 import { AuthFrame } from './components/AuthFrame';
@@ -25,12 +27,20 @@ export function AuthEntryScreen(): React.JSX.Element {
   const router = useRouter();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | undefined>();
+  const [submitting, setSubmitting] = useState(false);
 
   // Mobile-only sign in: the continue button stays disabled until a valid mobile is entered.
   const trimmedValue = value.trim();
-  const canContinue = trimmedValue.length > 0 && isValidMobile(trimmedValue);
+  const canContinue = trimmedValue.length > 0 && isValidMobile(trimmedValue) && !submitting;
 
-  const onContinue = (): void => {
+  const goToVerify = (mobile: string): void => {
+    router.navigate({
+      pathname: '/verify',
+      params: { identifier: mobile, channel: 'mobile', portal: ACTIVE_PORTAL },
+    } as unknown as Href);
+  };
+
+  const onContinue = async (): Promise<void> => {
     const trimmed = value.trim();
     if (trimmed.length === 0) {
       setError(t('auth.entry.errorRequired'));
@@ -41,12 +51,24 @@ export function AuthEntryScreen(): React.JSX.Element {
       return;
     }
     setError(undefined);
+
+    if (isApiConfigured) {
+      // Real OTP: ask the backend to send the code via SMS (ippanel).
+      try {
+        setSubmitting(true);
+        await requestOtp(trimmed, ACTIVE_PORTAL);
+        setSubmitting(false);
+        goToVerify(trimmed);
+      } catch (e) {
+        setSubmitting(false);
+        setError(e instanceof Error ? e.message : 'ارسال کد ناموفق بود.');
+      }
+      return;
+    }
+
     // Mock OTP "generation" — nothing is sent anywhere.
     sendOtpMock(trimmed, 'mobile');
-    router.navigate({
-      pathname: '/verify',
-      params: { identifier: trimmed, channel: 'mobile', portal: ACTIVE_PORTAL },
-    } as unknown as Href);
+    goToVerify(trimmed);
   };
 
   return (
@@ -84,12 +106,12 @@ export function AuthEntryScreen(): React.JSX.Element {
         forceLtrValue
         autoFocus
         returnKeyType="go"
-        onSubmitEditing={onContinue}
+        onSubmitEditing={() => void onContinue()}
       />
       <AuthPrimaryButton
         testID="auth-entry-submit"
         label={t('auth.entry.continue')}
-        onPress={onContinue}
+        onPress={() => void onContinue()}
         disabled={!canContinue}
       />
     </AuthFrame>
