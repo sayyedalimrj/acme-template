@@ -41,6 +41,13 @@ const HEAD = `
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <style>
+      /* Fill the viewport and paint the safe-area regions (notch / home indicator) with the
+         app backdrop so 'viewport-fit=cover' never leaves a bare white strip. */
+      html, body, #root { height: 100%; }
+      body { margin: 0; background-color: #EEF1F6; overflow: hidden; }
+      @media (prefers-color-scheme: dark) { body { background-color: #08090B; } }
+    </style>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {

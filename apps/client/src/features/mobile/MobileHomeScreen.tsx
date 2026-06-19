@@ -26,7 +26,6 @@ import {
   AnimatedSection,
   EmptySiteCard,
   FilterChipRow,
-  HeroSiteCard,
   MiniActivityRow,
   MobilePage,
   OverviewChart,
@@ -176,10 +175,20 @@ function OverviewSection({
         ? t('home.overview.months').split(',')
         : series.values.map((_, i) => `${t('home.overview.weekShort')}${fmt.num(i + 1)}`);
 
-  const points: OverviewPoint[] = series.values.map((value, index) => ({
+  // Sales is shown as a smooth CUMULATIVE line (running total); other metrics stay as bars.
+  const isLine = metric === 'sales';
+  let runningTotal = 0;
+  const chartValues = isLine
+    ? series.values.map((v) => {
+        runningTotal += v;
+        return runningTotal;
+      })
+    : series.values;
+
+  const points: OverviewPoint[] = chartValues.map((value, index) => ({
     label: labels[index] ?? '',
     value,
-    highlight: index === series.values.length - 1,
+    highlight: index === chartValues.length - 1,
   }));
 
   const totalLabel =
@@ -253,7 +262,11 @@ function OverviewSection({
         </Text>
       </View>
 
-      <OverviewChart data={points} testID="home-overview-chart" />
+      <OverviewChart
+        data={points}
+        variant={isLine ? 'line' : 'bar'}
+        testID="home-overview-chart"
+      />
 
       {/* Range selector */}
       <FilterChipRow
@@ -274,20 +287,15 @@ export function MobileHomeScreen(): React.JSX.Element {
   const { data: sites, isPending } = useSites();
   const { data: activeSite } = useActiveSite();
   const setActiveSite = useSetActiveSite();
+  // The store being VIEWED in the carousel (drives the overview instantly); defaults to active.
+  const [viewSiteId, setViewSiteId] = useState<string | undefined>(undefined);
 
   const siteList = sites ?? [];
   const hasSites = siteList.length > 0;
 
-  // The visible store is DERIVED from the globally-active store (no duplicate local state), so
-  // the carousel, the overview numbers, and the products/orders/customers screens stay in sync.
-  const activeIndex = Math.max(
-    0,
-    siteList.findIndex((s) => s.id === activeSite?.id),
-  );
-  const selectedIndex = activeIndex;
-
+  const currentSiteId = viewSiteId ?? activeSite?.id;
   const selectedSite = hasSites
-    ? (siteList[selectedIndex] ?? activeSite ?? siteList[0])
+    ? (siteList.find((s) => s.id === currentSiteId) ?? activeSite ?? siteList[0])
     : undefined;
 
   const renewalFor = (site: SiteConnection): string | undefined => {
@@ -296,11 +304,11 @@ export function MobileHomeScreen(): React.JSX.Element {
   };
 
   // Switching the visible store switches the ACTIVE store, so every site-scoped screen
-  // (products / orders / customers) and the overview below reflect the chosen store.
-  const handleSelectSite = (index: number): void => {
-    const site = siteList[index];
-    if (site && site.id !== activeSite?.id) {
-      setActiveSite.mutate(site.id);
+  // (products / orders / customers) and the overview reflect the chosen store — no button.
+  const handleSelectSite = (siteId: string): void => {
+    setViewSiteId(siteId);
+    if (siteId !== activeSite?.id) {
+      setActiveSite.mutate(siteId);
     }
   };
 
@@ -323,24 +331,17 @@ export function MobileHomeScreen(): React.JSX.Element {
         <AnimatedSection index={0}>
           {!hasSites ? (
             <EmptySiteCard
-              onPrimary={() => go('/onboarding')}
+              onPrimary={() => go('/create-site')}
               onSecondary={() => go('/connect-site')}
-            />
-          ) : siteList.length === 1 ? (
-            <HeroSiteCard
-              site={siteList[0]}
-              renewalLabel={renewalFor(siteList[0])}
-              onPress={() => go('/plans')}
             />
           ) : (
             <SiteCarousel
               sites={siteList}
-              selectedIndex={selectedIndex}
-              onSelect={handleSelectSite}
+              initialActiveSiteId={activeSite?.id}
+              onSelectSite={handleSelectSite}
               onPressSite={() => go('/plans')}
+              onPressAdd={() => go('/create-site')}
               renewalFor={renewalFor}
-              prevLabel={t('home.hero.prevSite')}
-              nextLabel={t('home.hero.nextSite')}
             />
           )}
         </AnimatedSection>

@@ -84,12 +84,13 @@ export function OtpBoxes({
 
   return (
     <View
-      // Force LTR digit order; fixed-width boxes stay evenly spaced under the full-width CTA.
+      // Force LTR digit order. Boxes flex to fill the full width so they line up with the
+      // full-width verify button, and the inter-box gap matches the gap from the row to the
+      // button (AuthFrame body gap = 14) for an even, rectangular look.
       style={{
         width: '100%',
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 10,
+        gap: 14,
       }}
       accessibilityLabel={`${OTP_LENGTH}-digit verification code`}
     >
@@ -116,9 +117,8 @@ export function OtpBoxes({
             returnKeyType="next"
             accessibilityLabel={`Digit ${index + 1}`}
             style={{
-              width: authMetrics.otpBoxWidth,
+              flex: 1,
               height: authMetrics.otpBoxHeight,
-              flexShrink: 0,
               textAlign: 'center',
               writingDirection: 'ltr',
               fontSize: authType.otpSize,

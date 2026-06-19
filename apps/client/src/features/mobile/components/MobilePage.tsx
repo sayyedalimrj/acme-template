@@ -46,6 +46,7 @@ export function MobilePage({
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
+          flexGrow: 1,
           paddingTop: header ? 8 : 10,
           paddingBottom: scrollBottomPadding,
         }}

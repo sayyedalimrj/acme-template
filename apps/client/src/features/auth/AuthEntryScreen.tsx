@@ -15,7 +15,7 @@ import { AuthField } from './components/AuthField';
 import { AuthFrame } from './components/AuthFrame';
 import { AuthPrimaryButton } from './components/AuthPrimaryButton';
 import { authColors, authType } from './authTokens';
-import { detectIdentifier, sendOtpMock } from './authHelpers';
+import { isValidMobile, sendOtpMock } from './authHelpers';
 
 export function AuthEntryScreen(): React.JSX.Element {
   const t = useT();
@@ -23,9 +23,9 @@ export function AuthEntryScreen(): React.JSX.Element {
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | undefined>();
 
-  // Live validity → the continue button is disabled until a valid mobile/email is entered.
+  // Mobile-only sign in: the continue button stays disabled until a valid mobile is entered.
   const trimmedValue = value.trim();
-  const canContinue = trimmedValue.length > 0 && detectIdentifier(trimmedValue) !== 'unknown';
+  const canContinue = trimmedValue.length > 0 && isValidMobile(trimmedValue);
 
   const onContinue = (): void => {
     const trimmed = value.trim();
@@ -33,17 +33,16 @@ export function AuthEntryScreen(): React.JSX.Element {
       setError(t('auth.entry.errorRequired'));
       return;
     }
-    const channel = detectIdentifier(trimmed);
-    if (channel === 'unknown') {
+    if (!isValidMobile(trimmed)) {
       setError(t('auth.entry.errorInvalid'));
       return;
     }
     setError(undefined);
     // Mock OTP "generation" — nothing is sent anywhere.
-    sendOtpMock(trimmed, channel);
+    sendOtpMock(trimmed, 'mobile');
     router.navigate({
       pathname: '/verify',
-      params: { identifier: trimmed, channel },
+      params: { identifier: trimmed, channel: 'mobile' },
     } as unknown as Href);
   };
 
@@ -78,7 +77,7 @@ export function AuthEntryScreen(): React.JSX.Element {
           }
         }}
         error={error}
-        keyboardType="email-address"
+        keyboardType="phone-pad"
         forceLtrValue
         autoFocus
         returnKeyType="go"

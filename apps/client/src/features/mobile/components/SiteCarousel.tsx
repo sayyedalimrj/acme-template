@@ -1,19 +1,17 @@
 /**
  * SiteCarousel — paged hero-site carousel that works with touch AND a mouse.
  *
- * The previous version relied on a native paging ScrollView, which can't be dragged with a
- * mouse on the web and whose page dots were not interactive. This version drives an animated
- * track with a PanResponder (react-native-web maps mouse events onto the responder system, so
- * dragging with a mouse behaves like a touch swipe), plus:
- *   - tappable page dots (jump to any store),
- *   - prev/next arrow buttons (mouse-friendly on desktop),
- *   - snap-to-page on release.
+ * Driven by an animated track + PanResponder, so dragging with a mouse on the web behaves like
+ * a touch swipe (react-native-web maps mouse events onto the responder system). Paging is
+ * PHYSICAL (drag left → next page), which behaves identically in RTL and LTR — no direction
+ * math to get wrong. Page dots are tappable; there are no arrow buttons (kept clean).
  *
- * It is a controlled component: the parent owns `selectedIndex` and reacts to `onSelect`
- * (which also switches the active store so the rest of the dashboard updates).
+ * The last page is always a distinct "add a store" card. The component is uncontrolled: it
+ * owns the visible page and only notifies the parent when a STORE page settles (so the parent
+ * can switch the active store) or when the add card is pressed.
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Animated,
   PanResponder,
@@ -22,52 +20,112 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 
-import { useTheme } from '@/theme';
+import { Text } from '@/components/ui';
+import { useT } from '@/i18n/I18nProvider';
 import type { SiteConnection } from '@/domain/types';
 
-import { useMobileColors } from '../mobileTokens';
+import { mobileMetrics, useMobileColors, useMobileType } from '../mobileTokens';
 import { easing, motionDuration, useReducedMotion } from '../motion';
 import { HeroSiteCard } from './HeroSiteCard';
 
-/** Horizontal gap between adjacent hero cards. */
 const PAGE_GAP = 14;
 
 export interface SiteCarouselProps {
   sites: SiteConnection[];
-  selectedIndex: number;
-  /** Called when the visible page changes (swipe, arrow, or dot). */
-  onSelect: (index: number) => void;
-  /** Called when a hero card itself is pressed (e.g. open plans). */
+  /** Store shown first (usually the active store). */
+  initialActiveSiteId?: string;
+  /** Called when a STORE page settles (swipe/dot) so the parent can switch the active store. */
+  onSelectSite: (siteId: string) => void;
+  /** Called when a hero card is pressed (e.g. open plans). */
   onPressSite: (site: SiteConnection) => void;
+  /** Called when the "add a store" card is pressed. */
+  onPressAdd: () => void;
   renewalFor: (site: SiteConnection) => string | undefined;
-  /** Accessibility labels for the arrows. */
-  prevLabel: string;
-  nextLabel: string;
+}
+
+function AddSiteCard({ onPress }: { onPress: () => void }): React.JSX.Element {
+  const colors = useMobileColors();
+  const type = useMobileType();
+  const t = useT();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      testID="site-add-card"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        height: mobileMetrics.heroHeight,
+        borderRadius: mobileMetrics.heroRadius,
+        borderWidth: 2,
+        borderStyle: 'dashed',
+        borderColor: colors.primary,
+        backgroundColor: colors.primarySoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        padding: 18,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons name="add" size={28} color={colors.onPrimary} />
+      </View>
+      <Text
+        style={{
+          fontSize: type.heroTitleSize,
+          fontWeight: '700',
+          color: colors.primary,
+          textAlign: 'center',
+        }}
+      >
+        {t('home.hero.addSite')}
+      </Text>
+      <Text
+        style={{
+          fontSize: type.captionSize,
+          color: colors.textSecondary,
+          textAlign: 'center',
+        }}
+        numberOfLines={2}
+      >
+        {t('home.hero.addSiteSubtitle')}
+      </Text>
+    </Pressable>
+  );
 }
 
 export function SiteCarousel({
   sites,
-  selectedIndex,
-  onSelect,
+  initialActiveSiteId,
+  onSelectSite,
   onPressSite,
+  onPressAdd,
   renewalFor,
-  prevLabel,
-  nextLabel,
 }: SiteCarouselProps): React.JSX.Element {
   const colors = useMobileColors();
-  const { isRTL } = useTheme();
   const reduced = useReducedMotion();
 
+  const pageCount = sites.length + 1; // stores + the add card
+  const initialIndex = Math.max(
+    0,
+    sites.findIndex((s) => s.id === initialActiveSiteId),
+  );
+
+  const [page, setPage] = useState(initialIndex);
   const [pageWidth, setPageWidth] = useState(0);
-  // Lazy state (not a ref) so we never touch `.current` during render.
   const [translateX] = useState(() => new Animated.Value(0));
 
-  const count = sites.length;
-  const dirSign = isRTL ? -1 : 1;
-
-  const animateToIndex = useCallback(
+  const animateTo = useCallback(
     (index: number, animated = true): void => {
-      const to = -index * (pageWidth + PAGE_GAP) * dirSign;
+      const to = -index * (pageWidth + PAGE_GAP);
       if (!animated || reduced || pageWidth === 0) {
         translateX.setValue(to);
         return;
@@ -79,94 +137,67 @@ export function SiteCarousel({
         useNativeDriver: true,
       }).start();
     },
-    [pageWidth, dirSign, reduced, translateX],
+    [pageWidth, reduced, translateX],
   );
 
-  // Keep the track aligned with the controlled index, the measured width, and direction.
-  useEffect(() => {
-    animateToIndex(selectedIndex);
-  }, [selectedIndex, animateToIndex]);
-
-  const goTo = useCallback(
-    (rawIndex: number): void => {
-      const clamped = Math.max(0, Math.min(count - 1, rawIndex));
-      animateToIndex(clamped);
-      if (clamped !== selectedIndex) {
-        onSelect(clamped);
+  const settleOn = useCallback(
+    (next: number): void => {
+      const clamped = Math.max(0, Math.min(pageCount - 1, next));
+      setPage(clamped);
+      animateTo(clamped);
+      // Notify only for STORE pages (the last page is the add card).
+      if (clamped < sites.length) {
+        const site = sites[clamped];
+        if (site) {
+          onSelectSite(site.id);
+        }
       }
     },
-    [count, selectedIndex, animateToIndex, onSelect],
+    [pageCount, animateTo, sites, onSelectSite],
   );
 
-  // Rebuilt whenever the captured values change so gesture math always uses fresh state.
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        // Only claim clearly-horizontal drags so taps still reach the hero card.
         onMoveShouldSetPanResponder: (_evt, g) =>
           Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
         onPanResponderMove: (_evt, g) => {
-          const base = -selectedIndex * (pageWidth + PAGE_GAP) * dirSign;
-          translateX.setValue(base + g.dx);
+          translateX.setValue(-page * (pageWidth + PAGE_GAP) + g.dx);
         },
         onPanResponderRelease: (_evt, g) => {
           const threshold = Math.max(40, pageWidth * 0.22);
-          const movedPages = -Math.sign(g.dx) * dirSign;
-          let target = selectedIndex;
-          if (Math.abs(g.dx) > threshold || Math.abs(g.vx) > 0.35) {
-            target = selectedIndex + movedPages;
+          // Physical paging: drag left (dx < 0) → next page; drag right → previous page.
+          let next = page;
+          if (g.dx < -threshold || g.vx < -0.35) {
+            next = page + 1;
+          } else if (g.dx > threshold || g.vx > 0.35) {
+            next = page - 1;
           }
-          target = Math.max(0, Math.min(count - 1, target));
-          const to = -target * (pageWidth + PAGE_GAP) * dirSign;
-          if (reduced) {
-            translateX.setValue(to);
-          } else {
-            Animated.timing(translateX, {
-              toValue: to,
-              duration: motionDuration.normal,
-              easing: easing.standard,
-              useNativeDriver: true,
-            }).start();
-          }
-          if (target !== selectedIndex) {
-            onSelect(target);
-          }
+          settleOn(next);
         },
       }),
-    [selectedIndex, pageWidth, dirSign, count, reduced, translateX, onSelect],
+    [page, pageWidth, translateX, settleOn],
   );
 
   const onLayout = (event: LayoutChangeEvent): void => {
     const w = event.nativeEvent.layout.width;
     if (w > 0 && w !== pageWidth) {
       setPageWidth(w);
+      // Re-align to the current page at the new width.
+      translateX.setValue(-page * (w + PAGE_GAP));
     }
   };
-
-  // Arrow chevrons point logically (prev = toward index 0).
-  const prevIcon = isRTL ? 'chevron-forward' : 'chevron-back';
-  const nextIcon = isRTL ? 'chevron-back' : 'chevron-forward';
-  const atStart = selectedIndex <= 0;
-  const atEnd = selectedIndex >= count - 1;
 
   return (
     <View style={{ gap: 12 }}>
       <View onLayout={onLayout} style={{ overflow: 'hidden' }}>
         {pageWidth > 0 ? (
           <Animated.View
-            // The PanResponder makes mouse drag behave like a touch swipe (RNW maps mouse
-            // events onto the responder system).
             {...panResponder.panHandlers}
             style={{ flexDirection: 'row', transform: [{ translateX }] }}
           >
-            {sites.map((site, index) => (
-              <View
-                key={site.id}
-                style={{
-                  width: pageWidth,
-                  marginRight: index === sites.length - 1 ? 0 : PAGE_GAP,
-                }}
-              >
+            {sites.map((site) => (
+              <View key={site.id} style={{ width: pageWidth, marginRight: PAGE_GAP }}>
                 <HeroSiteCard
                   site={site}
                   renewalLabel={renewalFor(site)}
@@ -174,6 +205,9 @@ export function SiteCarousel({
                 />
               </View>
             ))}
+            <View style={{ width: pageWidth }}>
+              <AddSiteCard onPress={onPressAdd} />
+            </View>
           </Animated.View>
         ) : (
           <HeroSiteCard
@@ -184,72 +218,34 @@ export function SiteCarousel({
         )}
       </View>
 
-      {/* Dots + arrows row */}
+      {/* Tappable page dots (no arrows). */}
       <View
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={prevLabel}
-          accessibilityState={{ disabled: atStart }}
-          testID="site-carousel-prev"
-          disabled={atStart}
-          onPress={() => goTo(selectedIndex - 1)}
-          style={({ pressed }) => ({
-            width: 30,
-            height: 30,
-            borderRadius: 15,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: colors.tile,
-            opacity: atStart ? 0.35 : pressed ? 0.7 : 1,
-          })}
-        >
-          <Ionicons name={prevIcon} size={16} color={colors.text} />
-        </Pressable>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          {sites.map((site, index) => {
-            const active = index === selectedIndex;
-            return (
-              <Pressable
-                key={site.id}
-                accessibilityRole="button"
-                accessibilityLabel={site.name}
-                accessibilityState={{ selected: active }}
-                testID={`site-dot-${index}`}
-                onPress={() => goTo(index)}
-                hitSlop={8}
-                style={{
-                  width: active ? 18 : 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: active ? colors.primary : colors.mutedSoft,
-                }}
-              />
-            );
-          })}
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={nextLabel}
-          accessibilityState={{ disabled: atEnd }}
-          testID="site-carousel-next"
-          disabled={atEnd}
-          onPress={() => goTo(selectedIndex + 1)}
-          style={({ pressed }) => ({
-            width: 30,
-            height: 30,
-            borderRadius: 15,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: colors.tile,
-            opacity: atEnd ? 0.35 : pressed ? 0.7 : 1,
-          })}
-        >
-          <Ionicons name={nextIcon} size={16} color={colors.text} />
-        </Pressable>
+        {Array.from({ length: pageCount }).map((_, index) => {
+          const active = index === page;
+          const isAdd = index === sites.length;
+          return (
+            <Pressable
+              key={index}
+              accessibilityRole="button"
+              testID={`site-dot-${index}`}
+              onPress={() => settleOn(index)}
+              hitSlop={8}
+              style={{
+                width: active ? 18 : 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: active
+                  ? isAdd
+                    ? colors.primary
+                    : colors.primary
+                  : colors.mutedSoft,
+                opacity: isAdd && !active ? 0.6 : 1,
+              }}
+            />
+          );
+        })}
       </View>
     </View>
   );
