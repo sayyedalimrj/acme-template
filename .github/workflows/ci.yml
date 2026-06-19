@@ -10,6 +10,15 @@ jobs:
   backend:
     name: Backend (services/api)
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgres://test:test@localhost:5432/test
+      JWT_SECRET: ci-test-jwt-secret-0123456789abcdef
+      OTP_HASH_SECRET: ci-test-otp-secret-0123456789abcdef
+      CREDENTIAL_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      CORS_ORIGINS: https://app.example.com,https://admin.example.com,https://partner.example.com
+      SMS_DRY_RUN: 'true'
+      ADMIN_MOBILE_ALLOWLIST: '09120000000'
     services:
       postgres:
         image: postgres:16
@@ -37,12 +46,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-        env:
-          DATABASE_URL: postgres://test:test@localhost:5432/test
       - run: npm run build
       - run: npm run migrate
-        env:
-          DATABASE_URL: postgres://test:test@localhost:5432/test
 
   frontend:
     name: Frontend (apps/client)
