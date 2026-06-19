@@ -2,10 +2,17 @@
  * In-memory mock user fixtures for the auth flow.
  *
  * These are fake demo identities used purely to decide whether an OTP entry routes to the
- * dashboard (known user) or to registration (new user). No secrets, no passwords, no provider
- * keys, no real PII — just demo names + example identifiers. Nothing is persisted.
+ * dashboard (known user) or to registration (new user), and to demo a password-login path for
+ * already-registered accounts. The `password` here is a NON-SECRET demo credential for local
+ * testing only — no real PII, no provider keys, nothing is persisted or sent anywhere.
  */
 import { detectIdentifier, normalizeMobile, type IdentifierChannel } from './authHelpers';
+
+/**
+ * Shared demo password for every mock account. NOT a secret — this is a local/testing-only
+ * value so the password-login path is demonstrable without a backend.
+ */
+export const MOCK_PASSWORD = 'demo1234';
 
 /** A known mock user (fake demo identity). */
 export interface AuthMockUser {
@@ -13,6 +20,8 @@ export interface AuthMockUser {
   name: string;
   email: string;
   mobile: string;
+  /** Non-secret demo password for the password-login path. */
+  password: string;
 }
 
 /** Known mock users. Anyone matching these is treated as an existing account. */
@@ -22,12 +31,14 @@ export const AUTH_MOCK_USERS: readonly AuthMockUser[] = [
     name: 'Demo Operator',
     email: 'operator@demo.local',
     mobile: '09123456789',
+    password: MOCK_PASSWORD,
   },
   {
     id: 'usr_mock_sara',
     name: 'Sara Tajeri',
     email: 'sara@shop.example',
     mobile: '09120000000',
+    password: MOCK_PASSWORD,
   },
 ];
 
@@ -58,4 +69,28 @@ export function findMockUser(identifier: string, channel?: IdentifierChannel): A
 /** True when the identifier matches a known mock user. */
 export function isKnownMockUser(identifier: string, channel?: IdentifierChannel): boolean {
   return findMockUser(identifier, channel) !== null;
+}
+
+/** Result of a mock password-login attempt. */
+export type PasswordLoginResult =
+  | { ok: true; user: AuthMockUser }
+  | { ok: false; reason: 'unknown_user' | 'wrong_password' };
+
+/**
+ * Verify a mock password-login attempt. Returns the matched user on success, or a typed reason
+ * on failure (unknown account vs. wrong password). MOCK-ONLY — no backend, nothing persisted.
+ */
+export function verifyMockPassword(
+  identifier: string,
+  password: string,
+  channel?: IdentifierChannel,
+): PasswordLoginResult {
+  const user = findMockUser(identifier, channel);
+  if (!user) {
+    return { ok: false, reason: 'unknown_user' };
+  }
+  if (password !== user.password) {
+    return { ok: false, reason: 'wrong_password' };
+  }
+  return { ok: true, user };
 }
