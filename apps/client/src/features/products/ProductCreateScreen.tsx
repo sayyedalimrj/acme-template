@@ -19,10 +19,12 @@ import {
   MobileSubHeader,
   PressableScale,
 } from '@/features/mobile/components';
-import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '@/features/mobile/mobileUxSpec';
-import { mobileColors, mobileMetrics, mobileShadow, mobileType } from '@/features/mobile/mobileTokens';
+import { NO_WEB_OUTLINE, useMobileFontFamily } from '@/features/mobile/mobileUxSpec';
+import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from '@/features/mobile/mobileTokens';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
+
+import { ProductImagePicker } from './components/ProductImagePicker';
 
 type ProductDraftStatus = 'publish' | 'draft';
 
@@ -41,6 +43,8 @@ function Field({
   keyboardType?: 'default' | 'numeric';
   multiline?: boolean;
 }): React.JSX.Element {
+  const colors = useMobileColors();
+  const fontFamily = useMobileFontFamily();
   const { isRTL } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
@@ -49,7 +53,7 @@ function Field({
         style={{
           fontSize: mobileType.labelSize,
           fontWeight: '600',
-          color: mobileColors.text,
+          color: colors.text,
           textAlign: isRTL ? 'right' : 'left',
         }}
       >
@@ -59,7 +63,7 @@ function Field({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={mobileColors.mutedSoft}
+        placeholderTextColor={colors.mutedSoft}
         keyboardType={keyboardType}
         multiline={multiline}
         onFocus={() => setFocused(true)}
@@ -69,12 +73,12 @@ function Field({
           paddingHorizontal: 14,
           paddingVertical: 12,
           borderRadius: 14,
-          backgroundColor: mobileColors.tile,
+          backgroundColor: colors.tile,
           borderWidth: 1.5,
-          borderColor: focused ? mobileColors.primary : 'transparent',
+          borderColor: focused ? colors.primary : 'transparent',
           fontSize: mobileType.bodySize,
-          color: mobileColors.text,
-          fontFamily: MOBILE_FONT_FAMILY,
+          color: colors.text,
+          fontFamily,
           textAlign: isRTL ? 'right' : 'left',
           writingDirection: isRTL ? 'rtl' : 'ltr',
           textAlignVertical: multiline ? 'top' : 'center',
@@ -86,24 +90,26 @@ function Field({
 }
 
 function FormCard({ title, children }: { title: string; children: React.ReactNode }): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const { isRTL } = useTheme();
   return (
     <View
       style={[
         {
           borderRadius: mobileMetrics.cardRadius,
-          backgroundColor: mobileColors.card,
+          backgroundColor: colors.card,
           padding: 16,
           gap: 14,
         },
-        mobileShadow,
+        shadow,
       ]}
     >
       <Text
         style={{
           fontSize: mobileType.sectionSize,
           fontWeight: '700',
-          color: mobileColors.text,
+          color: colors.text,
           textAlign: isRTL ? 'right' : 'left',
         }}
       >
@@ -115,6 +121,7 @@ function FormCard({ title, children }: { title: string; children: React.ReactNod
 }
 
 export function ProductCreateScreen(): React.JSX.Element {
+  const colors = useMobileColors();
   const t = useT();
   const router = useRouter();
   const { isRTL } = useTheme();
@@ -125,6 +132,7 @@ export function ProductCreateScreen(): React.JSX.Element {
   const [stock, setStock] = useState('');
   const [status, setStatus] = useState<ProductDraftStatus>('publish');
   const [description, setDescription] = useState('');
+  const [imageId, setImageId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(false);
 
@@ -163,7 +171,7 @@ export function ProductCreateScreen(): React.JSX.Element {
           <Text
             style={{
               fontSize: mobileType.captionSize,
-              color: mobileColors.textSecondary,
+              color: colors.textSecondary,
               textAlign: isRTL ? 'right' : 'left',
             }}
           >
@@ -188,7 +196,7 @@ export function ProductCreateScreen(): React.JSX.Element {
               <Text
                 style={{
                   fontSize: mobileType.captionSize,
-                  color: mobileColors.statusDanger,
+                  color: colors.statusDanger,
                   textAlign: isRTL ? 'right' : 'left',
                 }}
               >
@@ -206,7 +214,7 @@ export function ProductCreateScreen(): React.JSX.Element {
                 style={{
                   fontSize: mobileType.labelSize,
                   fontWeight: '600',
-                  color: mobileColors.text,
+                  color: colors.text,
                   textAlign: isRTL ? 'right' : 'left',
                 }}
               >
@@ -225,6 +233,12 @@ export function ProductCreateScreen(): React.JSX.Element {
         </AnimatedSection>
 
         <AnimatedSection index={2}>
+          <FormCard title={t('product.new.media')}>
+            <ProductImagePicker selectedId={imageId} onSelect={setImageId} />
+          </FormCard>
+        </AnimatedSection>
+
+        <AnimatedSection index={3}>
           <FormCard title={t('product.new.pricingStock')}>
             <Field
               label={t('product.new.price')}
@@ -250,7 +264,7 @@ export function ProductCreateScreen(): React.JSX.Element {
           </FormCard>
         </AnimatedSection>
 
-        <AnimatedSection index={3}>
+        <AnimatedSection index={4}>
           <PressableScale
             onPress={onSave}
             accessibilityLabel={t('product.new.save')}
@@ -258,15 +272,15 @@ export function ProductCreateScreen(): React.JSX.Element {
             style={{
               height: mobileMetrics.buttonHeight,
               borderRadius: mobileMetrics.buttonRadius,
-              backgroundColor: mobileColors.primary,
+              backgroundColor: colors.primary,
               alignItems: 'center',
               justifyContent: 'center',
               flexDirection: 'row',
               gap: 8,
             }}
           >
-            <Ionicons name="checkmark" size={20} color={mobileColors.onPrimary} />
-            <Text style={{ color: mobileColors.onPrimary, fontWeight: '700', fontSize: 15 }}>
+            <Ionicons name="checkmark" size={20} color={colors.onPrimary} />
+            <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 15 }}>
               {t('product.new.save')}
             </Text>
           </PressableScale>
@@ -281,15 +295,15 @@ export function ProductCreateScreen(): React.JSX.Element {
                 gap: 8,
                 padding: 12,
                 borderRadius: 12,
-                backgroundColor: mobileColors.statusActiveSoft,
+                backgroundColor: colors.statusActiveSoft,
               }}
             >
-              <Ionicons name="information-circle" size={18} color={mobileColors.statusActive} />
+              <Ionicons name="information-circle" size={18} color={colors.statusActive} />
               <Text
                 style={{
                   flex: 1,
                   fontSize: mobileType.captionSize,
-                  color: mobileColors.statusActive,
+                  color: colors.statusActive,
                   textAlign: isRTL ? 'right' : 'left',
                 }}
               >
@@ -301,7 +315,7 @@ export function ProductCreateScreen(): React.JSX.Element {
           <Text
             style={{
               fontSize: mobileType.captionSize,
-              color: mobileColors.textSecondary,
+              color: colors.textSecondary,
               textAlign: 'center',
               marginTop: 14,
             }}

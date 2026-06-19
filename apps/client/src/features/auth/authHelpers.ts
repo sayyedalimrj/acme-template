@@ -33,6 +33,11 @@ export function toAsciiDigits(value: string): string {
   });
 }
 
+/** Extract digits only; tolerates Persian/Arabic digits and separators. */
+export function mobileDigitsOnly(value: string): string {
+  return toAsciiDigits(value).replace(/\D/g, '');
+}
+
 /** Normalize a mobile entry: ASCII digits, no spaces/dashes/parens/dots, keep a leading `+`. */
 export function normalizeMobile(value: string): string {
   const ascii = toAsciiDigits(value).trim();
@@ -45,13 +50,20 @@ export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
 }
 
-/**
- * Digit/plus/leading-zero tolerant mobile check. Accepts an optional leading `+` or `00`
- * country prefix followed by 8–15 digits (tolerates Persian/Arabic digits + separators).
- */
+/** Iranian-style mobile: exactly 10 digits (9xxxxxxxxx) or 11 digits (09xxxxxxxxx). */
 export function isValidMobile(value: string): boolean {
-  const normalized = normalizeMobile(value);
-  return /^(\+|00)?\d{8,15}$/.test(normalized);
+  let digits = mobileDigitsOnly(value);
+  // +98 / 98 country prefix → local 11-digit 09… form.
+  if (digits.startsWith('98') && digits.length === 12) {
+    digits = `0${digits.slice(2)}`;
+  }
+  if (digits.length === 10 && digits.startsWith('9')) {
+    return true;
+  }
+  if (digits.length === 11 && digits.startsWith('09')) {
+    return true;
+  }
+  return false;
 }
 
 /** Detect whether an entered identifier is an email, a mobile number, or neither. */

@@ -51,25 +51,25 @@ beforeEach(() => {
 describe('ProductListScreen', () => {
   it('renders mock products for the active site', async () => {
     renderWithProviders(<ProductListScreen />);
-    expect(await screen.findByText('Aurora Cotton Crew Tee', {}, { timeout: 4000 })).toBeTruthy();
-    expect(screen.getByText('Northwind Canvas Tote')).toBeTruthy();
+    expect(await screen.findByText('تی‌شرت نخی آئورا', {}, { timeout: 4000 })).toBeTruthy();
+    expect(screen.getByText('کیف پارچه‌ای بادبان')).toBeTruthy();
   });
 
   it('filters the list by search text', async () => {
     renderWithProviders(<ProductListScreen />);
-    await screen.findByText('Aurora Cotton Crew Tee', {}, { timeout: 4000 });
+    await screen.findByText('تی‌شرت نخی آئورا', {}, { timeout: 4000 });
 
-    fireEvent.changeText(screen.getByTestId('product-search'), 'tote');
+    fireEvent.changeText(screen.getByTestId('product-search'), 'بادبان');
 
-    await waitFor(() => expect(screen.queryByText('Aurora Cotton Crew Tee')).toBeNull());
-    expect(screen.getByText('Northwind Canvas Tote')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText('تی‌شرت نخی آئورا')).toBeNull());
+    expect(screen.getByText('کیف پارچه‌ای بادبان')).toBeTruthy();
   });
 });
 
 describe('ProductDetailScreen', () => {
   it('renders the selected product', async () => {
     renderWithProviders(<ProductDetailScreen productId="prod_1001" />);
-    expect(await screen.findByText('Aurora Cotton Crew Tee', {}, { timeout: 4000 })).toBeTruthy();
+    expect(await screen.findByText('تی‌شرت نخی آئورا', {}, { timeout: 4000 })).toBeTruthy();
     // SKU is shown in the header.
     expect(screen.getByText('APP-TEE-001')).toBeTruthy();
   });

@@ -16,7 +16,6 @@ import { useSession } from '@/session/SessionProvider';
 import { AuthField } from './components/AuthField';
 import { AuthFrame } from './components/AuthFrame';
 import { AuthPrimaryButton } from './components/AuthPrimaryButton';
-import { isValidMobile } from './authHelpers';
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -28,7 +27,6 @@ function firstParam(value: string | string[] | undefined): string {
 interface FieldErrors {
   firstName?: string;
   lastName?: string;
-  mobile?: string;
 }
 
 export function RegisterProfileScreen(): React.JSX.Element {
@@ -41,20 +39,15 @@ export function RegisterProfileScreen(): React.JSX.Element {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [mobile, setMobile] = useState(channel === 'mobile' ? identifier : '');
   const [email, setEmail] = useState(channel === 'email' ? identifier : '');
-  const [category, setCategory] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
 
   // Refs let Enter jump to the next field (keyboard stays open) instead of dismissing it.
   const lastNameRef = useRef<TextInput>(null);
-  const mobileRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
-  const categoryRef = useRef<TextInput>(null);
 
   // Live validity → the submit button is disabled until the required fields are valid.
-  const canSubmit =
-    firstName.trim().length > 0 && lastName.trim().length > 0 && isValidMobile(mobile);
+  const canSubmit = firstName.trim().length > 0 && lastName.trim().length > 0;
 
   const onSubmit = (): void => {
     const nextErrors: FieldErrors = {};
@@ -63,9 +56,6 @@ export function RegisterProfileScreen(): React.JSX.Element {
     }
     if (lastName.trim().length === 0) {
       nextErrors.lastName = t('register.errorLastName');
-    }
-    if (!isValidMobile(mobile)) {
-      nextErrors.mobile = t('register.errorMobile');
     }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -115,22 +105,6 @@ export function RegisterProfileScreen(): React.JSX.Element {
         autoCapitalize="words"
         error={errors.lastName}
         returnKeyType="next"
-        onSubmitEditing={() => mobileRef.current?.focus()}
-      />
-      <AuthField
-        ref={mobileRef}
-        testID="register-mobile"
-        label={t('register.mobile')}
-        placeholder={t('register.mobilePlaceholder')}
-        value={mobile}
-        onChangeText={(next) => {
-          setMobile(next);
-          clearError('mobile');
-        }}
-        keyboardType="phone-pad"
-        forceLtrValue
-        error={errors.mobile}
-        returnKeyType="next"
         onSubmitEditing={() => emailRef.current?.focus()}
       />
       <AuthField
@@ -142,17 +116,6 @@ export function RegisterProfileScreen(): React.JSX.Element {
         onChangeText={setEmail}
         keyboardType="email-address"
         forceLtrValue
-        returnKeyType="next"
-        onSubmitEditing={() => categoryRef.current?.focus()}
-      />
-      <AuthField
-        ref={categoryRef}
-        testID="register-category"
-        label={t('register.category')}
-        placeholder={t('register.categoryPlaceholder')}
-        value={category}
-        onChangeText={setCategory}
-        autoCapitalize="words"
         returnKeyType="go"
         onSubmitEditing={onSubmit}
       />

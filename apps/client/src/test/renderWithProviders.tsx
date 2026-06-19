@@ -8,7 +8,7 @@
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react-native';
 import React, { type ReactElement, type ReactNode } from 'react';
 
-import { ThemeProvider } from '@/theme';
+import { FontProvider, ThemeProvider } from '@/theme';
 import type { Direction, ThemeMode } from '@/theme';
 
 export interface ProviderOptions {
@@ -23,7 +23,7 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: ReactNode }): React.JSX.Element {
     return (
       <ThemeProvider initialMode={mode} initialDirection={direction}>
-        {children}
+        <FontProvider>{children}</FontProvider>
       </ThemeProvider>
     );
   }

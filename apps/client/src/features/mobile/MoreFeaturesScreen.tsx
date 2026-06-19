@@ -13,29 +13,20 @@ import { Text } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 
-import { AnimatedSection, FeatureCard, MobilePage, MobileSubHeader } from './components';
+import { AnimatedSection, FeatureCard, MobilePage, MobileTabHeader } from './components';
 import { FEATURE_SECTIONS } from './mobileMockData';
-import { mobileColors, mobileMetrics, mobileType } from './mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors } from './mobileTokens';
 
 export function MoreFeaturesScreen(): React.JSX.Element {
+  const colors = useMobileColors();
   const t = useT();
   const router = useRouter();
   const { isRTL } = useTheme();
   const go = (href: string): void => router.navigate(href as never);
-  const onBack = (): void => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.navigate('/' as never);
-    }
-  };
-
   return (
     <MobilePage
       testID="more-screen"
-      header={
-        <MobileSubHeader title={t('more.title')} onBack={onBack} backLabel={t('mobile.back')} />
-      }
+      header={<MobileTabHeader title={t('more.title')} />}
     >
       <View style={{ paddingHorizontal: mobileMetrics.screenPadding, gap: 22 }}>
         {FEATURE_SECTIONS.map((section, sectionIndex) => (
@@ -45,7 +36,7 @@ export function MoreFeaturesScreen(): React.JSX.Element {
                 style={{
                   fontSize: mobileType.sectionSize,
                   fontWeight: '700',
-                  color: mobileColors.text,
+                  color: colors.text,
                   textAlign: isRTL ? 'right' : 'left',
                 }}
               >

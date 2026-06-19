@@ -11,7 +11,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
 
-import { mobileColors, mobileMetrics, mobileShadow, mobileType } from '../mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from '../mobileTokens';
 import { PressableScale } from './PressableScale';
 
 export interface EmptySiteCardProps {
@@ -21,6 +21,8 @@ export interface EmptySiteCardProps {
 
 export function EmptySiteCard({ onPrimary, onSecondary }: EmptySiteCardProps): React.JSX.Element {
   const t = useT();
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
 
   return (
     <View
@@ -28,12 +30,12 @@ export function EmptySiteCard({ onPrimary, onSecondary }: EmptySiteCardProps): R
       style={[
         {
           borderRadius: mobileMetrics.cardRadius,
-          backgroundColor: mobileColors.card,
+          backgroundColor: colors.card,
           padding: 22,
           gap: 16,
           alignItems: 'center',
         },
-        mobileShadow,
+        shadow,
       ]}
     >
       <View
@@ -41,12 +43,12 @@ export function EmptySiteCard({ onPrimary, onSecondary }: EmptySiteCardProps): R
           width: 84,
           height: 84,
           borderRadius: 42,
-          backgroundColor: mobileColors.tile,
+          backgroundColor: colors.tile,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name="storefront-outline" size={38} color={mobileColors.primary} />
+        <Ionicons name="storefront-outline" size={38} color={colors.primary} />
       </View>
 
       <View style={{ gap: 6, alignItems: 'center' }}>
@@ -54,7 +56,7 @@ export function EmptySiteCard({ onPrimary, onSecondary }: EmptySiteCardProps): R
           style={{
             fontSize: mobileType.sectionSize,
             fontWeight: '700',
-            color: mobileColors.text,
+            color: colors.text,
             textAlign: 'center',
           }}
         >
@@ -63,7 +65,7 @@ export function EmptySiteCard({ onPrimary, onSecondary }: EmptySiteCardProps): R
         <Text
           style={{
             fontSize: mobileType.bodySize,
-            color: mobileColors.textSecondary,
+            color: colors.textSecondary,
             textAlign: 'center',
             lineHeight: 22,
           }}
@@ -80,12 +82,12 @@ export function EmptySiteCard({ onPrimary, onSecondary }: EmptySiteCardProps): R
           alignSelf: 'stretch',
           height: mobileMetrics.tapTargetMin,
           borderRadius: 10,
-          backgroundColor: mobileColors.primary,
+          backgroundColor: colors.primary,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Text style={{ color: mobileColors.onPrimary, fontWeight: '700', fontSize: 15 }}>
+        <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 15 }}>
           {t('home.noSite.primary')}
         </Text>
       </PressableScale>
@@ -96,7 +98,7 @@ export function EmptySiteCard({ onPrimary, onSecondary }: EmptySiteCardProps): R
         testID="empty-site-secondary"
         style={{ alignSelf: 'stretch', height: 44, alignItems: 'center', justifyContent: 'center' }}
       >
-        <Text style={{ color: mobileColors.primary, fontWeight: '700', fontSize: 14 }}>
+        <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>
           {t('home.noSite.secondary')}
         </Text>
       </PressableScale>

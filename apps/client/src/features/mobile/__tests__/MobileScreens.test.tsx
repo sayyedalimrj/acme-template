@@ -12,7 +12,7 @@ import { SupportShellScreen } from '@/features/mobile/SupportShellScreen';
 import { BottomNav } from '@/features/mobile/components';
 import { siteInitials } from '@/features/mobile/components/HeroSiteCard';
 import { I18nProvider } from '@/i18n/I18nProvider';
-import { ThemeProvider } from '@/theme';
+import { FontProvider, ThemeProvider } from '@/theme';
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({
@@ -37,7 +37,9 @@ function renderMobile(ui: ReactElement): RenderResult {
       <SafeAreaProvider initialMetrics={metrics}>
         <QueryClientProvider client={client}>
           <ThemeProvider>
-            <I18nProvider locale="en">{children}</I18nProvider>
+            <FontProvider>
+              <I18nProvider locale="en">{children}</I18nProvider>
+            </FontProvider>
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
@@ -52,8 +54,8 @@ beforeEach(() => {
 
 describe('siteInitials', () => {
   it('builds two-letter initials from a store name', () => {
-    expect(siteInitials('Northwind Goods')).toBe('NG');
-    expect(siteInitials('Atelier')).toBe('AT');
+    expect(siteInitials('فروشگاه بادبان')).toBe('فب');
+    expect(siteInitials('آتلیه خانه')).toBe('آخ');
     expect(siteInitials('')).toBe('•');
   });
 });

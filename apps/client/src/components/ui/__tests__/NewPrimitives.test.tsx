@@ -125,11 +125,11 @@ describe('UI excellence primitives', () => {
     it('renders title/subtitle and responds to press', () => {
       const onPress = jest.fn();
       renderWithProviders(
-        <DataListRow title="Northwind Goods" subtitle="store.example.com" onPress={onPress} />,
+        <DataListRow title="فروشگاه بادبان" subtitle="store.example.com" onPress={onPress} />,
       );
-      expect(screen.getByText('Northwind Goods')).toBeTruthy();
+      expect(screen.getByText('فروشگاه بادبان')).toBeTruthy();
       expect(screen.getByText('store.example.com')).toBeTruthy();
-      fireEvent.press(screen.getByLabelText('Northwind Goods'));
+      fireEvent.press(screen.getByLabelText('فروشگاه بادبان'));
       expect(onPress).toHaveBeenCalledTimes(1);
     });
   });

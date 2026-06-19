@@ -22,9 +22,11 @@ import {
   PressableScale,
 } from './components';
 import { SUPPORT_PREVIEW } from './mobileMockData';
-import { mobileColors, mobileMetrics, mobileShadow, mobileType } from './mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from './mobileTokens';
 
 export function SupportShellScreen(): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const t = useT();
   const router = useRouter();
   const { rowDirection, isRTL } = useTheme();
@@ -49,11 +51,11 @@ export function SupportShellScreen(): React.JSX.Element {
             style={[
               {
                 borderRadius: mobileMetrics.cardRadius,
-                backgroundColor: mobileColors.hero,
+                backgroundColor: colors.hero,
                 padding: 20,
                 gap: 16,
               },
-              mobileShadow,
+              shadow,
             ]}
           >
             <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 12 }}>
@@ -62,18 +64,18 @@ export function SupportShellScreen(): React.JSX.Element {
                   width: 48,
                   height: 48,
                   borderRadius: 14,
-                  backgroundColor: mobileColors.heroLayer,
+                  backgroundColor: colors.heroLayer,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="headset-outline" size={24} color={mobileColors.heroText} />
+                <Ionicons name="headset-outline" size={24} color={colors.heroText} />
               </View>
               <Text
                 style={{
                   flex: 1,
                   fontSize: mobileType.bodySize,
-                  color: mobileColors.heroTextSoft,
+                  color: colors.heroTextSoft,
                   textAlign: isRTL ? 'right' : 'left',
                   lineHeight: 22,
                 }}
@@ -89,12 +91,12 @@ export function SupportShellScreen(): React.JSX.Element {
               style={{
                 height: mobileMetrics.tapTargetMin,
                 borderRadius: 10,
-                backgroundColor: mobileColors.primary,
+                backgroundColor: colors.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ color: mobileColors.onPrimary, fontWeight: '700', fontSize: 15 }}>
+              <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 15 }}>
                 {t('csupport.chat')}
               </Text>
             </PressableScale>
@@ -106,12 +108,12 @@ export function SupportShellScreen(): React.JSX.Element {
               style={{
                 height: 44,
                 borderRadius: 10,
-                backgroundColor: mobileColors.heroLayer,
+                backgroundColor: colors.heroLayer,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ color: mobileColors.heroText, fontWeight: '700', fontSize: 14 }}>
+              <Text style={{ color: colors.heroText, fontWeight: '700', fontSize: 14 }}>
                 {t('csupport.newRequest')}
               </Text>
             </PressableScale>
@@ -123,7 +125,7 @@ export function SupportShellScreen(): React.JSX.Element {
             style={{
               fontSize: mobileType.sectionSize,
               fontWeight: '700',
-              color: mobileColors.text,
+              color: colors.text,
               textAlign: isRTL ? 'right' : 'left',
               marginBottom: 12,
             }}
@@ -134,11 +136,11 @@ export function SupportShellScreen(): React.JSX.Element {
             style={[
               {
                 borderRadius: mobileMetrics.cardRadius,
-                backgroundColor: mobileColors.card,
+                backgroundColor: colors.card,
                 paddingHorizontal: 16,
                 paddingVertical: 4,
               },
-              mobileShadow,
+              shadow,
             ]}
           >
             {SUPPORT_PREVIEW.map((item) => (
@@ -156,7 +158,7 @@ export function SupportShellScreen(): React.JSX.Element {
           <Text
             style={{
               fontSize: mobileType.captionSize,
-              color: mobileColors.textSecondary,
+              color: colors.textSecondary,
               textAlign: 'center',
               marginTop: 14,
             }}

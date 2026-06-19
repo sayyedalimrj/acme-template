@@ -238,6 +238,8 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  /** Optional profile photo (URL or data URI). Frontend-safe; never a credential. */
+  avatarUrl?: string;
   /** Placeholder for future roles/permissions; not enforced yet. */
   role?: Role;
 }

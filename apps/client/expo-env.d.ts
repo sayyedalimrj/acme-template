@@ -1,3 +1,3 @@
 /// <reference types="expo/types" />
 
-// Ambient type declarations provided by Expo. Committed intentionally.
+// NOTE: This file should not be edited and should be in your git ignore

@@ -11,7 +11,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
-import { mobileColors, mobileMetrics, mobileType } from '../mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors } from '../mobileTokens';
 import { PressableScale } from './PressableScale';
 
 export interface MobileSubHeaderProps {
@@ -27,6 +27,7 @@ export function MobileSubHeader({
   backLabel,
   trailing,
 }: MobileSubHeaderProps): React.JSX.Element {
+  const colors = useMobileColors();
   const { rowDirection, directional, isRTL } = useTheme();
 
   return (
@@ -47,7 +48,7 @@ export function MobileSubHeader({
           width: mobileMetrics.headerButton,
           height: mobileMetrics.headerButton,
           borderRadius: mobileMetrics.headerButton / 2,
-          backgroundColor: mobileColors.tile,
+          backgroundColor: colors.tile,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -55,7 +56,7 @@ export function MobileSubHeader({
         <Ionicons
           name={directional('chevron-back', 'chevron-forward')}
           size={22}
-          color={mobileColors.text}
+          color={colors.text}
         />
       </PressableScale>
 
@@ -64,7 +65,7 @@ export function MobileSubHeader({
           flex: 1,
           fontSize: mobileType.titleSize,
           fontWeight: mobileType.titleWeight,
-          color: mobileColors.text,
+          color: colors.text,
           textAlign: isRTL ? 'right' : 'left',
         }}
         numberOfLines={1}

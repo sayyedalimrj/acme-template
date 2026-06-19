@@ -13,7 +13,13 @@ import {
   sendOtpMock,
   toAsciiDigits,
 } from '../authHelpers';
-import { AUTH_MOCK_USERS, findMockUser, isKnownMockUser } from '../authMockUsers';
+import {
+  AUTH_MOCK_USERS,
+  MOCK_PASSWORD,
+  findMockUser,
+  isKnownMockUser,
+  verifyMockPassword,
+} from '../authMockUsers';
 
 describe('identifier detection', () => {
   it('detects valid emails', () => {
@@ -28,7 +34,10 @@ describe('identifier detection', () => {
     expect(detectIdentifier('+98 912 345 6789')).toBe('mobile');
     expect(detectIdentifier('0912-345-6789')).toBe('mobile');
     expect(isValidMobile('09123456789')).toBe(true);
+    expect(isValidMobile('9123456789')).toBe(true);
+    expect(isValidMobile('+98 912 345 6789')).toBe(true);
     expect(isValidMobile('123')).toBe(false);
+    expect(isValidMobile('+98 912 345 678')).toBe(false);
   });
 
   it('normalizes Persian/Arabic digits and separators', () => {
@@ -78,7 +87,9 @@ describe('mock user routing', () => {
     expect(isKnownMockUser('operator@demo.local', 'email')).toBe(true);
     expect(isKnownMockUser('OPERATOR@DEMO.LOCAL')).toBe(true);
     expect(isKnownMockUser('09123456789', 'mobile')).toBe(true);
-    expect(findMockUser('09123456789')?.name).toBe('Demo Operator');
+    expect(isKnownMockUser('+98 912 345 6789', 'mobile')).toBe(true);
+    expect(findMockUser('09123456789')?.name).toBe('اپراتور آزمایشی');
+    expect(findMockUser('+98 912 345 6789')?.name).toBe('اپراتور آزمایشی');
   });
 
   it('treats unknown identifiers as new users (registration)', () => {
@@ -88,12 +99,35 @@ describe('mock user routing', () => {
   });
 });
 
-describe('no secrets in the auth mock', () => {
-  it('mock users carry only id/name/email/mobile (no credentials)', () => {
+describe('password login (mock)', () => {
+  it('signs in a known user with the demo password', () => {
+    const result = verifyMockPassword('operator@demo.local', MOCK_PASSWORD, 'email');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.user.name).toBe('اپراتور آزمایشی');
+    }
+  });
+
+  it('rejects a wrong password for a known user', () => {
+    const result = verifyMockPassword('09123456789', 'nope', 'mobile');
+    expect(result).toEqual({ ok: false, reason: 'wrong_password' });
+  });
+
+  it('reports unknown accounts so they can register with a code', () => {
+    const result = verifyMockPassword('new.person@store.example', MOCK_PASSWORD);
+    expect(result).toEqual({ ok: false, reason: 'unknown_user' });
+  });
+});
+
+describe('no real secrets in the auth mock', () => {
+  it('mock users carry only a shared demo password and no real provider credentials', () => {
+    // A non-secret demo password is intentional (password-login demo). Guard against REAL
+    // provider credentials leaking into the frontend mock.
     const serialized = JSON.stringify(AUTH_MOCK_USERS).toLowerCase();
-    expect(serialized).not.toMatch(/password|secret|token|apikey|consumer/);
+    expect(serialized).not.toMatch(/secret|token|apikey|consumer/);
     for (const user of AUTH_MOCK_USERS) {
-      expect(Object.keys(user).sort()).toEqual(['email', 'id', 'mobile', 'name']);
+      expect(Object.keys(user).sort()).toEqual(['email', 'id', 'mobile', 'name', 'password']);
+      expect(user.password).toBe(MOCK_PASSWORD);
     }
   });
 });

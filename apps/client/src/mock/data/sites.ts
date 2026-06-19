@@ -9,7 +9,7 @@ import type { SiteConnection } from '@/domain/types';
 export const sites: SiteConnection[] = [
   {
     id: 'site_demo',
-    name: 'Northwind Goods',
+    name: 'فروشگاه بادبان',
     url: 'https://northwind-demo.example.test',
     status: 'connected',
     wooVersion: '9.1.2',
@@ -20,7 +20,7 @@ export const sites: SiteConnection[] = [
   },
   {
     id: 'site_atelier',
-    name: 'Atelier Home (EU)',
+    name: 'آتلیه خانه',
     url: 'https://atelier-demo.example.test',
     status: 'connected',
     wooVersion: '9.0.0',

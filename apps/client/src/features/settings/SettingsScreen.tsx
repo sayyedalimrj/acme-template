@@ -23,7 +23,6 @@ import {
   Text,
   type BadgeTone,
 } from '@/components/ui';
-import { appConfig } from '@/config/app.config';
 import { useActiveSite } from '@/features/site/useSites';
 import { useLocale, useT } from '@/i18n/I18nProvider';
 import { useSession } from '@/session/SessionProvider';
@@ -56,13 +55,6 @@ function Row({ label, value }: { label: string; value: ReactNode }): React.JSX.E
   );
 }
 
-const ROLES: { nameKey: StringKey; descKey: StringKey }[] = [
-  { nameKey: 'settings.role.owner', descKey: 'settings.role.ownerDesc' },
-  { nameKey: 'settings.role.manager', descKey: 'settings.role.managerDesc' },
-  { nameKey: 'settings.role.staff', descKey: 'settings.role.staffDesc' },
-  { nameKey: 'settings.role.viewer', descKey: 'settings.role.viewerDesc' },
-];
-
 const STATUS_ITEMS: { labelKey: StringKey; ready: boolean }[] = [
   { labelKey: 'settings.status.appShell', ready: true },
   { labelKey: 'settings.status.mockServices', ready: true },
@@ -84,8 +76,7 @@ function siteStatusTone(status: string): BadgeTone {
 }
 
 export function SettingsScreen(): React.JSX.Element {
-  const { tokens, rowDirection, mode, toggleMode, direction, toggleDirection, setDirection } =
-    useTheme();
+  const { tokens, rowDirection, mode, toggleMode } = useTheme();
   const t = useT();
   const { locale, setLocale } = useLocale();
   const router = useRouter();
@@ -94,17 +85,6 @@ export function SettingsScreen(): React.JSX.Element {
 
   return (
     <Screen testID="settings-screen" title={t('settings.title')} subtitle={t('settings.subtitle')}>
-
-      {/* A. App overview */}
-      <Card title={t('settings.section.app')}>
-        <Row label={t('settings.app.name')} value={appConfig.appName} />
-        <Row
-          label={t('settings.app.dataSource')}
-          value={<Badge tone="info" label={t('settings.app.mock')} />}
-        />
-        <Row label={t('settings.app.version')} value={appConfig.appVersion} />
-        <Row label={t('settings.app.platform')} value={t('settings.app.platformValue')} />
-      </Card>
 
       {/* Account overview */}
       <Card title={t('settings.section.account')}>
@@ -182,20 +162,14 @@ export function SettingsScreen(): React.JSX.Element {
             variant={locale === 'fa' ? 'primary' : 'secondary'}
             size="sm"
             testID="lang-fa"
-            onPress={() => {
-              setLocale('fa');
-              setDirection('rtl');
-            }}
+            onPress={() => setLocale('fa')}
           />
           <Button
             label={t('settings.language.english')}
             variant={locale === 'en' ? 'primary' : 'secondary'}
             size="sm"
             testID="lang-en"
-            onPress={() => {
-              setLocale('en');
-              setDirection('ltr');
-            }}
+            onPress={() => setLocale('en')}
           />
         </View>
       </Card>
@@ -223,23 +197,6 @@ export function SettingsScreen(): React.JSX.Element {
             </View>
           }
         />
-        <Row
-          label={t('settings.appearance.direction')}
-          value={
-            <View
-              style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.sm }}
-            >
-              <Text variant="label">{direction.toUpperCase()}</Text>
-              <Button
-                label={t('settings.appearance.toggleDirection')}
-                variant="secondary"
-                size="sm"
-                onPress={toggleDirection}
-                testID="toggle-direction"
-              />
-            </View>
-          }
-        />
         <Text variant="caption" tone="muted">
           {t('settings.appearance.note')}
         </Text>
@@ -258,35 +215,6 @@ export function SettingsScreen(): React.JSX.Element {
             {t('settings.security.note')}
           </Text>
         </Surface>
-      </Card>
-
-      {/* E. Team & roles placeholder */}
-      <Card title={t('settings.section.team')}>
-        <Text variant="caption" tone="muted">
-          {t('settings.team.note')}
-        </Text>
-        <View style={{ gap: tokens.spacing.sm, marginTop: tokens.spacing.sm }}>
-          {ROLES.map((role, index) => (
-            <View key={role.nameKey} style={{ gap: tokens.spacing.sm }}>
-              {index > 0 ? <Divider /> : null}
-              <View
-                style={{
-                  flexDirection: rowDirection,
-                  alignItems: 'center',
-                  gap: tokens.spacing.sm,
-                }}
-              >
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text variant="label">{t(role.nameKey)}</Text>
-                  <Text variant="caption" tone="muted">
-                    {t(role.descKey)}
-                  </Text>
-                </View>
-                <Badge tone="neutral" label={t('nav.soon')} />
-              </View>
-            </View>
-          ))}
-        </View>
       </Card>
 
       {/* F. System status placeholder */}

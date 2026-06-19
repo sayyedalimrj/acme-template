@@ -9,18 +9,18 @@ import type { Product, ProductBrand, ProductCategory } from '@/domain/types';
 const CURRENCY = 'USD';
 
 export const categories: ProductCategory[] = [
-  { id: 'cat_apparel', name: 'Apparel', slug: 'apparel' },
-  { id: 'cat_outdoor', name: 'Outdoor', slug: 'outdoor' },
-  { id: 'cat_home', name: 'Home & Living', slug: 'home-living' },
-  { id: 'cat_accessories', name: 'Accessories', slug: 'accessories' },
-  { id: 'cat_kitchen', name: 'Kitchen', slug: 'kitchen' },
+  { id: 'cat_apparel', name: 'پوشاک', slug: 'apparel' },
+  { id: 'cat_outdoor', name: 'کوهنوردی', slug: 'outdoor' },
+  { id: 'cat_home', name: 'خانه و زندگی', slug: 'home-living' },
+  { id: 'cat_accessories', name: 'اکسسوری', slug: 'accessories' },
+  { id: 'cat_kitchen', name: 'آشپزخانه', slug: 'kitchen' },
 ];
 
 export const brands: ProductBrand[] = [
-  { id: 'brand_northwind', name: 'Northwind', slug: 'northwind' },
-  { id: 'brand_lumen', name: 'Lumen', slug: 'lumen' },
-  { id: 'brand_mesa', name: 'Mesa Goods', slug: 'mesa-goods' },
-  { id: 'brand_trailhead', name: 'Trailhead', slug: 'trailhead' },
+  { id: 'brand_northwind', name: 'بادبان', slug: 'northwind' },
+  { id: 'brand_lumen', name: 'لومن', slug: 'lumen' },
+  { id: 'brand_mesa', name: 'میزا', slug: 'mesa-goods' },
+  { id: 'brand_trailhead', name: 'کوه‌پیمای', slug: 'trailhead' },
 ];
 
 const categoryById = (id: string): ProductCategory => {
@@ -34,7 +34,7 @@ const brandById = (id: string): ProductBrand | undefined => brands.find((b) => b
 export const products: Product[] = [
   {
     id: 'prod_1001',
-    name: 'Aurora Cotton Crew Tee',
+    name: 'تی‌شرت نخی آئورا',
     slug: 'aurora-cotton-crew-tee',
     sku: 'APP-TEE-001',
     type: 'variable',
@@ -55,7 +55,7 @@ export const products: Product[] = [
   },
   {
     id: 'prod_1002',
-    name: 'Trailhead Insulated Bottle 750ml',
+    name: 'بطری عایق ۷۵۰ میلی‌لیتر کوه‌پیمای',
     slug: 'trailhead-insulated-bottle-750ml',
     sku: 'OUT-BTL-750',
     type: 'simple',
@@ -77,7 +77,7 @@ export const products: Product[] = [
   },
   {
     id: 'prod_1003',
-    name: 'Lumen Desk Lamp (Walnut)',
+    name: 'چراغ رومیزی لومن (گردو)',
     slug: 'lumen-desk-lamp-walnut',
     sku: 'HOME-LMP-WAL',
     type: 'simple',
@@ -98,7 +98,7 @@ export const products: Product[] = [
   },
   {
     id: 'prod_1004',
-    name: 'Everyday Leather Cardholder',
+    name: 'کیف کارت چرمی روزمره',
     slug: 'everyday-leather-cardholder',
     sku: 'ACC-CARD-LTR',
     type: 'simple',
@@ -120,7 +120,7 @@ export const products: Product[] = [
   },
   {
     id: 'prod_1005',
-    name: 'Mesa Ceramic Pour-Over Set',
+    name: 'ست دم‌افزار سرامیکی میزا',
     slug: 'mesa-ceramic-pour-over-set',
     sku: 'KIT-POUR-CER',
     type: 'grouped',
@@ -146,7 +146,7 @@ export const products: Product[] = [
   },
   {
     id: 'prod_1006',
-    name: 'Summit Merino Beanie',
+    name: 'کلاه پشمی سامیت',
     slug: 'summit-merino-beanie',
     sku: 'APP-BEA-MER',
     type: 'simple',
@@ -166,7 +166,7 @@ export const products: Product[] = [
   },
   {
     id: 'prod_1007',
-    name: 'Lumen LED Floor Lamp',
+    name: 'چراغ ایستاده LED لومن',
     slug: 'lumen-led-floor-lamp',
     sku: 'HOME-LMP-FLR',
     type: 'simple',
@@ -188,7 +188,7 @@ export const products: Product[] = [
   },
   {
     id: 'prod_1008',
-    name: 'Northwind Canvas Tote',
+    name: 'کیف پارچه‌ای بادبان',
     slug: 'northwind-canvas-tote',
     sku: 'ACC-TOTE-CNV',
     type: 'simple',

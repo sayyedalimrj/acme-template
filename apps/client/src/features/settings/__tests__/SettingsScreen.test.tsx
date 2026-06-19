@@ -43,11 +43,9 @@ beforeEach(() => {
 });
 
 describe('SettingsScreen', () => {
-  it('renders the app overview with version and platform note', () => {
+  it('renders the screen with the active-site section', () => {
     renderWithProviders(<SettingsScreen />);
     expect(screen.getByTestId('settings-screen')).toBeTruthy();
-    expect(screen.getByText('0.1.0')).toBeTruthy();
-    expect(screen.getByText('Expo · React Native · Web-ready')).toBeTruthy();
     // Active site summary section (Persian copy).
     expect(screen.getByText('فروشگاه فعال')).toBeTruthy();
   });
@@ -57,17 +55,19 @@ describe('SettingsScreen', () => {
     expect(screen.getByText(/وارد یا ذخیره نمی‌شوند/)).toBeTruthy();
   });
 
-  it('renders the team & roles placeholder (Persian role names)', () => {
+  it('removes the app overview, team & roles, and the layout-direction control', () => {
     renderWithProviders(<SettingsScreen />);
-    expect(screen.getByText('مالک')).toBeTruthy();
-    expect(screen.getByText('مدیر')).toBeTruthy();
-    expect(screen.getByText('کارمند')).toBeTruthy();
-    expect(screen.getByText('بیننده')).toBeTruthy();
+    // App overview ("مرور برنامه") and team roles are gone.
+    expect(screen.queryByText('مرور برنامه')).toBeNull();
+    expect(screen.queryByText('مالک')).toBeNull();
+    // Direction is now automatic (no manual toggle).
+    expect(screen.queryByTestId('toggle-direction')).toBeNull();
   });
 
-  it('renders the appearance theme/direction controls', () => {
+  it('keeps the theme toggle and language switch', () => {
     renderWithProviders(<SettingsScreen />);
     expect(screen.getByTestId('toggle-mode')).toBeTruthy();
-    expect(screen.getByTestId('toggle-direction')).toBeTruthy();
+    expect(screen.getByTestId('lang-fa')).toBeTruthy();
+    expect(screen.getByTestId('lang-en')).toBeTruthy();
   });
 });

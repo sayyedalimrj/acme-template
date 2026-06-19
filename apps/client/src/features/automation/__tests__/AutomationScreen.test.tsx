@@ -40,12 +40,12 @@ beforeEach(() => {
 });
 
 describe('AutomationScreen', () => {
-  it('renders provider readiness and at least one campaign draft', async () => {
+  it('renders the simplified status and at least one campaign draft', async () => {
     renderWithProviders(<AutomationScreen />);
     expect(await screen.findByTestId('automation-screen', {}, { timeout: 4000 })).toBeTruthy();
-    // Provider readiness row label renders once the overview loads.
-    expect(await screen.findByText('ارائه‌دهنده پیامک', {}, { timeout: 4000 })).toBeTruthy();
-    // A campaign draft (back-in-stock title appears as draft + rule label).
-    expect(screen.getAllByText('اعلام موجودی مجدد').length).toBeGreaterThan(0);
+    // The simplified one-line status renders once the overview loads.
+    expect(await screen.findByText('وضعیت اتوماسیون', {}, { timeout: 4000 })).toBeTruthy();
+    // A campaign draft title renders once the drafts query resolves.
+    expect(await screen.findByText('اعلام موجودی مجدد', {}, { timeout: 4000 })).toBeTruthy();
   });
 });

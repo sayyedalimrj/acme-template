@@ -87,9 +87,10 @@ describe('AuthEntryScreen', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('navigates to the OTP screen for a valid identifier', () => {
+  it('navigates to the OTP screen for a valid mobile number', () => {
     renderAuth(<AuthEntryScreen />);
-    fireEvent.changeText(screen.getByTestId('auth-entry-input'), 'you@company.com');
+    fireEvent.changeText(screen.getByTestId('auth-entry-input'), '09123456789');
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(false);
     fireEvent.press(screen.getByTestId('auth-entry-submit'));
     expect(mockNavigate).toHaveBeenCalledTimes(1);
     const arg = mockNavigate.mock.calls[0][0] as {
@@ -97,8 +98,26 @@ describe('AuthEntryScreen', () => {
       params: Record<string, string>;
     };
     expect(arg.pathname).toBe('/verify');
-    expect(arg.params.identifier).toBe('you@company.com');
-    expect(arg.params.channel).toBe('email');
+    expect(arg.params.identifier).toBe('09123456789');
+    expect(arg.params.channel).toBe('mobile');
+  });
+
+  it('does NOT accept an email (mobile-only sign in)', () => {
+    renderAuth(<AuthEntryScreen />);
+    fireEvent.changeText(screen.getByTestId('auth-entry-input'), 'you@company.com');
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(screen.getByTestId('auth-entry-submit'));
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('enables continue for 10- or 11-digit mobile numbers', () => {
+    renderAuth(<AuthEntryScreen />);
+    fireEvent.changeText(screen.getByTestId('auth-entry-input'), '9123456789');
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(false);
+    fireEvent.changeText(screen.getByTestId('auth-entry-input'), '09123456789');
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(false);
+    fireEvent.changeText(screen.getByTestId('auth-entry-input'), '091234567');
+    expect(screen.getByTestId('auth-entry-submit').props.accessibilityState?.disabled).toBe(true);
   });
 });
 
@@ -149,18 +168,17 @@ describe('OtpVerificationScreen (mock)', () => {
 });
 
 describe('RegisterProfileScreen (mock)', () => {
-  it('keeps submit disabled until first name, last name and a valid mobile are entered', () => {
-    mockParams = { identifier: 'new.person@store.example', channel: 'email' };
+  it('keeps submit disabled until first name and last name are entered', () => {
+    mockParams = { identifier: '09123000111', channel: 'mobile' };
     renderAuth(<RegisterProfileScreen />);
     // No required fields yet → disabled, and pressing must not create a session.
     expect(screen.getByTestId('register-submit').props.accessibilityState?.disabled).toBe(true);
     fireEvent.press(screen.getByTestId('register-submit'));
     expect(mockSignIn).not.toHaveBeenCalled();
 
-    // Fill required fields → enabled.
+    // Fill required fields (mobile already captured at sign-in) → enabled.
     fireEvent.changeText(screen.getByTestId('register-first-name'), 'Ali');
     fireEvent.changeText(screen.getByTestId('register-last-name'), 'Karimi');
-    fireEvent.changeText(screen.getByTestId('register-mobile'), '09123000111');
     expect(screen.getByTestId('register-submit').props.accessibilityState?.disabled).toBe(false);
   });
 

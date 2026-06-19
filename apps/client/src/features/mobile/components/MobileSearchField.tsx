@@ -10,8 +10,8 @@ import { TextInput, View } from 'react-native';
 
 import { useTheme } from '@/theme';
 
-import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '../mobileUxSpec';
-import { mobileColors, mobileType } from '../mobileTokens';
+import { NO_WEB_OUTLINE, useMobileFontFamily } from '../mobileUxSpec';
+import { mobileType, useMobileColors } from '../mobileTokens';
 
 export interface MobileSearchFieldProps {
   value: string;
@@ -26,6 +26,8 @@ export function MobileSearchField({
   placeholder,
   testID,
 }: MobileSearchFieldProps): React.JSX.Element {
+  const colors = useMobileColors();
+  const fontFamily = useMobileFontFamily();
   const { rowDirection, isRTL } = useTheme();
   const [focused, setFocused] = useState(false);
 
@@ -38,26 +40,26 @@ export function MobileSearchField({
         height: 48,
         paddingHorizontal: 14,
         borderRadius: 14,
-        backgroundColor: mobileColors.tile,
+        backgroundColor: colors.tile,
         borderWidth: 1.5,
-        borderColor: focused ? mobileColors.primary : 'transparent',
+        borderColor: focused ? colors.primary : 'transparent',
       }}
     >
-      <Ionicons name="search-outline" size={18} color={mobileColors.muted} />
+      <Ionicons name="search-outline" size={18} color={colors.muted} />
       <TextInput
         testID={testID}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={mobileColors.mutedSoft}
+        placeholderTextColor={colors.mutedSoft}
         autoCapitalize="none"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={{
           flex: 1,
           fontSize: mobileType.bodySize,
-          color: mobileColors.text,
-          fontFamily: MOBILE_FONT_FAMILY,
+          color: colors.text,
+          fontFamily,
           padding: 0,
           textAlign: isRTL ? 'right' : 'left',
           writingDirection: isRTL ? 'rtl' : 'ltr',

@@ -1,16 +1,13 @@
 /**
- * MobilePage — in-frame scrollable page.
+ * MobilePage — in-frame scrollable page with a fixed header.
  *
- * A plain scrollable page used by the mobile screens. The app frame, soft desktop backdrop,
- * and the bottom tab bar are owned by `AppShell` (single source of layout), so this component
- * just renders an optional fixed header + a scroll area with safe-area handling. RTL-safe; RN
- * primitives only.
+ * The optional header stays pinned above the scroll area (does not scroll with content).
+ * Safe-area top inset is applied to the header only. RTL-safe; RN primitives only.
  */
 import React, { type ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { mobileColors } from '../mobileTokens';
+import { useMobileColors } from '../mobileTokens';
 
 export interface MobilePageProps {
   children: ReactNode;
@@ -27,16 +24,30 @@ export function MobilePage({
   testID,
   scrollBottomPadding = 28,
 }: MobilePageProps): React.JSX.Element {
-  const insets = useSafeAreaInsets();
+  const colors = useMobileColors();
 
+  // The top safe-area inset is owned by the persistent GlobalHeader (rendered by the AppShell
+  // above every screen), so screens no longer add it again here.
   return (
-    <View testID={testID} style={{ flex: 1, backgroundColor: mobileColors.background }}>
-      {header ? <View style={{ paddingTop: insets.top }}>{header}</View> : null}
+    <View testID={testID} style={{ flex: 1, backgroundColor: colors.background }}>
+      {header ? (
+        <View
+          style={{
+            backgroundColor: colors.background,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colors.separator,
+            zIndex: 10,
+          }}
+        >
+          {header}
+        </View>
+      ) : null}
 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingTop: header ? 6 : insets.top + 6,
+          flexGrow: 1,
+          paddingTop: header ? 8 : 10,
           paddingBottom: scrollBottomPadding,
         }}
         showsVerticalScrollIndicator={false}
