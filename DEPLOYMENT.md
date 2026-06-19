@@ -5,6 +5,7 @@ about what runs **today** and what must be **built/wired** before a real go‑li
 asks you to put secrets in git or in the frontend bundle (see `.kiro/steering/security.md`).
 
 > Read this together with:
+> - `PORTALS.md` — the three role-based experiences (merchant / admin / affiliate) in one build
 > - `apps/client/README.md` — the frontend app
 > - `apps/api/README.md` + `apps/api/src/database/README.md` — the backend/proxy + DB design
 > - `wordpress-plugin/README.md` + `wordpress-plugin/SECURITY.md` — the WordPress companion
