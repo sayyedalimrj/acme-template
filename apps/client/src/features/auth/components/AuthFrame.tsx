@@ -92,7 +92,11 @@ export function AuthFrame({
                 shadowOffset: { width: 0, height: 12 },
                 elevation: 6,
               }
-            : { flexGrow: 1 },
+            : // On phones the frame sizes to its content and is centered by the ScrollView
+              // (contentContainer `justifyContent: 'center'`). Previously it used `flexGrow: 1`
+              // plus a trailing spacer, which top-aligned the short form and left a large empty
+              // block of background below it.
+              null,
         ]}
       >
         {/* Header: optional back button + brand icon + title + subtitle. */}
@@ -180,9 +184,6 @@ export function AuthFrame({
 
         {/* Footer (helper text) pushed below the body, with breathing room. */}
         {footer ? <View style={{ marginTop: 20, alignItems: 'center' }}>{footer}</View> : null}
-
-        {/* Spacer so the frame body sits comfortably on tall mobile screens. */}
-        {!wide ? <View style={{ flexGrow: 1, minHeight: 12 }} /> : null}
       </View>
     </ScrollView>
   );

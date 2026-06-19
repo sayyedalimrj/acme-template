@@ -1,0 +1,21 @@
+[Unit]
+Description=Portal API (services/api) — OTP auth, RBAC, Postgres
+Documentation=file:///var/www/portal/services/api/README.md
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/var/www/portal/services/api
+Environment=NODE_ENV=production
+EnvironmentFile=/var/www/portal/services/api/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+# Hardening (optional — remove NoNewPrivileges if it blocks your host policy)
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -14,7 +14,7 @@ import { LoadingState, Screen } from '@/components/ui';
 import { useSession } from '@/session/SessionProvider';
 
 export default function AppGroupLayout(): React.JSX.Element {
-  const { status } = useSession();
+  const { status, portal } = useSession();
 
   if (status === 'loading') {
     return (
@@ -26,6 +26,15 @@ export default function AppGroupLayout(): React.JSX.Element {
 
   if (status === 'unauthenticated') {
     return <Redirect href={'/sign-in' as Href} />;
+  }
+
+  // One build hosts three role-based experiences. Send admins/affiliates to their portal; the
+  // merchant dashboard is the default experience served from this group.
+  if (portal === 'admin') {
+    return <Redirect href={'/admin' as Href} />;
+  }
+  if (portal === 'affiliate') {
+    return <Redirect href={'/affiliate' as Href} />;
   }
 
   return (

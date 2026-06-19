@@ -15,7 +15,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { isApiConfigured } from '@/config/api.config';
 import { useT } from '@/i18n/I18nProvider';
+import { requestOtp, verifyOtp } from '@/services/authApi';
 import { useSession } from '@/session/SessionProvider';
 import { useTheme } from '@/theme';
 
@@ -33,11 +35,18 @@ import {
 } from './authHelpers';
 import { findMockUser, verifyMockPassword } from './authMockUsers';
 
+import type { AppPortal } from '@/domain/types';
+
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
     return value[0] ?? '';
   }
   return value ?? '';
+}
+
+/** Parse a portal route-param, defaulting safely to the merchant experience. */
+function parsePortal(value: string): AppPortal {
+  return value === 'admin' || value === 'affiliate' ? value : 'merchant';
 }
 
 type Mode = 'otp' | 'password';
@@ -46,13 +55,14 @@ export function OtpVerificationScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { rowDirection } = useTheme();
-  const { signIn } = useSession();
-  const params = useLocalSearchParams<{ identifier?: string; channel?: string }>();
+  const { signIn, signInWithSession } = useSession();
+  const params = useLocalSearchParams<{ identifier?: string; channel?: string; portal?: string }>();
 
   const identifier = firstParam(params.identifier);
   const channelParam = firstParam(params.channel);
   const channel: IdentifierChannel | undefined =
     channelParam === 'email' || channelParam === 'mobile' ? channelParam : undefined;
+  const portal = parsePortal(firstParam(params.portal));
 
   // Only already-registered numbers get the password-login option.
   const knownUser = findMockUser(identifier, channel);
@@ -80,15 +90,33 @@ export function OtpVerificationScreen(): React.JSX.Element {
     }
     submittedRef.current = true;
     setError(undefined);
-    if (knownUser) {
-      // Known mock user → mock session; the (auth) layout redirects to the dashboard.
-      void signIn({ name: knownUser.name, email: knownUser.email });
+
+    if (isApiConfigured) {
+      // Real OTP: verify with the backend; on success it returns a user + JWT session.
+      void (async () => {
+        try {
+          const res = await verifyOtp(identifier, digits.join(''), undefined, portal);
+          signInWithSession({
+            user: { id: res.user.id, name: res.user.name ?? '', email: '' },
+            token: res.token,
+          });
+        } catch (e) {
+          submittedRef.current = false;
+          setError(e instanceof Error ? e.message : t('otp.errorIncomplete'));
+        }
+      })();
       return;
     }
-    // New user → continue to registration (carry the identifier forward).
+
+    if (knownUser) {
+      // Known mock user → mock session; the (auth) layout redirects to the chosen portal.
+      void signIn({ name: knownUser.name, email: knownUser.email, portal });
+      return;
+    }
+    // New user → continue to registration (carry the identifier + portal forward).
     router.replace({
       pathname: '/register',
-      params: { identifier, channel: channel ?? '' },
+      params: { identifier, channel: channel ?? '', portal },
     } as unknown as Href);
   };
 
@@ -118,10 +146,15 @@ export function OtpVerificationScreen(): React.JSX.Element {
   }, [complete, mode]);
 
   const onResend = (): void => {
-    // Mock only — regenerates the deterministic demo code; nothing is delivered.
-    sendOtpMock(identifier, channel);
+    if (isApiConfigured) {
+      void requestOtp(identifier, portal).catch(() => {});
+    } else {
+      // Mock only — regenerates the deterministic demo code; nothing is delivered.
+      sendOtpMock(identifier, channel);
+    }
     setDigits(Array(OTP_LENGTH).fill(''));
     setResent(true);
+    submittedRef.current = false;
   };
 
   const onPasswordSignIn = (): void => {
@@ -135,7 +168,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
       return;
     }
     setPasswordError(undefined);
-    void signIn({ name: result.user.name, email: result.user.email });
+    void signIn({ name: result.user.name, email: result.user.email, portal });
   };
 
   return (
