@@ -8,7 +8,7 @@ module.exports = defineConfig([
   expoConfig,
   eslintConfigPrettier,
   {
-    ignores: ['dist/*', '.expo/*', 'node_modules/*', 'web-build/*'],
+    ignores: ['dist/*', 'dist-*/*', '.expo/*', 'node_modules/*', 'web-build/*'],
   },
   {
     // The Jest setup file uses the `jest` global at module scope.
