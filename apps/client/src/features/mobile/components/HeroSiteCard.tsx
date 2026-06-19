@@ -62,8 +62,10 @@ export function HeroSiteCard({
   const { rowDirection, isRTL } = useTheme();
 
   return (
-    <PressableScale
-      onPress={onPress}
+    // Root is a plain View (not a Pressable) so the inner "set active" / "check status" buttons
+    // are not nested inside another button — nesting pressables triggers a DOM warning on web and
+    // can swallow taps. The carousel's PanResponder still handles swiping over this View.
+    <View
       accessibilityLabel={site.name}
       style={[
         {
@@ -205,7 +207,10 @@ export function HeroSiteCard({
             </Text>
           </View>
 
-          <View
+          <PressableScale
+            onPress={onPress}
+            testID="hero-view-status"
+            accessibilityLabel={t('home.hero.viewSite')}
             style={{
               flexDirection: rowDirection,
               alignItems: 'center',
@@ -224,9 +229,9 @@ export function HeroSiteCard({
               size={16}
               color={colors.onPrimary}
             />
-          </View>
+          </PressableScale>
         </View>
       </View>
-    </PressableScale>
+    </View>
   );
 }
