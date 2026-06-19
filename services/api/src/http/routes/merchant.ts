@@ -280,8 +280,19 @@ merchantRouter.get(
     const site = await siteFor(req, req.params.siteId);
     const creds = await getWooCredentials(site.id);
     if (creds) {
-      const product = await getProduct(creds, req.params.productId);
-      res.json({ product });
+      const p = await getProduct(creds, req.params.productId);
+      res.json({
+        product: {
+          external_id: p.externalId,
+          name: p.name,
+          sku: p.sku,
+          status: p.status,
+          price_minor: p.priceMinor,
+          currency: p.currency,
+          stock_status: p.stockStatus,
+          stock_qty: p.stockQty,
+        },
+      });
       return;
     }
     const product = await queryOne(
@@ -322,8 +333,18 @@ merchantRouter.get(
     const site = await siteFor(req, req.params.siteId);
     const creds = await getWooCredentials(site.id);
     if (creds) {
-      const order = await getOrder(creds, req.params.orderId);
-      res.json({ order });
+      const o = await getOrder(creds, req.params.orderId);
+      res.json({
+        order: {
+          external_id: o.externalId,
+          number: o.number,
+          status: o.status,
+          total_minor: o.totalMinor,
+          currency: o.currency,
+          customer_name: o.customerName,
+          external_created_at: o.createdAt,
+        },
+      });
       return;
     }
     const order = await queryOne(

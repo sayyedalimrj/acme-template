@@ -35,9 +35,9 @@ npm run export:web   # خروجی استاتیک در ./dist برای انتشا
 ```
 
 **برای رفتن به حالت واقعی (اتصال به فروشگاه‌ها + پرداخت):**
-باید بک‌اند `apps/api` را با یک پایگاه‌داده‌ی Postgres، انبار امن کلیدها (vault)، و درگاه پرداخت
-سمت سرور پیاده‌سازی کنید، سپس در فرانت‌اند `dataSource` را به `http` و `apiBaseUrl` را به آدرس
-بک‌اند تغییر دهید. جزئیات قدم‌به‌قدم در بخش‌های انگلیسی پایین آمده است.
+باید بک‌اند `services/api` را با Postgres و ippanel روی سرور بالا بیاورید و سه ساب‌دامین جدا
+بیلد کنید. **راهنمای قدم‌به‌قدم فارسی:** `SERVER_SETUP.fa.md`. جزئیات فنی انگلیسی در بخش‌های
+پایین همین فایل (`DEPLOYMENT.md`) آمده است.
 
 > امنیت (مهم): هیچ کلید/رمز فروشگاه یا درگاه پرداخت **هرگز** نباید داخل فرانت‌اند یا داخل گیت
 > قرار بگیرد. همه‌ی کلیدها فقط در متغیرهای محیطی سمت سرور (Secret Manager) نگه‌داری می‌شوند.
@@ -63,12 +63,12 @@ npm run export:web   # خروجی استاتیک در ./dist برای انتشا
 
 | Component          | Status today                              | Needed for go‑live                                  |
 | ------------------ | ----------------------------------------- | --------------------------------------------------- |
-| `apps/client`      | ✅ 3 portal builds (merchant/admin/affiliate) on mock UI data; **real phone-OTP login** when wired | Set `EXPO_PUBLIC_PORTAL` + `EXPO_PUBLIC_API_BASE_URL` per subdomain |
-| `services/api`     | ✅ **Runnable** Express API: OTP (ippanel) + JWT + RBAC + Postgres | Provide DB + ippanel keys + secrets; deploy        |
-| `apps/api`         | 🟡 Design/contracts skeleton (proxy/vault/payments) | Implement the WooCommerce/WP proxy + credential vault |
-| Database           | ✅ Postgres schema (`services/api/db/schema.sql`) + migration runner | Provision Postgres, run `npm run migrate`           |
-| Payments           | 🟡 Gateway **contract** (`apps/api`)      | Implement one provider server-side + webhooks       |
-| `wordpress-plugin` | ✅ PHP companion + signed sync contracts   | Install on the merchant site, share signing secret  |
+| `apps/client`      | ✅ 3 portal builds (merchant/admin/affiliate); **real backend data + phone-OTP login** when `EXPO_PUBLIC_API_BASE_URL` is set (mock otherwise) | Set `EXPO_PUBLIC_PORTAL` + `EXPO_PUBLIC_API_BASE_URL` per subdomain |
+| `services/api`     | ✅ **Production backend**: OTP+JWT+refresh, granular RBAC + tenant/site isolation, AES-256-GCM credential vault, **WooCommerce REST proxy**, **plugin signed sync**, webhooks, billing, audit | Provide DB + secrets + ippanel/gateway keys; deploy |
+| `apps/api`         | 🟡 Design/contracts reference (the runnable backend lives in `services/api`) | Optional: keep as reference; no deploy needed       |
+| Database           | ✅ Ordered, tracked Postgres migrations (`services/api/db/migrations/`) | Provision Postgres, run `npm run migrate`           |
+| Payments           | ✅ Gateway adapter (manual/mock/zarinpal) + checkout→verify + idempotent billing events | Configure `BILLING_PROVIDER` + provider keys        |
+| `wordpress-plugin` | ✅ Production companion: settings + **HMAC-signed handshake/sync** + WP-cron + sync-now | Install on the merchant site, paste connection + signing secret |
 
 > **Three subdomains:** the client is deployed **three times** — one per portal — each fixed to a
 > portal via `EXPO_PUBLIC_PORTAL` and pointed at the one backend via `EXPO_PUBLIC_API_BASE_URL`.
@@ -141,26 +141,31 @@ icons, service worker, iOS viewport) and sets the document shell.
 
 ### A5. Switch the app from mock data to the real backend (at go‑live)
 
-The data source is controlled in `apps/client/src/config/app.config.ts`:
+The data source is now **automatic**: `apps/client/src/config/app.config.ts` selects `http` when
+`EXPO_PUBLIC_API_BASE_URL` is set at build time, and `mock` otherwise. There is nothing to edit:
 
-```ts
-export const appConfig: AppConfig = {
-  dataSource: 'mock',   // ← change to 'http' once the backend is live
-  apiBaseUrl: '',       // ← set to your backend base URL, e.g. 'https://api.example.com'
-  defaultLocale: 'fa',
-  defaultDirection: 'rtl',
-  appName: 'Store Manager',
-  appVersion: '0.1.0',
-};
+```bash
+EXPO_PUBLIC_API_BASE_URL=https://api.example.com EXPO_PUBLIC_PORTAL=merchant npm run export:web:merchant
 ```
 
-- Until the backend exists, keep `dataSource: 'mock'` (the app is fully usable as a demo).
-- The frontend talks **only** to `apps/api`, never directly to a merchant store, and never
-  holds store/payment secrets.
+- With no `EXPO_PUBLIC_API_BASE_URL`, the app runs entirely on in-memory mock data (great for demos
+  and tests).
+- With it set, the three portals call the real backend for login (OTP + refresh) and data:
+  merchant store data (products/orders/customers/coupons/reports via the server-side WooCommerce
+  proxy), admin platform data, and affiliate referrals/commissions/payouts.
+- The frontend talks **only** to `services/api`, never directly to a merchant store, and never
+  holds store/payment secrets. WooCommerce keys are entered once on the Connect-Site screen and go
+  straight to the backend vault (HTTPS) — they are never persisted in the app.
+- A few AI/ops surfaces (advisor, media studio, intelligence, automation, support inbox, plan
+  display) have no production backend yet and remain on in-memory demo data even in `http` mode;
+  they are clearly isolated and non-critical.
 
 ---
 
 ## Part S — Three subdomains + phone‑OTP backend (recommended setup)
+
+> **Persian VPS walkthrough:** see **`SERVER_SETUP.fa.md`** (Ubuntu 24.04, Postgres, Nginx, Certbot,
+> systemd, ippanel). Example configs: `services/api/deploy/`.
 
 This is the concrete path to deploy the three portals on three subdomains with **real OTP login**.
 
@@ -226,9 +231,59 @@ A merchant token calling `/admin/*` gets `403`. Admin login is restricted to
 
 ### S5. Database
 
-`services/api/db/schema.sql` is the concrete Postgres schema (users, OTP, marketers, merchants,
-referrals, commissions, payouts, platform orders, audit log). Apply it with `npm run migrate`.
-Money is stored as integer minor units; no card data is ever stored.
+`services/api/db/migrations/` holds ordered, tracked Postgres migrations (users, OTP, sessions,
+tenants + members, sites + connections + **encrypted credentials**, sync read-models, webhook +
+plugin events, replay nonces, plans/subscriptions/billing, marketers/referrals/commissions/
+payouts, audit log). Apply with `npm run migrate` (idempotent; re-runnable). Money is stored as
+integer minor units; **no card data and no raw secrets** are ever stored. Rollback guidance:
+`services/api/db/migrations/ROLLBACK.md`.
+
+---
+
+## Part W — Connect a merchant's WooCommerce store
+
+Two server-side connection modes (the frontend never holds store keys):
+
+### Mode A — WooCommerce REST credentials (direct)
+
+1. Merchant opens the merchant portal → **Connect site**, enters the store name + URL, and (with a
+   live backend) the WooCommerce **consumer key + secret**.
+2. In WooCommerce: **WooCommerce → Settings → Advanced → REST API → Add key** (Read/Write).
+3. The backend verifies the keys against the store, seals them in the AES‑256‑GCM vault, marks the
+   site **connected**, and runs an initial sync. Merchant data then loads from the server-side
+   WooCommerce proxy.
+4. (Optional realtime) `POST /merchant/sites/:id/webhook-secret` returns a secret + delivery URL;
+   add a WooCommerce webhook (Settings → Advanced → Webhooks) to that URL using that secret. The
+   backend verifies the `x-wc-webhook-signature` HMAC and updates the read-model idempotently.
+
+### Mode B — WordPress companion plugin (signed sync)
+
+1. Merchant opens **Connect site → Plugin mode**. The backend returns `siteId`, `tenantId`, a
+   one-time **signing secret**, and the plugin delivery base URL.
+2. Install `wordpress-plugin/` on the store, open **WordPress Commerce OS → Backend connection**,
+   and paste the backend URL (`https://api.example.com/plugin`), site id, tenant id, and signing
+   secret. Click **Connect (handshake)**.
+3. The plugin signs every request (HMAC‑SHA256 over the exact body + timestamp + nonce). The
+   backend verifies the signature, timestamp window, and nonce (replay protection), then persists
+   the normalized read-model. A WP‑cron job syncs hourly; **Sync now** triggers it on demand.
+
+Verify a connection: `GET /merchant/sites/:id/status` (shows connection + last sync run); the
+admin portal shows all sites + sync runs and can trigger a resync.
+
+---
+
+## Part X — Production checklist (go‑live)
+
+- [ ] `services/api` deployed on `api.example.com` behind HTTPS (Nginx reverse proxy).
+- [ ] Postgres provisioned; `npm run migrate` applied (no `--seed` in production).
+- [ ] Secrets set: `JWT_SECRET`, `OTP_HASH_SECRET`, `CREDENTIAL_ENCRYPTION_KEY` (32‑byte),
+      `ADMIN_MOBILE_ALLOWLIST`, ippanel keys, billing keys, `PAYMENT_WEBHOOK_SECRET`.
+- [ ] `CORS_ORIGINS` = exactly the three portal origins (`https://app…,https://admin…,https://partner…`).
+- [ ] `SMS_DRY_RUN=false` with valid ippanel pattern/originator.
+- [ ] Three frontend builds deployed per subdomain with `EXPO_PUBLIC_PORTAL` + `EXPO_PUBLIC_API_BASE_URL`.
+- [ ] No secrets in git or the frontend bundle; quality gates pass (typecheck/lint/test/build).
+- [ ] OTP login works on each portal; non-admin token → 403 on `/admin/*` (RBAC verified).
+- [ ] At least one WooCommerce store connected (REST or plugin) and showing real data.
 
 ---
 
