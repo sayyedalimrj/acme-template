@@ -63,6 +63,19 @@ const TEMPLATES: TemplateOption[] = [
   { id: 'modern', labelKey: 'createSite.tpl.modern', tint: '#F08A3C' },
 ];
 
+interface PlanOption {
+  id: string;
+  labelKey: StringKey;
+  /** Display-only price label for the whole year (Persian numerals, no currency word). */
+  priceAmount: string;
+}
+
+const SITE_PLANS: PlanOption[] = [
+  { id: 'basic', labelKey: 'createSite.plan.basic', priceAmount: '۲٬۹۰۰٬۰۰۰' },
+  { id: 'growth', labelKey: 'createSite.plan.growth', priceAmount: '۴٬۹۰۰٬۰۰۰' },
+  { id: 'pro', labelKey: 'createSite.plan.pro', priceAmount: '۷٬۹۰۰٬۰۰۰' },
+];
+
 export function CreateSiteScreen(): React.JSX.Element {
   const colors = useMobileColors();
   const shadow = useMobileShadow();
@@ -76,11 +89,17 @@ export function CreateSiteScreen(): React.JSX.Element {
   const [instagram, setInstagram] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [template, setTemplate] = useState<string | null>(null);
+  const [plan, setPlan] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   const align = isRTL ? 'right' : 'left';
+  const selectedPlan = SITE_PLANS.find((p) => p.id === plan) ?? null;
   const canSubmit =
-    name.trim().length > 0 && domain.trim().length > 0 && Boolean(category) && Boolean(template);
+    name.trim().length > 0 &&
+    domain.trim().length > 0 &&
+    Boolean(category) &&
+    Boolean(template) &&
+    Boolean(plan);
 
   const fieldStyle = {
     height: 52,
@@ -276,6 +295,59 @@ export function CreateSiteScreen(): React.JSX.Element {
           </ScrollView>
         </View>
 
+        <View>
+          <FieldLabel text={t('createSite.planLabel')} color={colors.text} size={type.labelSize} align={align} />
+          <View style={{ gap: 10 }}>
+            {SITE_PLANS.map((p) => {
+              const selected = plan === p.id;
+              return (
+                <Pressable
+                  key={p.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  testID={`create-site-plan-${p.id}`}
+                  onPress={() => setPlan(p.id)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    borderRadius: 14,
+                    paddingVertical: 14,
+                    paddingHorizontal: 16,
+                    backgroundColor: selected ? colors.primarySoft : colors.tile,
+                    borderWidth: 2,
+                    borderColor: selected ? colors.primary : 'transparent',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Ionicons
+                      name={selected ? 'radio-button-on' : 'radio-button-off'}
+                      size={20}
+                      color={selected ? colors.primary : colors.textSecondary}
+                    />
+                    <Text
+                      style={{
+                        fontSize: type.bodySize,
+                        fontWeight: '700',
+                        color: selected ? colors.primary : colors.text,
+                      }}
+                    >
+                      {t(p.labelKey)}
+                    </Text>
+                  </View>
+                  <Text
+                    style={{ fontSize: type.captionSize, color: colors.textSecondary }}
+                    numberOfLines={1}
+                  >
+                    {p.priceAmount} {t('createSite.plan.perYear')}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         <View
           style={[
             {
@@ -292,7 +364,7 @@ export function CreateSiteScreen(): React.JSX.Element {
             {t('createSite.priceLabel')}
           </Text>
           <Text style={{ fontSize: type.sectionSize, fontWeight: '700', color: colors.text }}>
-            ۲٬۹۰۰٬۰۰۰ ﷼
+            {selectedPlan ? `${selectedPlan.priceAmount} ﷼` : '—'}
           </Text>
         </View>
 

@@ -104,7 +104,7 @@ describe('password login (mock)', () => {
     const result = verifyMockPassword('operator@demo.local', MOCK_PASSWORD, 'email');
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.user.name).toBe('Demo Operator');
+      expect(result.user.name).toBe('اپراتور آزمایشی');
     }
   });
 

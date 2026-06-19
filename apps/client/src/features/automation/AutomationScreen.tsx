@@ -1,10 +1,12 @@
 /**
- * SMS & Back-in-stock automation (index) — simplified, mock-only.
+ * SMS automation & Campaigns (index) — simplified, mock-only, but kept as TWO clearly distinct
+ * domains:
+ *  1) "SMS automation" — triggered alerts (back-in-stock subscriptions + automation rules).
+ *  2) "Campaigns" — review-only message campaign drafts + preview.
  *
- * Pared back to the essentials a merchant cares about: a one-line provider status, who is
- * waiting for a back-in-stock alert, and review-only message drafts. The busy
- * provider/consent readiness matrix, conversion-readiness/budget badges, audience-size and
- * char-count chips, and the rules table were removed to reduce clutter.
+ * Each domain has its own labeled section header so they never read as one merged list. The
+ * busy provider/consent readiness matrix and the conversion/budget/audience/char-count chips
+ * were removed to reduce clutter (kept lighter than the original).
  *
  * SECURITY/PRIVACY: MOCK-ONLY. No real SMS/email/WhatsApp provider, no messages sent, no real
  * phone numbers/sender IDs/keys, no scheduler. Sending is disabled; consent + opt-out are
@@ -38,6 +40,8 @@ import {
   buildMessagePreview,
   channelLabelKey,
   providerStatusMeta,
+  readinessMeta,
+  ruleTypeLabelKey,
 } from './automationHelpers';
 import { useAutomationOverview, useCampaignDrafts } from './useAutomation';
 import {
@@ -46,6 +50,29 @@ import {
   useDismissDraft,
   useMarkDraftReviewed,
 } from './useAutomationMutations';
+
+function SectionHeading({
+  icon,
+  title,
+  hint,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  title: string;
+  hint: string;
+}): React.JSX.Element {
+  const { tokens, rowDirection } = useTheme();
+  return (
+    <View style={{ gap: 2, marginTop: tokens.spacing.xs }}>
+      <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.sm }}>
+        <Ionicons name={icon} size={18} color={tokens.color.primary} />
+        <Text variant="heading">{title}</Text>
+      </View>
+      <Text variant="caption" tone="muted">
+        {hint}
+      </Text>
+    </View>
+  );
+}
 
 export function AutomationScreen(): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
@@ -138,6 +165,13 @@ export function AutomationScreen(): React.JSX.Element {
             );
           })()}
 
+          {/* ===== SMS automation domain ===== */}
+          <SectionHeading
+            icon="notifications-outline"
+            title={t('automation.section.sms')}
+            hint={t('automation.section.smsHint')}
+          />
+
           {/* B. Back-in-stock subscriptions — simple list. */}
           <Card title={t('automation.subscriptionsTitle')}>
             {overviewQuery.data.subscriptions.map((sub, index) => (
@@ -189,6 +223,44 @@ export function AutomationScreen(): React.JSX.Element {
               </View>
             ))}
           </Card>
+
+          {/* Automation rules — simplified list (kept distinct from campaigns). */}
+          <Card title={t('automation.rulesTitle')}>
+            {overviewQuery.data.rules.map((rule, index) => {
+              const meta = readinessMeta(rule.status === 'mock' ? 'mock' : 'planned');
+              return (
+                <View key={rule.id}>
+                  {index > 0 ? <Divider /> : null}
+                  <View style={{ paddingVertical: tokens.spacing.sm, gap: 4 }}>
+                    <View
+                      style={{
+                        flexDirection: rowDirection,
+                        alignItems: 'center',
+                        gap: tokens.spacing.xs,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <Text variant="label" style={{ flexShrink: 1 }}>
+                        {t(ruleTypeLabelKey(rule.ruleType))}
+                      </Text>
+                      <Badge tone="info" label={t(channelLabelKey(rule.channel))} />
+                      <Badge tone={meta.tone} label={t(meta.labelKey)} />
+                    </View>
+                    <Text variant="caption" tone="muted">
+                      {rule.trigger}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </Card>
+
+          {/* ===== Campaigns domain ===== */}
+          <SectionHeading
+            icon="megaphone-outline"
+            title={t('automation.section.campaigns')}
+            hint={t('automation.section.campaignsHint')}
+          />
 
           {/* C. Message drafts — simple cards (no conversion/budget/audience clutter). */}
           <Card title={t('automation.draftsTitle')}>

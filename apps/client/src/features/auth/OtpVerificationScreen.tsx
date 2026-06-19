@@ -1,10 +1,14 @@
 /**
  * OtpVerificationScreen — mock 4-digit OTP step (mobile-first).
  *
- * Shows 4 OTP boxes, the masked target, a back button, and a mock "resend". On verify:
+ * Default: enter the 4-digit code. On verify:
  *  - a known mock user → establish a mock session (the auth layout redirects to the dashboard),
  *  - an unknown/new user → continue to the registration screen.
- * UI-only: no code is sent or validated against any provider; the demo code is 1234.
+ *
+ * For ALREADY-REGISTERED (known) numbers only, a secondary "sign in with password" option is
+ * offered: it swaps the code boxes for a password field and signs in via `verifyMockPassword`.
+ * New users never see the password option. UI-only: no code is sent/validated; demo code 1234,
+ * demo password demo1234.
  */
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -15,6 +19,7 @@ import { useT } from '@/i18n/I18nProvider';
 import { useSession } from '@/session/SessionProvider';
 import { useTheme } from '@/theme';
 
+import { AuthField } from './components/AuthField';
 import { AuthFrame } from './components/AuthFrame';
 import { AuthPrimaryButton } from './components/AuthPrimaryButton';
 import { OtpBoxes } from './components/OtpBoxes';
@@ -26,7 +31,7 @@ import {
   sendOtpMock,
   type IdentifierChannel,
 } from './authHelpers';
-import { findMockUser } from './authMockUsers';
+import { findMockUser, verifyMockPassword } from './authMockUsers';
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -34,6 +39,8 @@ function firstParam(value: string | string[] | undefined): string {
   }
   return value ?? '';
 }
+
+type Mode = 'otp' | 'password';
 
 export function OtpVerificationScreen(): React.JSX.Element {
   const t = useT();
@@ -47,8 +54,14 @@ export function OtpVerificationScreen(): React.JSX.Element {
   const channel: IdentifierChannel | undefined =
     channelParam === 'email' || channelParam === 'mobile' ? channelParam : undefined;
 
+  // Only already-registered numbers get the password-login option.
+  const knownUser = findMockUser(identifier, channel);
+
+  const [mode, setMode] = useState<Mode>('otp');
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState<string | undefined>();
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | undefined>();
   const [resent, setResent] = useState(false);
   // Guards against the auto-submit firing more than once for a single completed code.
   const submittedRef = useRef(false);
@@ -67,10 +80,9 @@ export function OtpVerificationScreen(): React.JSX.Element {
     }
     submittedRef.current = true;
     setError(undefined);
-    const user = findMockUser(identifier, channel);
-    if (user) {
+    if (knownUser) {
       // Known mock user → mock session; the (auth) layout redirects to the dashboard.
-      void signIn({ name: user.name, email: user.email });
+      void signIn({ name: knownUser.name, email: knownUser.email });
       return;
     }
     // New user → continue to registration (carry the identifier forward).
@@ -92,6 +104,9 @@ export function OtpVerificationScreen(): React.JSX.Element {
   // user clears/edits so a corrected code can submit again.
   const complete = isOtpComplete(digits);
   useEffect(() => {
+    if (mode !== 'otp') {
+      return;
+    }
     if (complete) {
       submit();
     } else {
@@ -100,7 +115,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
     // We intentionally key only on completion so the auto-submit fires once when the code
     // becomes complete; `submit` reads the latest identifier/channel each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [complete]);
+  }, [complete, mode]);
 
   const onResend = (): void => {
     // Mock only — regenerates the deterministic demo code; nothing is delivered.
@@ -109,11 +124,25 @@ export function OtpVerificationScreen(): React.JSX.Element {
     setResent(true);
   };
 
+  const onPasswordSignIn = (): void => {
+    if (password.length === 0) {
+      setPasswordError(t('auth.password.errorRequired'));
+      return;
+    }
+    const result = verifyMockPassword(identifier, password, channel);
+    if (!result.ok) {
+      setPasswordError(t('auth.password.errorWrong'));
+      return;
+    }
+    setPasswordError(undefined);
+    void signIn({ name: result.user.name, email: result.user.email });
+  };
+
   return (
     <AuthFrame
       testID="otp-screen"
-      iconName="shield-checkmark-outline"
-      title={t('otp.title')}
+      iconName={mode === 'password' ? 'lock-closed-outline' : 'shield-checkmark-outline'}
+      title={mode === 'password' ? t('auth.password.title') : t('otp.title')}
       subtitle={t('otp.subtitle')}
       maskedTarget={masked}
       showBack
@@ -127,65 +156,142 @@ export function OtpVerificationScreen(): React.JSX.Element {
             textAlign: 'center',
           }}
         >
-          {t('otp.devHint')}
+          {mode === 'password' ? t('auth.password.devHint') : t('otp.devHint')}
         </Text>
       }
     >
-      <OtpBoxes
-        digits={digits}
-        error={Boolean(error)}
-        onChange={(next) => {
-          setDigits(next);
-          if (error) {
-            setError(undefined);
-          }
-        }}
-      />
-      {error ? (
-        <Text
-          style={{
-            fontSize: authType.helperSize,
-            color: authColors.danger,
-            textAlign: 'center',
-          }}
-        >
-          {error}
-        </Text>
-      ) : null}
+      {mode === 'otp' ? (
+        <>
+          <OtpBoxes
+            digits={digits}
+            error={Boolean(error)}
+            onChange={(next) => {
+              setDigits(next);
+              if (error) {
+                setError(undefined);
+              }
+            }}
+          />
+          {error ? (
+            <Text
+              style={{
+                fontSize: authType.helperSize,
+                color: authColors.danger,
+                textAlign: 'center',
+              }}
+            >
+              {error}
+            </Text>
+          ) : null}
 
-      <AuthPrimaryButton testID="otp-submit" label={t('otp.verify')} onPress={onVerify} />
+          <AuthPrimaryButton testID="otp-submit" label={t('otp.verify')} onPress={onVerify} />
 
-      <View
-        style={{
-          flexDirection: rowDirection,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexWrap: 'wrap',
-          gap: 6,
-        }}
-      >
-        <Text style={{ fontSize: authType.helperSize, color: authColors.textSecondary }}>
-          {t('otp.resendQuestion')}
-        </Text>
-        <Pressable accessibilityRole="button" onPress={onResend} testID="otp-resend">
-          <Text
-            style={{ fontSize: authType.helperSize, fontWeight: '700', color: authColors.primary }}
+          <View
+            style={{
+              flexDirection: rowDirection,
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: 6,
+            }}
           >
-            {t('otp.resendAction')}
-          </Text>
-        </Pressable>
-      </View>
-      {resent ? (
-        <Text
-          style={{
-            fontSize: authType.helperSize,
-            color: authColors.textSecondary,
-            textAlign: 'center',
-          }}
-        >
-          {t('otp.resent')}
-        </Text>
-      ) : null}
+            <Text style={{ fontSize: authType.helperSize, color: authColors.textSecondary }}>
+              {t('otp.resendQuestion')}
+            </Text>
+            <Pressable accessibilityRole="button" onPress={onResend} testID="otp-resend">
+              <Text
+                style={{
+                  fontSize: authType.helperSize,
+                  fontWeight: '700',
+                  color: authColors.primary,
+                }}
+              >
+                {t('otp.resendAction')}
+              </Text>
+            </Pressable>
+          </View>
+          {resent ? (
+            <Text
+              style={{
+                fontSize: authType.helperSize,
+                color: authColors.textSecondary,
+                textAlign: 'center',
+              }}
+            >
+              {t('otp.resent')}
+            </Text>
+          ) : null}
+
+          {/* Password login — only for already-registered numbers. */}
+          {knownUser ? (
+            <Pressable
+              accessibilityRole="button"
+              testID="otp-use-password"
+              onPress={() => {
+                setMode('password');
+                setError(undefined);
+              }}
+              style={{ alignItems: 'center', paddingTop: 4 }}
+            >
+              <Text
+                style={{
+                  fontSize: authType.helperSize,
+                  fontWeight: '700',
+                  color: authColors.primary,
+                }}
+              >
+                {t('auth.password.option')}
+              </Text>
+            </Pressable>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <AuthField
+            testID="otp-password-input"
+            label={t('auth.passwordLabel')}
+            placeholder={t('auth.passwordPlaceholder')}
+            value={password}
+            onChangeText={(next) => {
+              setPassword(next);
+              if (passwordError) {
+                setPasswordError(undefined);
+              }
+            }}
+            error={passwordError}
+            secureTextEntry
+            forceLtrValue
+            autoFocus
+            returnKeyType="go"
+            onSubmitEditing={onPasswordSignIn}
+          />
+          <AuthPrimaryButton
+            testID="otp-password-submit"
+            label={t('auth.password.signIn')}
+            onPress={onPasswordSignIn}
+            disabled={password.length === 0}
+          />
+          <Pressable
+            accessibilityRole="button"
+            testID="otp-use-code"
+            onPress={() => {
+              setMode('otp');
+              setPasswordError(undefined);
+            }}
+            style={{ alignItems: 'center', paddingTop: 4 }}
+          >
+            <Text
+              style={{
+                fontSize: authType.helperSize,
+                fontWeight: '700',
+                color: authColors.primary,
+              }}
+            >
+              {t('auth.password.useCode')}
+            </Text>
+          </Pressable>
+        </>
+      )}
     </AuthFrame>
   );
 }

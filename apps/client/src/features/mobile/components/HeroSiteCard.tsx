@@ -41,6 +41,10 @@ export interface HeroSiteCardProps {
   renewalLabel?: string;
   onPress: () => void;
   width?: DimensionValue;
+  /** Whether this store is the currently-selected active store (its data is shown app-wide). */
+  isActive?: boolean;
+  /** Called when the user taps "set as active" (only shown when the store is not active). */
+  onActivate?: () => void;
 }
 
 export function HeroSiteCard({
@@ -48,6 +52,8 @@ export function HeroSiteCard({
   renewalLabel,
   onPress,
   width = '100%',
+  isActive = false,
+  onActivate,
 }: HeroSiteCardProps): React.JSX.Element {
   const t = useT();
   const colors = useMobileColors();
@@ -131,45 +137,94 @@ export function HeroSiteCard({
         <CustomerStatusBadge status={site.status} onDark />
       </View>
 
-      <View
-        style={{
-          flexDirection: rowDirection,
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <View style={{ minWidth: 0 }}>
-          <Text style={{ fontSize: 12, color: colors.heroTextSoft }}>
-            {t('home.hero.renewal')}
-          </Text>
-          <Text
-            style={{ fontSize: 14, fontWeight: '600', color: colors.heroText }}
-            numberOfLines={1}
+      <View style={{ gap: 12 }}>
+        {/* Active-store control: a clear "Active store" chip when selected, otherwise a tappable
+            "Set as active" button that switches the whole dashboard to this store. */}
+        {isActive ? (
+          <View
+            testID="hero-active-indicator"
+            style={{
+              flexDirection: rowDirection,
+              alignItems: 'center',
+              alignSelf: isRTL ? 'flex-end' : 'flex-start',
+              gap: 6,
+              paddingHorizontal: 12,
+              height: 32,
+              borderRadius: 999,
+              backgroundColor: 'rgba(43,167,112,0.22)',
+            }}
           >
-            {renewalLabel ?? '—'}
-          </Text>
-        </View>
+            <Ionicons name="checkmark-circle" size={16} color="#7CE3B0" />
+            <Text style={{ color: colors.heroText, fontWeight: '700', fontSize: 12 }}>
+              {t('home.hero.active')}
+            </Text>
+          </View>
+        ) : onActivate ? (
+          <PressableScale
+            onPress={onActivate}
+            testID="hero-activate"
+            accessibilityLabel={t('home.hero.activate')}
+            style={{
+              flexDirection: rowDirection,
+              alignItems: 'center',
+              justifyContent: 'center',
+              alignSelf: isRTL ? 'flex-end' : 'flex-start',
+              gap: 6,
+              paddingHorizontal: 14,
+              height: 36,
+              borderRadius: 10,
+              backgroundColor: colors.heroLayer,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.28)',
+            }}
+          >
+            <Ionicons name="power" size={15} color={colors.heroText} />
+            <Text style={{ color: colors.heroText, fontWeight: '700', fontSize: 13 }}>
+              {t('home.hero.activate')}
+            </Text>
+          </PressableScale>
+        ) : null}
 
         <View
           style={{
             flexDirection: rowDirection,
             alignItems: 'center',
-            gap: 6,
-            paddingHorizontal: 14,
-            height: 40,
-            borderRadius: 10,
-            backgroundColor: colors.primary,
+            justifyContent: 'space-between',
+            gap: 12,
           }}
         >
-          <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 14 }}>
-            {t('home.hero.viewSite')}
-          </Text>
-          <Ionicons
-            name={isRTL ? 'chevron-back' : 'chevron-forward'}
-            size={16}
-            color={colors.onPrimary}
-          />
+          <View style={{ minWidth: 0 }}>
+            <Text style={{ fontSize: 12, color: colors.heroTextSoft }}>
+              {t('home.hero.renewal')}
+            </Text>
+            <Text
+              style={{ fontSize: 14, fontWeight: '600', color: colors.heroText }}
+              numberOfLines={1}
+            >
+              {renewalLabel ?? '—'}
+            </Text>
+          </View>
+
+          <View
+            style={{
+              flexDirection: rowDirection,
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 14,
+              height: 40,
+              borderRadius: 10,
+              backgroundColor: colors.primary,
+            }}
+          >
+            <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 14 }}>
+              {t('home.hero.viewSite')}
+            </Text>
+            <Ionicons
+              name={isRTL ? 'chevron-back' : 'chevron-forward'}
+              size={16}
+              color={colors.onPrimary}
+            />
+          </View>
         </View>
       </View>
     </PressableScale>

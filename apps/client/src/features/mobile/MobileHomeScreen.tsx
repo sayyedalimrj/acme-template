@@ -303,9 +303,15 @@ export function MobileHomeScreen(): React.JSX.Element {
     return key ? t(key) : undefined;
   };
 
-  // Switching the visible store switches the ACTIVE store, so every site-scoped screen
-  // (products / orders / customers) and the overview reflect the chosen store — no button.
+  // Swiping the carousel PREVIEWS a store (updates the at-a-glance overview here) without
+  // changing the global active store.
   const handleSelectSite = (siteId: string): void => {
+    setViewSiteId(siteId);
+  };
+
+  // Tapping "Set as active" on a card switches the ACTIVE store, so every site-scoped screen
+  // (products / orders / customers) and the overview reflect the chosen store everywhere.
+  const handleActivateSite = (siteId: string): void => {
     setViewSiteId(siteId);
     if (siteId !== activeSite?.id) {
       setActiveSite.mutate(siteId);
@@ -338,7 +344,9 @@ export function MobileHomeScreen(): React.JSX.Element {
             <SiteCarousel
               sites={siteList}
               initialActiveSiteId={activeSite?.id}
+              activeSiteId={activeSite?.id}
               onSelectSite={handleSelectSite}
+              onActivateSite={handleActivateSite}
               onPressSite={() => go('/plans')}
               onPressAdd={() => go('/create-site')}
               renewalFor={renewalFor}

@@ -34,8 +34,12 @@ export interface SiteCarouselProps {
   sites: SiteConnection[];
   /** Store shown first (usually the active store). */
   initialActiveSiteId?: string;
-  /** Called when a STORE page settles (swipe/dot) so the parent can switch the active store. */
+  /** The currently-active store id (drives the per-card "Active store" indicator). */
+  activeSiteId?: string;
+  /** Called when a STORE page settles (swipe/dot) so the parent can PREVIEW that store. */
   onSelectSite: (siteId: string) => void;
+  /** Called when the card's "Set as active" button is tapped (explicit activation). */
+  onActivateSite: (siteId: string) => void;
   /** Called when a hero card is pressed (e.g. open plans). */
   onPressSite: (site: SiteConnection) => void;
   /** Called when the "add a store" card is pressed. */
@@ -105,7 +109,9 @@ function AddSiteCard({ onPress }: { onPress: () => void }): React.JSX.Element {
 export function SiteCarousel({
   sites,
   initialActiveSiteId,
+  activeSiteId,
   onSelectSite,
+  onActivateSite,
   onPressSite,
   onPressAdd,
   renewalFor,
@@ -202,6 +208,8 @@ export function SiteCarousel({
                   site={site}
                   renewalLabel={renewalFor(site)}
                   onPress={() => onPressSite(site)}
+                  isActive={site.id === activeSiteId}
+                  onActivate={() => onActivateSite(site.id)}
                 />
               </View>
             ))}
@@ -214,6 +222,8 @@ export function SiteCarousel({
             site={sites[0]}
             renewalLabel={renewalFor(sites[0])}
             onPress={() => onPressSite(sites[0])}
+            isActive={sites[0]?.id === activeSiteId}
+            onActivate={() => onActivateSite(sites[0].id)}
           />
         )}
       </View>
