@@ -80,8 +80,16 @@ export function OtpBoxes({
   return (
     <View
       // OTP digits always read left-to-right, even in the RTL (Persian) UI. Boxes flex to fill
-      // the row so the group lines up with the full-width verify button beneath it.
-      style={{ flexDirection: 'row', gap: 12 }}
+      // the row so the group lines up with the full-width verify button beneath it. `alignSelf`
+      // centers the (capped-width) group; `direction: ltr` keeps box order stable under RTL.
+      style={{
+        flexDirection: 'row',
+        gap: 12,
+        alignSelf: 'center',
+        width: '100%',
+        maxWidth: 320,
+        direction: 'ltr',
+      }}
       accessibilityLabel={`${OTP_LENGTH}-digit verification code`}
     >
       {Array.from({ length: OTP_LENGTH }).map((_, index) => {
@@ -109,6 +117,9 @@ export function OtpBoxes({
             accessibilityLabel={`Digit ${index + 1}`}
             style={{
               flex: 1,
+              // Critical on web: without `minWidth: 0`, the input's intrinsic content width
+              // prevents flex from shrinking the boxes and they overflow the frame.
+              minWidth: 0,
               height: authMetrics.otpBoxHeight,
               textAlign: 'center',
               writingDirection: 'ltr',
