@@ -1,12 +1,14 @@
 /**
- * SMS & Back-in-stock automation (index) — mock-only.
+ * SMS & Back-in-stock automation (index) — simplified, mock-only.
  *
- * Sections: header + safety note, provider/consent readiness, back-in-stock subscriptions,
- * grouped review-only campaign drafts, a consent-gated SMS preview, and automation rules.
+ * Pared back to the essentials a merchant cares about: a one-line provider status, who is
+ * waiting for a back-in-stock alert, and review-only message drafts. The busy
+ * provider/consent readiness matrix, conversion-readiness/budget badges, audience-size and
+ * char-count chips, and the rules table were removed to reduce clutter.
  *
- * SECURITY/PRIVACY: MOCK-ONLY. No real SMS/email/WhatsApp provider, no Kavenegar/Twilio/
- * Klaviyo, no messages sent, no real phone numbers/sender IDs/keys, no scheduler. Sending is
- * disabled; consent + opt-out are required before any future real send (see security-model.md).
+ * SECURITY/PRIVACY: MOCK-ONLY. No real SMS/email/WhatsApp provider, no messages sent, no real
+ * phone numbers/sender IDs/keys, no scheduler. Sending is disabled; consent + opt-out are
+ * required before any future real send (see security-model.md).
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -30,19 +32,12 @@ import {
 import { SecurityNote } from '@/features/onboarding/components/SecurityNote';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
-import type { NotificationReadiness } from '@/domain/types';
-import type { StringKey } from '@/i18n/strings';
 
 import {
   actionStatusMeta,
   buildMessagePreview,
   channelLabelKey,
-  consentMeta,
-  conversionReadinessMeta,
-  groupDraftsByRuleType,
   providerStatusMeta,
-  readinessMeta,
-  ruleTypeLabelKey,
 } from './automationHelpers';
 import { useAutomationOverview, useCampaignDrafts } from './useAutomation';
 import {
@@ -51,15 +46,6 @@ import {
   useDismissDraft,
   useMarkDraftReviewed,
 } from './useAutomationMutations';
-
-const READINESS_ROWS: { key: keyof NotificationReadiness; labelKey: StringKey }[] = [
-  { key: 'smsProvider', labelKey: 'automation.readinessRow.smsProvider' },
-  { key: 'kavenegar', labelKey: 'automation.readinessRow.kavenegar' },
-  { key: 'twilio', labelKey: 'automation.readinessRow.twilio' },
-  { key: 'email', labelKey: 'automation.readinessRow.email' },
-  { key: 'consentModel', labelKey: 'automation.readinessRow.consentModel' },
-  { key: 'optOutHandling', labelKey: 'automation.readinessRow.optOut' },
-];
 
 export function AutomationScreen(): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
@@ -76,7 +62,6 @@ export function AutomationScreen(): React.JSX.Element {
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
 
   const drafts = draftsQuery.data ?? [];
-  const groups = groupDraftsByRuleType(drafts);
   const draftBusy = markReviewed.isPending || approve.isPending || dismiss.isPending;
   const selectedDraft = drafts.find((d) => d.id === selectedDraftId) ?? drafts[0];
   const preview = selectedDraft ? buildMessagePreview(selectedDraft) : null;
@@ -87,7 +72,6 @@ export function AutomationScreen(): React.JSX.Element {
       title={t('automation.title')}
       subtitle={t('automation.subtitle')}
     >
-
       <SecurityNote messageKey="automation.safety.note" />
 
       {overviewQuery.isPending ? (
@@ -101,7 +85,7 @@ export function AutomationScreen(): React.JSX.Element {
         />
       ) : (
         <>
-          {/* A. Workflow status hero — provider state + next setup step (mock-only action). */}
+          {/* A. One-line workflow status (replaces the readiness matrix). */}
           {(() => {
             const providerMeta = providerStatusMeta(overviewQuery.data.readiness.smsProvider);
             return (
@@ -133,11 +117,7 @@ export function AutomationScreen(): React.JSX.Element {
                         justifyContent: 'center',
                       }}
                     >
-                      <Ionicons
-                        name="chatbubbles-outline"
-                        size={20}
-                        color={tokens.color.info}
-                      />
+                      <Ionicons name="chatbubbles-outline" size={20} color={tokens.color.info} />
                     </View>
                     <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
                       <Text variant="subheading" numberOfLines={1}>
@@ -150,20 +130,6 @@ export function AutomationScreen(): React.JSX.Element {
                   </View>
                   <StatusBadge tone={providerMeta.tone} label={t(providerMeta.labelKey)} />
                 </View>
-
-                <Divider />
-
-                <View style={{ gap: tokens.spacing.xs }}>
-                  <Text
-                    variant="caption"
-                    tone="muted"
-                    style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}
-                  >
-                    {t('automation.status.nextStep')}
-                  </Text>
-                  <Text variant="body">{t('automation.status.nextStepBody')}</Text>
-                </View>
-
                 <MockActionButton
                   label={t('automation.status.connectCta')}
                   note={t('common.mock')}
@@ -172,137 +138,140 @@ export function AutomationScreen(): React.JSX.Element {
             );
           })()}
 
-          {/* B. Provider / consent readiness */}
-          <Card title={t('automation.readinessTitle')}>
-            {READINESS_ROWS.map((row, index) => {
-              const value = overviewQuery.data.readiness[row.key];
-              const meta =
-                row.key === 'smsProvider'
-                  ? providerStatusMeta(value as 'not_connected' | 'mock')
-                  : readinessMeta(value as never);
-              return (
-                <View key={row.key}>
-                  {index > 0 ? <Divider /> : null}
+          {/* B. Back-in-stock subscriptions — simple list. */}
+          <Card title={t('automation.subscriptionsTitle')}>
+            {overviewQuery.data.subscriptions.map((sub, index) => (
+              <View key={sub.id}>
+                {index > 0 ? <Divider /> : null}
+                <View style={{ paddingVertical: tokens.spacing.sm, gap: 6 }}>
                   <View
                     style={{
                       flexDirection: rowDirection,
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: tokens.spacing.sm,
-                      paddingVertical: tokens.spacing.xs,
+                      gap: tokens.spacing.xs,
+                      flexWrap: 'wrap',
                     }}
                   >
-                    <Text variant="label">{t(row.labelKey)}</Text>
-                    <Badge tone={meta.tone} label={t(meta.labelKey)} />
+                    <Text variant="label" style={{ flexShrink: 1 }}>
+                      {sub.productName}
+                    </Text>
+                    <Badge tone="warning" label={sub.stockStatus} />
+                    <Badge
+                      tone="neutral"
+                      label={`${sub.interestedShoppers} ${t('automation.shoppers')}`}
+                    />
+                  </View>
+                  <Text variant="caption" tone="muted">
+                    {sub.suggestedMessage}
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: rowDirection,
+                      gap: tokens.spacing.sm,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Button
+                      label={t('automation.action.createDraft')}
+                      variant="secondary"
+                      size="sm"
+                      disabled={createDraft.isPending}
+                      onPress={() => createDraft.mutate(sub.productId)}
+                    />
+                    <Button
+                      label={t('automation.action.openProduct')}
+                      variant="ghost"
+                      size="sm"
+                      onPress={() => router.navigate(`/products/${sub.productId}` as never)}
+                    />
                   </View>
                 </View>
-              );
-            })}
-            <Text variant="caption" tone="muted" style={{ marginTop: tokens.spacing.sm }}>
-              {overviewQuery.data.consent.note}
-            </Text>
-            {overviewQuery.data.safetyNotices.map((notice) => (
-              <View
-                key={notice.id}
-                style={{
-                  flexDirection: rowDirection,
-                  gap: tokens.spacing.xs,
-                  alignItems: 'flex-start',
-                  marginTop: tokens.spacing.xs,
-                }}
-              >
-                <Ionicons
-                  name={
-                    notice.severity === 'warning' ? 'warning-outline' : 'information-circle-outline'
-                  }
-                  size={14}
-                  color={notice.severity === 'warning' ? tokens.color.warning : tokens.color.info}
-                />
-                <Text variant="caption" tone="muted" style={{ flex: 1 }}>
-                  {notice.message}
-                </Text>
               </View>
             ))}
           </Card>
 
-          {/* C. Back-in-stock subscriptions */}
-          <Card title={t('automation.subscriptionsTitle')}>
-            {overviewQuery.data.subscriptions.map((sub, index) => {
-              const consent = consentMeta(sub.consent);
-              return (
-                <View key={sub.id}>
-                  {index > 0 ? <Divider /> : null}
-                  <View style={{ paddingVertical: tokens.spacing.sm, gap: 4 }}>
-                    <View
-                      style={{
-                        flexDirection: rowDirection,
-                        alignItems: 'center',
-                        gap: tokens.spacing.xs,
-                        flexWrap: 'wrap',
-                      }}
+          {/* C. Message drafts — simple cards (no conversion/budget/audience clutter). */}
+          <Card title={t('automation.draftsTitle')}>
+            {draftsQuery.isPending ? (
+              <LoadingState label={t('common.loading')} fill={false} />
+            ) : drafts.length === 0 ? (
+              <EmptyState title={t('automation.empty')} icon="chatbubbles-outline" fill={false} />
+            ) : (
+              <View style={{ gap: tokens.spacing.md }}>
+                {drafts.map((draft) => {
+                  const status = actionStatusMeta(draft.status);
+                  const dismissed = draft.status === 'dismissed';
+                  return (
+                    <Surface
+                      key={draft.id}
+                      bordered
+                      padding="md"
+                      style={{ gap: tokens.spacing.sm, opacity: dismissed ? 0.6 : 1 }}
                     >
-                      <Text variant="label" style={{ flexShrink: 1 }}>
-                        {sub.productName}
+                      <View
+                        style={{
+                          flexDirection: rowDirection,
+                          alignItems: 'center',
+                          gap: tokens.spacing.xs,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <Text variant="label" style={{ flexShrink: 1 }}>
+                          {draft.title}
+                        </Text>
+                        <Badge tone="info" label={t(channelLabelKey(draft.channel))} />
+                        <Badge tone={status.tone} label={t(status.labelKey)} />
+                      </View>
+                      <Text variant="caption" tone="muted">
+                        «{draft.messagePreview}»
                       </Text>
-                      <Badge tone="warning" label={sub.stockStatus} />
-                      <Badge
-                        tone="neutral"
-                        label={`${sub.interestedShoppers} ${t('automation.shoppers')}`}
-                      />
-                      <Badge tone={consent.tone} label={t(consent.labelKey)} />
-                    </View>
-                    <Text variant="caption" tone="muted">
-                      {sub.sku} · {t('automation.maskedExample')}: {sub.maskedExample}
-                    </Text>
-                    <Text variant="caption" tone="muted">
-                      {sub.suggestedMessage}
-                    </Text>
-                    <View
-                      style={{
-                        flexDirection: rowDirection,
-                        gap: tokens.spacing.sm,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <Button
-                        label={t('automation.action.createDraft')}
-                        variant="secondary"
-                        size="sm"
-                        disabled={createDraft.isPending}
-                        onPress={() => createDraft.mutate(sub.productId)}
-                      />
-                      <Button
-                        label={t('automation.action.openProduct')}
-                        variant="ghost"
-                        size="sm"
-                        onPress={() => router.navigate(`/products/${sub.productId}` as never)}
-                      />
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
+                      <View
+                        style={{
+                          flexDirection: rowDirection,
+                          flexWrap: 'wrap',
+                          gap: tokens.spacing.sm,
+                        }}
+                      >
+                        <Button
+                          label={t('automation.action.preview')}
+                          variant="secondary"
+                          size="sm"
+                          onPress={() => setSelectedDraftId(draft.id)}
+                        />
+                        <Button
+                          label={t('automation.action.markReviewed')}
+                          variant="secondary"
+                          size="sm"
+                          disabled={draftBusy || draft.status === 'reviewed'}
+                          onPress={() => markReviewed.mutate(draft.id)}
+                        />
+                        <Button
+                          label={t('automation.action.approve')}
+                          variant="primary"
+                          size="sm"
+                          disabled={draftBusy || draft.status === 'approved'}
+                          onPress={() => approve.mutate(draft.id)}
+                        />
+                        <Button
+                          label={t('automation.action.dismiss')}
+                          variant="ghost"
+                          size="sm"
+                          disabled={draftBusy || dismissed}
+                          onPress={() => dismiss.mutate(draft.id)}
+                        />
+                      </View>
+                    </Surface>
+                  );
+                })}
+              </View>
+            )}
           </Card>
 
-          {/* E. SMS preview (consent-gated) */}
+          {/* D. Message preview (consent-gated) — body + opt-out only. */}
           {preview ? (
             <Card title={t('automation.previewTitle')}>
-              <Surface
-                variant="surfaceAlt"
-                bordered
-                padding="md"
-                style={{ gap: tokens.spacing.xs }}
-              >
-                <View
-                  style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}
-                >
-                  <Badge tone="info" label={t(channelLabelKey(preview.channel))} />
-                  <Badge tone="neutral" label={`${preview.charCount} ${t('automation.chars')}`} />
-                  <Badge
-                    tone="neutral"
-                    label={`${preview.audienceSize} ${t('automation.recipients')}`}
-                  />
-                </View>
+              <Surface variant="surfaceAlt" bordered padding="md" style={{ gap: tokens.spacing.sm }}>
+                <Badge tone="info" label={t(channelLabelKey(preview.channel))} />
                 <Text variant="body">{preview.body}</Text>
                 <Text variant="caption" tone="muted">
                   {preview.optOutText}
@@ -314,11 +283,7 @@ export function AutomationScreen(): React.JSX.Element {
                     alignItems: 'flex-start',
                   }}
                 >
-                  <Ionicons
-                    name="shield-checkmark-outline"
-                    size={14}
-                    color={tokens.color.warning}
-                  />
+                  <Ionicons name="shield-checkmark-outline" size={14} color={tokens.color.warning} />
                   <Text variant="caption" tone="muted" style={{ flex: 1 }}>
                     {preview.consentWarning}
                   </Text>
@@ -327,144 +292,6 @@ export function AutomationScreen(): React.JSX.Element {
               </Surface>
             </Card>
           ) : null}
-
-          {/* D. Campaign drafts */}
-          <Card title={t('automation.draftsTitle')}>
-            {draftsQuery.isPending ? (
-              <LoadingState label={t('common.loading')} fill={false} />
-            ) : groups.length === 0 ? (
-              <EmptyState title={t('automation.empty')} icon="chatbubbles-outline" fill={false} />
-            ) : (
-              <View style={{ gap: tokens.spacing.lg }}>
-                {groups.map((group) => (
-                  <View key={group.ruleType} style={{ gap: tokens.spacing.sm }}>
-                    <Text variant="subheading">{t(ruleTypeLabelKey(group.ruleType))}</Text>
-                    {group.drafts.map((draft) => {
-                      const status = actionStatusMeta(draft.status);
-                      const readiness = conversionReadinessMeta(draft.readiness);
-                      const consent = consentMeta(draft.audience.consentReadiness);
-                      const dismissed = draft.status === 'dismissed';
-                      return (
-                        <Surface
-                          key={draft.id}
-                          bordered
-                          padding="md"
-                          style={{ gap: tokens.spacing.sm, opacity: dismissed ? 0.6 : 1 }}
-                        >
-                          <View
-                            style={{
-                              flexDirection: rowDirection,
-                              alignItems: 'center',
-                              gap: tokens.spacing.xs,
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <Text variant="label" style={{ flexShrink: 1 }}>
-                              {draft.title}
-                            </Text>
-                            <Badge tone={status.tone} label={t(status.labelKey)} />
-                            <Badge tone={readiness.tone} label={t(readiness.labelKey)} />
-                          </View>
-                          <Text variant="caption" tone="muted">
-                            {draft.reason}
-                          </Text>
-                          <View
-                            style={{
-                              flexDirection: rowDirection,
-                              gap: tokens.spacing.xs,
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <Badge tone="info" label={t(channelLabelKey(draft.channel))} />
-                            <Badge
-                              tone="neutral"
-                              label={`${draft.audience.label} · ${draft.audience.size}`}
-                            />
-                            <Badge tone={consent.tone} label={t(consent.labelKey)} />
-                          </View>
-                          <Text variant="caption" tone="muted">
-                            «{draft.messagePreview}»
-                          </Text>
-                          <View
-                            style={{
-                              flexDirection: rowDirection,
-                              flexWrap: 'wrap',
-                              gap: tokens.spacing.sm,
-                            }}
-                          >
-                            <Button
-                              label={t('automation.action.preview')}
-                              variant="secondary"
-                              size="sm"
-                              onPress={() => setSelectedDraftId(draft.id)}
-                            />
-                            <Button
-                              label={t('automation.action.markReviewed')}
-                              variant="secondary"
-                              size="sm"
-                              disabled={draftBusy || draft.status === 'reviewed'}
-                              onPress={() => markReviewed.mutate(draft.id)}
-                            />
-                            <Button
-                              label={t('automation.action.approve')}
-                              variant="primary"
-                              size="sm"
-                              disabled={draftBusy || draft.status === 'approved'}
-                              onPress={() => approve.mutate(draft.id)}
-                            />
-                            <Button
-                              label={t('automation.action.dismiss')}
-                              variant="ghost"
-                              size="sm"
-                              disabled={draftBusy || dismissed}
-                              onPress={() => dismiss.mutate(draft.id)}
-                            />
-                          </View>
-                        </Surface>
-                      );
-                    })}
-                  </View>
-                ))}
-              </View>
-            )}
-          </Card>
-
-          {/* F. Automation rules */}
-          <Card title={t('automation.rulesTitle')}>
-            {overviewQuery.data.rules.map((rule, index) => {
-              const meta = readinessMeta(rule.status === 'mock' ? 'mock' : 'planned');
-              return (
-                <View key={rule.id}>
-                  {index > 0 ? <Divider /> : null}
-                  <View style={{ paddingVertical: tokens.spacing.sm, gap: 4 }}>
-                    <View
-                      style={{
-                        flexDirection: rowDirection,
-                        alignItems: 'center',
-                        gap: tokens.spacing.xs,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <Text variant="label" style={{ flexShrink: 1 }}>
-                        {t(ruleTypeLabelKey(rule.ruleType))}
-                      </Text>
-                      <Badge tone="info" label={t(channelLabelKey(rule.channel))} />
-                      <Badge tone={meta.tone} label={t(meta.labelKey)} />
-                    </View>
-                    <Text variant="caption" tone="muted">
-                      {t('automation.rule.trigger')}: {rule.trigger}
-                    </Text>
-                    <Text variant="caption" tone="muted">
-                      {t('automation.rule.audience')}: {rule.audience}
-                    </Text>
-                    <Text variant="caption" tone="muted">
-                      {rule.providerRequirement}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </Card>
         </>
       )}
     </Screen>
