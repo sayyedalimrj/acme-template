@@ -61,11 +61,16 @@ npm run export:web   # خروجی استاتیک در ./dist برای انتشا
 
 | Component          | Status today                              | Needed for go‑live                                  |
 | ------------------ | ----------------------------------------- | --------------------------------------------------- |
-| `apps/client`      | ✅ Runs as a web PWA on **mock** data      | Point it at the real backend (`http` data source)   |
-| `apps/api`         | 🟡 Design/contracts only (no server)      | Implement server runtime + DB + vault + adapters    |
-| Database           | 🟡 Schema + migration **descriptors**     | Provision Postgres, implement & run migrations      |
-| Payments           | 🟡 Gateway **contract** only              | Implement one provider server-side + webhooks       |
+| `apps/client`      | ✅ 3 portal builds (merchant/admin/affiliate) on mock UI data; **real phone-OTP login** when wired | Set `EXPO_PUBLIC_PORTAL` + `EXPO_PUBLIC_API_BASE_URL` per subdomain |
+| `services/api`     | ✅ **Runnable** Express API: OTP (ippanel) + JWT + RBAC + Postgres | Provide DB + ippanel keys + secrets; deploy        |
+| `apps/api`         | 🟡 Design/contracts skeleton (proxy/vault/payments) | Implement the WooCommerce/WP proxy + credential vault |
+| Database           | ✅ Postgres schema (`services/api/db/schema.sql`) + migration runner | Provision Postgres, run `npm run migrate`           |
+| Payments           | 🟡 Gateway **contract** (`apps/api`)      | Implement one provider server-side + webhooks       |
 | `wordpress-plugin` | ✅ PHP companion + signed sync contracts   | Install on the merchant site, share signing secret  |
+
+> **Three subdomains:** the client is deployed **three times** — one per portal — each fixed to a
+> portal via `EXPO_PUBLIC_PORTAL` and pointed at the one backend via `EXPO_PUBLIC_API_BASE_URL`.
+> See `PORTALS.md` and "Part S" below.
 
 ---
 
@@ -150,6 +155,78 @@ export const appConfig: AppConfig = {
 - Until the backend exists, keep `dataSource: 'mock'` (the app is fully usable as a demo).
 - The frontend talks **only** to `apps/api`, never directly to a merchant store, and never
   holds store/payment secrets.
+
+---
+
+## Part S — Three subdomains + phone‑OTP backend (recommended setup)
+
+This is the concrete path to deploy the three portals on three subdomains with **real OTP login**.
+
+### S1. Run the backend (`services/api`)
+
+```bash
+cd services/api
+cp .env.example .env            # set JWT_SECRET, OTP_HASH_SECRET (openssl rand -hex 32)
+npm install
+npm run db:up                   # Postgres via docker compose (or use a managed DB + DATABASE_URL)
+npm run migrate -- --seed       # apply schema + demo rows
+npm run dev                     # http://localhost:8080
+```
+
+Enable real SMS by setting the ippanel keys in `.env` and `SMS_DRY_RUN=false` (see
+`services/api/README.md`). Set `ADMIN_MOBILE_ALLOWLIST` to the mobiles allowed into the admin
+portal. Set `CORS_ORIGINS` to your three subdomains.
+
+### S2. Build & deploy the three frontends
+
+```bash
+cd apps/client
+# Set the backend origin for each build (the API that sends OTP + serves data):
+EXPO_PUBLIC_API_BASE_URL=https://api.example npm run export:web:merchant   # → dist-merchant
+EXPO_PUBLIC_API_BASE_URL=https://api.example npm run export:web:admin      # → dist-admin
+EXPO_PUBLIC_API_BASE_URL=https://api.example npm run export:web:affiliate  # → dist-affiliate
+```
+
+Deploy each `dist-*` folder to its subdomain (e.g. Vercel project per subdomain with the matching
+`EXPO_PUBLIC_PORTAL` + `EXPO_PUBLIC_API_BASE_URL` build env, or any static host with an SPA
+fallback to `/index.html`):
+
+| Subdomain         | Folder           | Build env                                            |
+| ----------------- | ---------------- | ---------------------------------------------------- |
+| `app.example`     | `dist-merchant`  | `EXPO_PUBLIC_PORTAL=merchant`                        |
+| `admin.example`   | `dist-admin`     | `EXPO_PUBLIC_PORTAL=admin`                           |
+| `partner.example` | `dist-affiliate` | `EXPO_PUBLIC_PORTAL=affiliate`                       |
+
+All three set `EXPO_PUBLIC_API_BASE_URL=https://api.example`.
+
+### S3. Phone‑OTP flow (ippanel)
+
+1. App → `POST {api}/auth/otp/request { mobile, portal }` → backend stores a **hashed** code and
+   sends it via ippanel (or logs it in dry‑run).
+2. App → `POST {api}/auth/otp/verify { mobile, code, portal }` → backend verifies, creates/looks
+   up the user, assigns the role, and returns a **JWT** + user.
+3. The app stores the JWT in memory and is signed in. `GET {api}/auth/me` returns the session.
+
+Security: codes are short‑lived, single‑use, attempt‑limited, and per‑mobile rate‑limited; only a
+salted hash is stored. The ippanel API key lives **only** in backend env.
+
+### S4. RBAC & data‑access matrix (enforced server‑side)
+
+| Role        | Portal       | Can read                                              | Cannot                          |
+| ----------- | ------------ | ---------------------------------------------------- | ------------------------------- |
+| `merchant`  | merchant     | only their own store (`/merchant/*`)                 | other merchants, admin, payouts |
+| `affiliate` | affiliate    | only their own referrals/commissions (`/affiliate/*`)| other marketers, admin          |
+| `admin`     | admin        | everything (`/admin/*`, and all the above)           | —                               |
+
+The JWT carries the role; each route requires the matching role (`services/api/src/auth/rbac.ts`).
+A merchant token calling `/admin/*` gets `403`. Admin login is restricted to
+`ADMIN_MOBILE_ALLOWLIST`.
+
+### S5. Database
+
+`services/api/db/schema.sql` is the concrete Postgres schema (users, OTP, marketers, merchants,
+referrals, commissions, payouts, platform orders, audit log). Apply it with `npm run migrate`.
+Money is stored as integer minor units; no card data is ever stored.
 
 ---
 
