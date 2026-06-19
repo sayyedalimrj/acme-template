@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       WordPress Commerce OS Companion
  * Plugin URI:        https://example-store.test/companion
- * Description:       Secure companion plugin for connecting WordPress/WooCommerce stores to WordPress Commerce OS. Non-production: collects no credentials, makes no network calls, and provides only admin-authenticated local connection state and read-only, summarized WooCommerce data.
- * Version:           0.2.0
+ * Description:       Companion plugin that connects a WordPress/WooCommerce store to WordPress Commerce OS. Performs a signed (HMAC-SHA256) handshake and scheduled read-only sync of summarized, PII-minimized WooCommerce data to your backend. Holds only a backend-issued signing secret — never store/API credentials.
+ * Version:           1.0.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            WordPress Commerce OS (placeholder)
@@ -37,7 +37,8 @@ defined('ABSPATH') || exit;
 /* -------------------------------------------------------------------------
  * Constants (unique wcos_/WCOS_ prefix).
  * ---------------------------------------------------------------------- */
-define('WCOS_VERSION', '0.5.0');
+define('WCOS_VERSION', '1.0.0');
+define('WCOS_SYNC_CRON_HOOK', 'wcos_scheduled_sync');
 define('WCOS_PLUGIN_FILE', __FILE__);
 define('WCOS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('WCOS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -63,6 +64,9 @@ require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-event-bridge.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-webhook-config.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-controlled-actions.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-signature.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-settings.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-sync-builder.php';
+require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-backend-client.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-sync-package.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-delivery.php';
 require_once WCOS_PLUGIN_DIR . 'includes/class-wcos-health.php';
@@ -98,8 +102,24 @@ function wcos_activate() {
         add_option('wcos_connection_status', 'not_connected');
     }
     update_option('wcos_plugin_version', WCOS_VERSION);
+    // Schedule the hourly sync (only sends when the connection is configured).
+    if (!wp_next_scheduled(WCOS_SYNC_CRON_HOOK)) {
+        wp_schedule_event(time() + 300, 'hourly', WCOS_SYNC_CRON_HOOK);
+    }
 }
 register_activation_hook(__FILE__, 'wcos_activate');
+
+/**
+ * The scheduled sync runner. Only delivers when the backend connection is fully configured.
+ *
+ * @return void
+ */
+function wcos_run_scheduled_sync() {
+    if (class_exists('WCOS_Settings') && WCOS_Settings::is_configured()) {
+        WCOS_Backend_Client::sync();
+    }
+}
+add_action(WCOS_SYNC_CRON_HOOK, 'wcos_run_scheduled_sync');
 
 /**
  * On deactivation, do nothing destructive. No network calls, no data removal.
@@ -108,7 +128,12 @@ register_activation_hook(__FILE__, 'wcos_activate');
  * @return void
  */
 function wcos_deactivate() {
-    // Intentionally a no-op in the runtime skeleton.
+    // Clear the scheduled sync. Connection settings are preserved (cleanup lives in uninstall.php).
+    $timestamp = wp_next_scheduled(WCOS_SYNC_CRON_HOOK);
+    if ($timestamp) {
+        wp_unschedule_event($timestamp, WCOS_SYNC_CRON_HOOK);
+    }
+    wp_clear_scheduled_hook(WCOS_SYNC_CRON_HOOK);
 }
 register_deactivation_hook(__FILE__, 'wcos_deactivate');
 

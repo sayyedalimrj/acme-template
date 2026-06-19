@@ -40,6 +40,59 @@ if (!class_exists('WCOS_Admin')) {
             add_action('admin_post_wcos_build_preview', array(__CLASS__, 'handle_build_preview'));
             add_action('admin_post_wcos_delivery_local_preview', array(__CLASS__, 'handle_delivery_local_preview'));
             add_action('admin_post_wcos_delivery_disable', array(__CLASS__, 'handle_delivery_disable'));
+            // Production backend connection.
+            add_action('admin_post_wcos_save_settings', array(__CLASS__, 'handle_save_settings'));
+            add_action('admin_post_wcos_handshake', array(__CLASS__, 'handle_handshake'));
+            add_action('admin_post_wcos_sync_now', array(__CLASS__, 'handle_sync_now'));
+        }
+
+        /**
+         * Save the backend connection settings (URL, site id, tenant id, signing secret).
+         *
+         * @return void
+         */
+        public static function handle_save_settings() {
+            if (!WCOS_Capabilities::current_user_can('manage_local_connection_state')) {
+                wp_die(esc_html__('You do not have permission to perform this action.', 'wordpress-commerce-os-companion'));
+            }
+            check_admin_referer('wcos_save_settings');
+            $input = array(
+                'backend_url'    => isset($_POST['backend_url']) ? wp_unslash($_POST['backend_url']) : '',
+                'site_id'        => isset($_POST['site_id']) ? wp_unslash($_POST['site_id']) : '',
+                'tenant_id'      => isset($_POST['tenant_id']) ? wp_unslash($_POST['tenant_id']) : '',
+                'signing_secret' => isset($_POST['signing_secret']) ? wp_unslash($_POST['signing_secret']) : '',
+            );
+            WCOS_Settings::save($input);
+            WCOS_Audit::add_entry('settings.saved', 'connection', null, array('source' => 'admin'));
+            self::redirect_with_notice('settings_saved');
+        }
+
+        /**
+         * Perform the signed backend handshake.
+         *
+         * @return void
+         */
+        public static function handle_handshake() {
+            if (!WCOS_Capabilities::current_user_can('manage_local_connection_state')) {
+                wp_die(esc_html__('You do not have permission to perform this action.', 'wordpress-commerce-os-companion'));
+            }
+            check_admin_referer('wcos_handshake');
+            $result = WCOS_Backend_Client::handshake();
+            self::redirect_with_notice(!empty($result['ok']) ? 'handshake_ok' : 'handshake_failed');
+        }
+
+        /**
+         * Deliver a signed sync now.
+         *
+         * @return void
+         */
+        public static function handle_sync_now() {
+            if (!WCOS_Capabilities::current_user_can_manage()) {
+                wp_die(esc_html__('You do not have permission to perform this action.', 'wordpress-commerce-os-companion'));
+            }
+            check_admin_referer('wcos_sync_now');
+            $result = WCOS_Backend_Client::sync();
+            self::redirect_with_notice(!empty($result['ok']) ? 'sync_ok' : 'sync_failed');
         }
 
         /**
@@ -325,6 +378,31 @@ if (!class_exists('WCOS_Admin')) {
                     . esc_html__('Delivery setting updated.', 'wordpress-commerce-os-companion')
                     . '</strong>' . esc_html__('Delivery remains local/disabled. No destination URL or secret is stored and nothing is sent.', 'wordpress-commerce-os-companion')
                     . '</div>';
+            } elseif ('settings_saved' === $notice) {
+                echo '<div class="wcos-notice wcos-notice-success"><strong>'
+                    . esc_html__('Backend connection saved.', 'wordpress-commerce-os-companion')
+                    . '</strong>' . esc_html__('Now run the handshake to verify the connection.', 'wordpress-commerce-os-companion')
+                    . '</div>';
+            } elseif ('handshake_ok' === $notice) {
+                echo '<div class="wcos-notice wcos-notice-success"><strong>'
+                    . esc_html__('Handshake successful.', 'wordpress-commerce-os-companion')
+                    . '</strong>' . esc_html__('The store is connected to your backend.', 'wordpress-commerce-os-companion')
+                    . '</div>';
+            } elseif ('handshake_failed' === $notice) {
+                echo '<div class="wcos-notice wcos-notice-warning"><strong>'
+                    . esc_html__('Handshake failed.', 'wordpress-commerce-os-companion')
+                    . '</strong>' . esc_html__('Check the backend URL, site id, tenant id, and signing secret, then try again.', 'wordpress-commerce-os-companion')
+                    . '</div>';
+            } elseif ('sync_ok' === $notice) {
+                echo '<div class="wcos-notice wcos-notice-success"><strong>'
+                    . esc_html__('Sync delivered.', 'wordpress-commerce-os-companion')
+                    . '</strong>' . esc_html__('A signed, read-only data package was sent to your backend.', 'wordpress-commerce-os-companion')
+                    . '</div>';
+            } elseif ('sync_failed' === $notice) {
+                echo '<div class="wcos-notice wcos-notice-warning"><strong>'
+                    . esc_html__('Sync failed.', 'wordpress-commerce-os-companion')
+                    . '</strong>' . esc_html__('Verify the connection settings and that the handshake succeeded.', 'wordpress-commerce-os-companion')
+                    . '</div>';
             }
         }
 
@@ -408,7 +486,64 @@ if (!class_exists('WCOS_Admin')) {
                             <button type="submit" class="button"><?php echo esc_html__('Disconnect locally', 'wordpress-commerce-os-companion'); ?></button>
                         </form>
                     </div>
-                    <p class="wcos-hint"><?php echo esc_html__('Real backend connection will be added later through the secure backend/proxy handshake. These buttons only update local, non-secret state.', 'wordpress-commerce-os-companion'); ?></p>
+                    <p class="wcos-hint"><?php echo esc_html__('These buttons only update local, non-secret state. Use the “Backend connection” card below to connect to your WordPress Commerce OS backend.', 'wordpress-commerce-os-companion'); ?></p>
+                </div>
+
+                <?php
+                $settings_configured = WCOS_Settings::is_configured();
+                $has_secret          = WCOS_Settings::has_signing_secret();
+                ?>
+                <div class="wcos-card">
+                    <h2><?php echo esc_html__('Backend connection', 'wordpress-commerce-os-companion'); ?></h2>
+                    <p class="wcos-hint">
+                        <?php echo esc_html__('Paste these values from your WordPress Commerce OS dashboard (Connect site → Plugin mode). The signing secret is shown only once there.', 'wordpress-commerce-os-companion'); ?>
+                    </p>
+                    <form method="post" action="<?php echo esc_url($action_url); ?>">
+                        <input type="hidden" name="action" value="wcos_save_settings" />
+                        <?php wp_nonce_field('wcos_save_settings'); ?>
+                        <table class="wcos-table">
+                            <tbody>
+                                <tr>
+                                    <th><label for="wcos-backend-url"><?php echo esc_html__('Backend URL', 'wordpress-commerce-os-companion'); ?></label></th>
+                                    <td><input type="url" id="wcos-backend-url" name="backend_url" class="regular-text" placeholder="https://api.example.com/plugin" value="<?php echo esc_attr(WCOS_Settings::get_backend_url()); ?>" /></td>
+                                </tr>
+                                <tr>
+                                    <th><label for="wcos-site-id"><?php echo esc_html__('Site ID', 'wordpress-commerce-os-companion'); ?></label></th>
+                                    <td><input type="text" id="wcos-site-id" name="site_id" class="regular-text" value="<?php echo esc_attr(WCOS_Settings::get_site_id()); ?>" /></td>
+                                </tr>
+                                <tr>
+                                    <th><label for="wcos-tenant-id"><?php echo esc_html__('Tenant ID', 'wordpress-commerce-os-companion'); ?></label></th>
+                                    <td><input type="text" id="wcos-tenant-id" name="tenant_id" class="regular-text" value="<?php echo esc_attr(WCOS_Settings::get_tenant_id()); ?>" /></td>
+                                </tr>
+                                <tr>
+                                    <th><label for="wcos-signing-secret"><?php echo esc_html__('Signing secret', 'wordpress-commerce-os-companion'); ?></label></th>
+                                    <td>
+                                        <input type="password" id="wcos-signing-secret" name="signing_secret" class="regular-text" autocomplete="new-password" placeholder="<?php echo $has_secret ? esc_attr__('•••••••• (configured — leave blank to keep)', 'wordpress-commerce-os-companion') : ''; ?>" />
+                                        <p class="wcos-hint"><?php echo esc_html__('Stored securely server-side in WordPress; never shown again. Leave blank to keep the current secret.', 'wordpress-commerce-os-companion'); ?></p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button type="submit" class="button button-primary"><?php echo esc_html__('Save connection', 'wordpress-commerce-os-companion'); ?></button>
+                    </form>
+                    <div class="wcos-actions" style="margin-top:12px;">
+                        <form method="post" action="<?php echo esc_url($action_url); ?>">
+                            <input type="hidden" name="action" value="wcos_handshake" />
+                            <?php wp_nonce_field('wcos_handshake'); ?>
+                            <button type="submit" class="button" <?php disabled(!$settings_configured); ?>><?php echo esc_html__('Connect (handshake)', 'wordpress-commerce-os-companion'); ?></button>
+                        </form>
+                        <form method="post" action="<?php echo esc_url($action_url); ?>">
+                            <input type="hidden" name="action" value="wcos_sync_now" />
+                            <?php wp_nonce_field('wcos_sync_now'); ?>
+                            <button type="submit" class="button" <?php disabled(!$settings_configured); ?>><?php echo esc_html__('Sync now', 'wordpress-commerce-os-companion'); ?></button>
+                        </form>
+                    </div>
+                    <p class="wcos-hint">
+                        <?php echo esc_html__('Status:', 'wordpress-commerce-os-companion'); ?>
+                        <?php echo $settings_configured
+                            ? esc_html__('configured — scheduled hourly sync is active.', 'wordpress-commerce-os-companion')
+                            : esc_html__('not configured.', 'wordpress-commerce-os-companion'); ?>
+                    </p>
                 </div>
 
                 <div class="wcos-card">

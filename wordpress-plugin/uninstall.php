@@ -38,8 +38,15 @@ $wcos_options = array(
     'wcos_delivery_status',
     'wcos_delivery_destination_label',
     'wcos_plugin_version',
+    'wcos_backend_url',
+    'wcos_signing_secret',
 );
 
 foreach ($wcos_options as $wcos_option) {
     delete_option($wcos_option);
+}
+
+// Clear the scheduled sync cron, if any.
+if (function_exists('wp_clear_scheduled_hook')) {
+    wp_clear_scheduled_hook('wcos_scheduled_sync');
 }
