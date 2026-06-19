@@ -233,6 +233,18 @@ export interface ConnectSiteInput {
 
 export type AuthStatus = 'authenticated' | 'unauthenticated' | 'loading';
 
+/**
+ * Which product experience ("portal") the signed-in person uses. One build ships three
+ * role-based experiences that all share the same design system:
+ *  - `merchant`  → the store-owner dashboard (the default app).
+ *  - `admin`     → the platform owner's back-office (manage merchants, orders, marketers, payouts).
+ *  - `affiliate` → the marketer/affiliate portal (referrals, commissions, payouts).
+ *
+ * The portal is chosen at (mock) sign-in and can be switched from each portal's "more" screen.
+ * It is frontend-safe routing state only; real access control is enforced server-side later.
+ */
+export type AppPortal = 'merchant' | 'admin' | 'affiliate';
+
 /** Frontend-safe authenticated user profile. */
 export interface AuthUser {
   id: string;

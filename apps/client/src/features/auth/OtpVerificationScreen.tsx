@@ -33,11 +33,18 @@ import {
 } from './authHelpers';
 import { findMockUser, verifyMockPassword } from './authMockUsers';
 
+import type { AppPortal } from '@/domain/types';
+
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
     return value[0] ?? '';
   }
   return value ?? '';
+}
+
+/** Parse a portal route-param, defaulting safely to the merchant experience. */
+function parsePortal(value: string): AppPortal {
+  return value === 'admin' || value === 'affiliate' ? value : 'merchant';
 }
 
 type Mode = 'otp' | 'password';
@@ -47,12 +54,13 @@ export function OtpVerificationScreen(): React.JSX.Element {
   const router = useRouter();
   const { rowDirection } = useTheme();
   const { signIn } = useSession();
-  const params = useLocalSearchParams<{ identifier?: string; channel?: string }>();
+  const params = useLocalSearchParams<{ identifier?: string; channel?: string; portal?: string }>();
 
   const identifier = firstParam(params.identifier);
   const channelParam = firstParam(params.channel);
   const channel: IdentifierChannel | undefined =
     channelParam === 'email' || channelParam === 'mobile' ? channelParam : undefined;
+  const portal = parsePortal(firstParam(params.portal));
 
   // Only already-registered numbers get the password-login option.
   const knownUser = findMockUser(identifier, channel);
@@ -81,14 +89,14 @@ export function OtpVerificationScreen(): React.JSX.Element {
     submittedRef.current = true;
     setError(undefined);
     if (knownUser) {
-      // Known mock user → mock session; the (auth) layout redirects to the dashboard.
-      void signIn({ name: knownUser.name, email: knownUser.email });
+      // Known mock user → mock session; the (auth) layout redirects to the chosen portal.
+      void signIn({ name: knownUser.name, email: knownUser.email, portal });
       return;
     }
-    // New user → continue to registration (carry the identifier forward).
+    // New user → continue to registration (carry the identifier + portal forward).
     router.replace({
       pathname: '/register',
-      params: { identifier, channel: channel ?? '' },
+      params: { identifier, channel: channel ?? '', portal },
     } as unknown as Href);
   };
 
@@ -135,7 +143,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
       return;
     }
     setPasswordError(undefined);
-    void signIn({ name: result.user.name, email: result.user.email });
+    void signIn({ name: result.user.name, email: result.user.email, portal });
   };
 
   return (

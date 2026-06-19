@@ -12,6 +12,7 @@ import { type TextInput } from 'react-native';
 
 import { useT } from '@/i18n/I18nProvider';
 import { useSession } from '@/session/SessionProvider';
+import type { AppPortal } from '@/domain/types';
 
 import { AuthField } from './components/AuthField';
 import { AuthFrame } from './components/AuthFrame';
@@ -24,6 +25,11 @@ function firstParam(value: string | string[] | undefined): string {
   return value ?? '';
 }
 
+/** Parse a portal route-param, defaulting safely to the merchant experience. */
+function parsePortal(value: string): AppPortal {
+  return value === 'admin' || value === 'affiliate' ? value : 'merchant';
+}
+
 interface FieldErrors {
   firstName?: string;
   lastName?: string;
@@ -32,10 +38,11 @@ interface FieldErrors {
 export function RegisterProfileScreen(): React.JSX.Element {
   const t = useT();
   const { signIn } = useSession();
-  const params = useLocalSearchParams<{ identifier?: string; channel?: string }>();
+  const params = useLocalSearchParams<{ identifier?: string; channel?: string; portal?: string }>();
 
   const identifier = firstParam(params.identifier);
   const channel = firstParam(params.channel);
+  const portal = parsePortal(firstParam(params.portal));
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -63,7 +70,7 @@ export function RegisterProfileScreen(): React.JSX.Element {
     }
     // Mock session only (in-memory). The (auth) layout redirects to the dashboard.
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-    void signIn({ name: fullName, email: email.trim() || undefined });
+    void signIn({ name: fullName, email: email.trim() || undefined, portal });
   };
 
   const clearError = (key: keyof FieldErrors): void => {

@@ -23,20 +23,26 @@ import React, {
 } from 'react';
 
 import { authService } from '@/services';
-import type { AuthStatus, AuthUser } from '@/domain/types';
+import type { AppPortal, AuthStatus, AuthUser } from '@/domain/types';
 
 export interface SignInInput {
   name?: string;
   email?: string;
+  /** Which experience to sign into (defaults to the merchant dashboard). */
+  portal?: AppPortal;
 }
 
 export interface SessionContextValue {
   status: AuthStatus;
   user: AuthUser | null;
+  /** The active product experience (merchant | admin | affiliate). */
+  portal: AppPortal;
   /** Establish a mock session via AuthService. */
   signIn: (input?: SignInInput) => Promise<void>;
   /** Clear the session via AuthService. */
   signOut: () => Promise<void>;
+  /** Switch the active portal in-app (mock convenience; persisted in memory only). */
+  setPortal: (portal: AppPortal) => void;
 }
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
@@ -48,13 +54,15 @@ export interface SessionProviderProps {
 export function SessionProvider({ children }: SessionProviderProps): React.JSX.Element {
   const [status, setStatus] = useState<AuthStatus>('unauthenticated');
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [portal, setPortal] = useState<AppPortal>('merchant');
 
   const signIn = useCallback(async (input?: SignInInput) => {
     setStatus('loading');
     try {
-      const session = await authService.signInMock(input);
+      const session = await authService.signInMock({ name: input?.name, email: input?.email });
       setUser(session.user);
       setStatus(session.status);
+      setPortal(input?.portal ?? 'merchant');
     } catch {
       setUser(null);
       setStatus('unauthenticated');
@@ -65,11 +73,12 @@ export function SessionProvider({ children }: SessionProviderProps): React.JSX.E
     const session = await authService.signOut();
     setUser(session.user);
     setStatus(session.status);
+    setPortal('merchant');
   }, []);
 
   const value = useMemo<SessionContextValue>(
-    () => ({ status, user, signIn, signOut }),
-    [status, user, signIn, signOut],
+    () => ({ status, user, portal, signIn, signOut, setPortal }),
+    [status, user, portal, signIn, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
