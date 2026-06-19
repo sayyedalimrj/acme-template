@@ -8,8 +8,9 @@
  * suggestion is review-only; nothing is published, no product/order is mutated, and no
  * customer message is sent automatically (see security-model.md).
  */
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from '@/components/ui';
 import { SecurityNote } from '@/features/onboarding/components/SecurityNote';
@@ -17,22 +18,43 @@ import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 
 import { AdvisorStatusCard } from './components/AdvisorStatusCard';
+import { ChatHistoryPanel } from './components/ChatHistoryPanel';
 import { ConversationPanel } from './components/ConversationPanel';
 import { InsightCard } from './components/InsightCard';
 import { PromptSuggestions } from './components/PromptSuggestions';
 import { RecommendationCard } from './components/RecommendationCard';
 import { StoreContextCard } from './components/StoreContextCard';
 import { categoryLabelKey, groupRecommendations } from './advisorHelpers';
-import {
-  useAdvisorConversation,
-  useAdvisorOverview,
-  useAdvisorRecommendations,
-} from './useAdvisor';
-import {
-  useDismissRecommendation,
-  useMarkRecommendationReviewed,
-  useSendAdvisorMessage,
-} from './useAdvisorMutations';
+import { useAdvisorChat } from './useAdvisorChat';
+import { useAdvisorOverview, useAdvisorRecommendations } from './useAdvisor';
+import { useDismissRecommendation, useMarkRecommendationReviewed } from './useAdvisorMutations';
+
+function NewChatButton({ onPress, label }: { onPress: () => void; label: string }): React.JSX.Element {
+  const { tokens, rowDirection } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      testID="advisor-new-chat"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: rowDirection,
+        alignItems: 'center',
+        gap: tokens.spacing.xs,
+        paddingVertical: tokens.spacing.xs,
+        paddingHorizontal: tokens.spacing.sm,
+        borderRadius: tokens.radius.pill,
+        backgroundColor: tokens.color.primarySoft,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Ionicons name="add" size={16} color={tokens.color.primary} />
+      <Text variant="caption" tone="primary" style={{ fontWeight: '700' }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
 
 export function AdvisorScreen(): React.JSX.Element {
   const { tokens } = useTheme();
@@ -40,8 +62,7 @@ export function AdvisorScreen(): React.JSX.Element {
 
   const overviewQuery = useAdvisorOverview();
   const recommendationsQuery = useAdvisorRecommendations();
-  const conversationQuery = useAdvisorConversation();
-  const sendMessage = useSendAdvisorMessage();
+  const chat = useAdvisorChat();
   const markReviewed = useMarkRecommendationReviewed();
   const dismiss = useDismissRecommendation();
 
@@ -69,29 +90,34 @@ export function AdvisorScreen(): React.JSX.Element {
             planName={overviewQuery.data.context.planName}
           />
 
-          <StoreContextCard context={overviewQuery.data.context} />
-
-          <Card title={t('advisor.chat.title')}>
+          <Card
+            title={t('advisor.chat.title')}
+            headerAction={
+              <NewChatButton onPress={chat.newChat} label={t('advisor.chat.newChat')} />
+            }
+          >
             <Text variant="caption" tone="muted">
               {t('advisor.prompts.title')}
             </Text>
             <PromptSuggestions
               prompts={overviewQuery.data.prompts}
-              disabled={sendMessage.isPending}
-              onSelect={(text) => sendMessage.mutate(text)}
+              disabled={chat.sending}
+              onSelect={(text) => chat.send(text)}
             />
-            {conversationQuery.data ? (
-              <View style={{ marginTop: tokens.spacing.md }}>
-                <ConversationPanel
-                  messages={conversationQuery.data}
-                  sending={sendMessage.isPending}
-                  onSend={(text) => sendMessage.mutate(text)}
-                />
-              </View>
-            ) : (
-              <LoadingState label={t('common.loading')} fill={false} />
-            )}
+            <View style={{ marginTop: tokens.spacing.md }}>
+              <ConversationPanel
+                messages={chat.messages}
+                sending={chat.sending}
+                onSend={(text) => chat.send(text)}
+              />
+            </View>
           </Card>
+
+          <Card title={t('advisor.history.title')}>
+            <ChatHistoryPanel sessions={chat.history} onOpen={chat.openSession} />
+          </Card>
+
+          <StoreContextCard context={overviewQuery.data.context} />
 
           <Card title={t('advisor.insights.title')}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.md }}>
