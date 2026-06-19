@@ -12,20 +12,21 @@ import { PortalMetricTile, PortalRowCard, PortalSectionTitle } from '@/component
 import { AnimatedSection, MobilePage, MobileTabHeader, siteInitials } from '@/features/mobile/components';
 import { mobileMetrics } from '@/features/mobile/mobileTokens';
 
-import { ADMIN_MARKETERS } from './adminMockData';
+import { useAdminMarketers } from '@/services/adminApi';
 import { marketerStatusMeta } from './adminFormat';
 
 export function AdminMarketersScreen(): React.JSX.Element {
   const router = useRouter();
-  const totalReferrals = ADMIN_MARKETERS.reduce((sum, m) => sum + m.referralsTotal, 0);
-  const activeReferrals = ADMIN_MARKETERS.reduce((sum, m) => sum + m.activeReferrals, 0);
+  const { data: marketers } = useAdminMarketers();
+  const totalReferrals = marketers.reduce((sum, m) => sum + m.referralsTotal, 0);
+  const activeReferrals = marketers.reduce((sum, m) => sum + m.activeReferrals, 0);
 
   return (
     <MobilePage testID="admin-marketers-screen" header={<MobileTabHeader title="بازاریاب‌ها" />}>
       <View style={{ paddingHorizontal: mobileMetrics.screenPadding, gap: mobileMetrics.sectionGap }}>
         <AnimatedSection index={0}>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <PortalMetricTile label="بازاریاب‌ها" value={String(ADMIN_MARKETERS.length)} tone="info" />
+            <PortalMetricTile label="بازاریاب‌ها" value={String(marketers.length)} tone="info" />
             <PortalMetricTile label="کل معرفی‌ها" value={String(totalReferrals)} />
             <PortalMetricTile label="فعال" value={String(activeReferrals)} tone="success" />
           </View>
@@ -39,7 +40,7 @@ export function AdminMarketersScreen(): React.JSX.Element {
               onPressAction={() => router.navigate('/admin/payouts' as never)}
             />
             <View style={{ gap: 10 }}>
-              {ADMIN_MARKETERS.map((m) => (
+              {marketers.map((m) => (
                 <PortalRowCard
                   key={m.id}
                   initials={siteInitials(m.name)}

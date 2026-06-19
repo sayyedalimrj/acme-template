@@ -4,16 +4,16 @@
  * Lists marketers' payout requests with a mock "approve / mark paid" action. No real money
  * movement — actions update in-memory state only and are gated behind a backend later.
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { PortalMetricTile, PortalRowCard, PortalSectionTitle } from '@/components/portal/PortalUI';
 import { Button } from '@/components/ui';
 import { MobilePage, MobileTabHeader } from '@/features/mobile/components';
 import { mobileMetrics } from '@/features/mobile/mobileTokens';
-import type { AdminPayoutRequest, PayoutRequestStatus } from '@/domain/admin';
+import { adminPayoutAction, useAdminPayouts } from '@/services/adminApi';
+import type { PayoutRequestStatus } from '@/domain/admin';
 
-import { ADMIN_PAYOUT_REQUESTS } from './adminMockData';
 import { payoutMethodLabel, payoutStatusMeta } from './adminFormat';
 
 /** The next mock status when an admin advances a payout request. */
@@ -30,12 +30,20 @@ function actionLabel(status: PayoutRequestStatus): string | null {
 }
 
 export function AdminPayoutsScreen(): React.JSX.Element {
-  const [requests, setRequests] = useState<AdminPayoutRequest[]>(() => [...ADMIN_PAYOUT_REQUESTS]);
+  const { data: live } = useAdminPayouts();
+  // Optimistic status overrides keyed by payout id (no effect-driven mirroring of live state).
+  const [overrides, setOverrides] = useState<Record<string, PayoutRequestStatus>>({});
+  const requests = useMemo(
+    () => live.map((r) => (overrides[r.id] ? { ...r, status: overrides[r.id] } : r)),
+    [live, overrides],
+  );
 
   const advance = (id: string): void => {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: nextStatus(r.status) } : r)),
-    );
+    const current = requests.find((r) => r.id === id);
+    if (!current) return;
+    const action = current.status === 'requested' ? 'approve' : 'mark_paid';
+    void adminPayoutAction(id, action);
+    setOverrides((prev) => ({ ...prev, [id]: nextStatus(current.status) }));
   };
 
   const pending = requests.filter((r) => r.status === 'requested').length;

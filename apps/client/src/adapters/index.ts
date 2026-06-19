@@ -10,6 +10,7 @@
  */
 import { appConfig } from '@/config/app.config';
 
+import { createHttpAdapters } from './http';
 import { createMockAIAdvisorAdapter } from './mock/mockAIAdvisorAdapter';
 import { createMockAuthAdapter } from './mock/mockAuthAdapter';
 import { createMockBillingAdapter } from './mock/mockBillingAdapter';
@@ -55,10 +56,7 @@ function createAdapters(): Adapters {
     case 'mock':
       return createMockAdapters();
     case 'http':
-      throw new Error(
-        'HTTP data source is not implemented in the MVP. Real data must flow through the ' +
-          'backend/proxy and is gated on the security review.',
-      );
+      return createHttpAdapters();
     default:
       throw new Error(`Unknown data source: ${String(appConfig.dataSource)}`);
   }

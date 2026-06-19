@@ -9,6 +9,14 @@ jest.mock('expo-font', () => ({
   loadAsync: jest.fn(() => Promise.resolve()),
 }));
 
+// Force "reduced motion" in tests so RN Animated never starts a native-driver animation (the
+// test renderer has no native view, which otherwise throws "Unable to locate attached view in
+// the native tree"). Components then render in their final state instantly — deterministic.
+jest.mock('@/features/mobile/motion', () => {
+  const actual = jest.requireActual('@/features/mobile/motion');
+  return { ...actual, useReducedMotion: () => true };
+});
+
 jest.mock('@expo/vector-icons', () => {
   const React = require('react');
   const { Text } = require('react-native');

@@ -24,7 +24,7 @@ import React, {
 
 import { ACTIVE_PORTAL } from '@/config/portal.config';
 import { authService } from '@/services';
-import { setAuthToken } from '@/services/authApi';
+import { clearSessionTokens, logoutSession, setSessionTokens } from '@/services/authApi';
 import type { AppPortal, AuthStatus, AuthUser } from '@/domain/types';
 
 export interface SignInInput {
@@ -41,8 +41,8 @@ export interface SessionContextValue {
   portal: AppPortal;
   /** Establish a mock session via AuthService. */
   signIn: (input?: SignInInput) => Promise<void>;
-  /** Establish a real session from a backend OTP verification (user + JWT). */
-  signInWithSession: (input: { user: AuthUser; token: string }) => void;
+  /** Establish a real session from a backend OTP verification (user + JWT + refresh token). */
+  signInWithSession: (input: { user: AuthUser; token: string; refreshToken?: string }) => void;
   /** Clear the session via AuthService. */
   signOut: () => Promise<void>;
   /** Switch the active portal in-app (mock convenience; persisted in memory only). */
@@ -74,15 +74,20 @@ export function SessionProvider({ children }: SessionProviderProps): React.JSX.E
     }
   }, []);
 
-  const signInWithSession = useCallback((input: { user: AuthUser; token: string }) => {
-    setAuthToken(input.token);
-    setUser(input.user);
-    setStatus('authenticated');
-    setPortal(ACTIVE_PORTAL);
-  }, []);
+  const signInWithSession = useCallback(
+    (input: { user: AuthUser; token: string; refreshToken?: string }) => {
+      setSessionTokens({ token: input.token, refreshToken: input.refreshToken ?? null });
+      setUser(input.user);
+      setStatus('authenticated');
+      setPortal(ACTIVE_PORTAL);
+    },
+    [],
+  );
 
   const signOut = useCallback(async () => {
-    setAuthToken(null);
+    // Revoke the refresh session on the backend (best-effort) then clear local state.
+    await logoutSession();
+    clearSessionTokens();
     const session = await authService.signOut();
     setUser(session.user);
     setStatus(session.status);

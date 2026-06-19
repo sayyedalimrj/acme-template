@@ -15,11 +15,16 @@ import { AnimatedSection, MobilePage, QuickActionCard } from '@/features/mobile/
 import { mobileMetrics, mobileType, useMobileColors } from '@/features/mobile/mobileTokens';
 import { useTheme } from '@/theme';
 
-import { AFFILIATE_COMMISSIONS, AFFILIATE_OVERVIEW, AFFILIATE_PROFILE } from './affiliateMockData';
+import {
+  useAffiliateCommissions,
+  useAffiliateOverview,
+  useAffiliateProfile,
+} from '@/services/affiliateApi';
+import type { AffiliateProfile } from '@/domain/affiliate';
 import { commissionStatusMeta } from './affiliateFormat';
 
 /** The referral-link card: shows the marketer's code + link with a (mock) copy/share action. */
-function ReferralLinkCard(): React.JSX.Element {
+function ReferralLinkCard({ profile }: { profile: AffiliateProfile }): React.JSX.Element {
   const colors = useMobileColors();
   const { isRTL } = useTheme();
   return (
@@ -35,7 +40,7 @@ function ReferralLinkCard(): React.JSX.Element {
         کد معرفی شما
       </Text>
       <Text style={{ fontSize: 26, fontWeight: '800', color: colors.heroText, textAlign: isRTL ? 'right' : 'left' }}>
-        {AFFILIATE_PROFILE.code}
+        {profile.code}
       </Text>
       <View
         style={{
@@ -53,11 +58,11 @@ function ReferralLinkCard(): React.JSX.Element {
           style={{ flex: 1, fontSize: mobileType.captionSize, color: colors.heroText, writingDirection: 'ltr', textAlign: 'left' }}
           numberOfLines={1}
         >
-          {AFFILIATE_PROFILE.referralLink}
+          {profile.referralLink}
         </Text>
       </View>
       <Text style={{ fontSize: mobileType.captionSize, color: colors.heroTextSoft, textAlign: isRTL ? 'right' : 'left' }}>
-        نرخ پورسانت شما: {AFFILIATE_PROFILE.commissionRateLabel} • سطح {AFFILIATE_PROFILE.tierLabel}
+        نرخ پورسانت شما: {profile.commissionRateLabel} • سطح {profile.tierLabel}
       </Text>
     </View>
   );
@@ -66,14 +71,16 @@ function ReferralLinkCard(): React.JSX.Element {
 export function AffiliateHomeScreen(): React.JSX.Element {
   const router = useRouter();
   const go = (href: string): void => router.navigate(href as never);
-  const o = AFFILIATE_OVERVIEW;
-  const recent = AFFILIATE_COMMISSIONS.slice(0, 4);
+  const { data: o } = useAffiliateOverview();
+  const { data: profile } = useAffiliateProfile();
+  const { data: commissions } = useAffiliateCommissions();
+  const recent = commissions.slice(0, 4);
 
   return (
     <MobilePage testID="affiliate-home-screen">
       <View style={{ paddingHorizontal: mobileMetrics.screenPadding, gap: mobileMetrics.sectionGap }}>
         <AnimatedSection index={0}>
-          <ReferralLinkCard />
+          <ReferralLinkCard profile={profile} />
         </AnimatedSection>
 
         <AnimatedSection index={1}>

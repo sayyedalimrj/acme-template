@@ -99,6 +99,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
           signInWithSession({
             user: { id: res.user.id, name: res.user.name ?? '', email: '' },
             token: res.token,
+            refreshToken: res.refreshToken,
           });
         } catch (e) {
           submittedRef.current = false;
