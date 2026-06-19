@@ -1,38 +1,40 @@
 /**
- * Plans & subscription (index).
+ * Plans & subscription (index) — simplified.
  *
- * Makes the business model visible in-product: the current (mock) subscription, a
- * monthly/yearly toggle, pricing cards for the four plans, and a feature-comparison matrix.
- * MOCK-ONLY and FRONTEND-SAFE — prices are display-only, plan actions are disabled
- * placeholders, and a clear note states real billing arrives later via the backend +
- * provider. No payment data is collected (see security-model.md).
+ * Top: the merchant's current (mock) subscription. Below: a single renewal card with a 4-option
+ * duration selector (1/3/6/12 months) and the resulting price. No comparison matrix, no
+ * up-front legal blurb.
+ *
+ * MOCK-ONLY and FRONTEND-SAFE — prices are display-only labels, the renew action is a disabled
+ * placeholder, and no payment data is collected (see security-model.md).
  */
 import React, { useState } from 'react';
 import { View } from 'react-native';
 
-import { Card, ErrorState, LoadingState, Screen } from '@/components/ui';
-import { ChoiceGroup } from '@/features/onboarding/components/ChoiceGroup';
-import { SecurityNote } from '@/features/onboarding/components/SecurityNote';
+import { Badge, Card, ErrorState, LoadingState, MockActionButton, Screen, Text } from '@/components/ui';
+import { SegmentedControl } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
-import type { BillingInterval } from '@/domain/types';
 
 import { CurrentPlanCard } from './components/CurrentPlanCard';
-import { FeatureMatrix } from './components/FeatureMatrix';
-import { PlanCard } from './components/PlanCard';
-import { BILLING_INTERVALS, findPricing, planActionState } from './subscriptionHelpers';
+import {
+  DEFAULT_DURATION_MONTHS,
+  DURATION_OPTIONS,
+  findDuration,
+  type SubscriptionDurationMonths,
+} from './planDurations';
 import { useSubscriptionOverview } from './useSubscription';
 
 export function PlansScreen(): React.JSX.Element {
-  const { tokens } = useTheme();
+  const { tokens, rowDirection } = useTheme();
   const t = useT();
   const overviewQuery = useSubscriptionOverview();
-  const [interval, setInterval] = useState<BillingInterval>('monthly');
+  const [months, setMonths] = useState<SubscriptionDurationMonths>(DEFAULT_DURATION_MONTHS);
+
+  const selected = findDuration(months);
 
   return (
-    <Screen testID="plans-screen" title={t('plans.title')} subtitle={t('plans.subtitle')}>
-      <SecurityNote messageKey="plans.billing.note" />
-
+    <Screen testID="plans-screen" title={t('plans.title')}>
       {overviewQuery.isPending ? (
         <LoadingState label={t('common.loading')} fill={false} />
       ) : overviewQuery.isError || !overviewQuery.data ? (
@@ -46,42 +48,80 @@ export function PlansScreen(): React.JSX.Element {
         <>
           <CurrentPlanCard current={overviewQuery.data.current} />
 
-          <Card title={t('plans.choosePlan')}>
-            <ChoiceGroup
-              value={interval}
-              onChange={setInterval}
-              testID="plans-interval-toggle"
-              choices={BILLING_INTERVALS.map((value) => ({
-                value,
-                label:
-                  value === 'monthly' ? t('plans.interval.monthly') : t('plans.interval.yearly'),
+          <Card title={t('plans.renew.title')} testID="plans-renew">
+            <Text variant="caption" tone="muted">
+              {t('plans.renew.subtitle')}
+            </Text>
+
+            <SegmentedControl<string>
+              testID="plans-duration-selector"
+              stretch
+              value={String(months)}
+              onChange={(value) => setMonths(Number(value) as SubscriptionDurationMonths)}
+              options={DURATION_OPTIONS.map((option) => ({
+                value: String(option.months),
+                label: t(option.labelKey),
               }))}
+              style={{ marginTop: tokens.spacing.sm }}
             />
+
+            {/* Price block for the selected duration */}
             <View
               style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: tokens.spacing.lg,
                 marginTop: tokens.spacing.md,
+                padding: tokens.spacing.lg,
+                borderRadius: tokens.radius.lg,
+                backgroundColor: tokens.color.primarySoft,
+                gap: tokens.spacing.xs,
+                alignItems: 'center',
               }}
             >
-              {overviewQuery.data.plans.map((plan) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  pricing={findPricing(overviewQuery.data.pricing, plan.id)}
-                  interval={interval}
-                  action={planActionState(plan.id, overviewQuery.data.current.planId)}
-                />
-              ))}
+              <Text variant="caption" tone="muted">
+                {t('plans.renew.payable')}
+              </Text>
+              <View
+                style={{
+                  flexDirection: rowDirection,
+                  alignItems: 'baseline',
+                  gap: tokens.spacing.xs,
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text variant="display" style={{ color: tokens.color.primary }}>
+                  {selected.totalAmount}
+                </Text>
+                <Text variant="subheading" style={{ color: tokens.color.primary }}>
+                  {t('plans.currency')}
+                </Text>
+              </View>
+              <View
+                style={{
+                  flexDirection: rowDirection,
+                  alignItems: 'center',
+                  gap: tokens.spacing.sm,
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text variant="caption" tone="muted">
+                  {t('plans.duration.perMonth')}: {selected.perMonthAmount} {t('plans.currency')}
+                </Text>
+                {selected.savingsKey ? (
+                  <Badge tone="success" label={t(selected.savingsKey)} />
+                ) : null}
+              </View>
             </View>
-          </Card>
 
-          <Card title={t('plans.compare')}>
-            <FeatureMatrix
-              plans={overviewQuery.data.plans}
-              features={overviewQuery.data.features}
-            />
+            <View style={{ marginTop: tokens.spacing.md, alignItems: 'center' }}>
+              <MockActionButton
+                testID="plans-renew-cta"
+                label={t('plans.renew.cta')}
+                note={t('plans.renew.note')}
+                variant="primary"
+                style={{ alignSelf: 'center' }}
+              />
+            </View>
           </Card>
         </>
       )}
