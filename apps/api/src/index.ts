@@ -97,6 +97,23 @@ export {
   verifyWebhookSignaturePlaceholder,
   createNotImplementedWebhookReceiver,
 } from './adapters/webhookReceiver';
+export type {
+  PaymentGateway,
+  PaymentProviderKind,
+  PaymentCurrency,
+  PaymentStatus,
+  PaymentMetadata,
+  CheckoutRequest,
+  CheckoutSession,
+  PaymentVerification,
+  RefundRequest,
+  PaymentWebhookEnvelope,
+  PaymentWebhookVerification,
+} from './adapters/paymentGateway';
+export {
+  verifyPaymentWebhookSignaturePlaceholder,
+  createNotImplementedPaymentGateway,
+} from './adapters/paymentGateway';
 
 // Route contracts (documentation/types only)
 export type { HttpMethod, RouteContract } from './routes/contracts';

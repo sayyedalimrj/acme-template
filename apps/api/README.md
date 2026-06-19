@@ -22,7 +22,8 @@ This PR contains **only**:
 - Security helpers: secret redaction, a credential policy that **rejects raw secret
   fields**, and a safe error model with no stack traces.
 - **Interface-only** adapter contracts: WooCommerce proxy, WordPress bridge, webhook
-  receiver (plus not-implemented stubs that return safe errors).
+  receiver, and the platform **payment gateway** (plus not-implemented stubs that return safe
+  errors).
 - Future HTTP route contracts expressed as **types/descriptors** (no HTTP server).
 - Small, secret-free mock tenants/sites and dependency-free example checks.
 
@@ -62,7 +63,7 @@ apps/api/
     ├── index.ts                  public barrel (types + helpers + stubs)
     ├── domain/                   tenant, user, site, credential, auditLog, permission
     ├── security/                 redaction, credentialPolicy, errors (+ examples)
-    ├── adapters/                 woocommerceProxy, wordpressBridge, webhookReceiver (interfaces + stubs)
+    ├── adapters/                 woocommerceProxy, wordpressBridge, webhookReceiver, paymentGateway (interfaces + stubs)
     ├── plugin/                   read-only plugin sync foundation (validators/ingestors/registry; pure)
     ├── database/                 production DB schema + tenant isolation DESIGN (types/contracts only)
     ├── routes/                   future HTTP route contracts (types only)
@@ -206,6 +207,23 @@ raw-secret columns, no raw payload/meta columns in sync tables, rollback plans +
 present, and an environment contract of NAMES only. **Next step:** a **database adapter
 boundary and dev storage implementation**, then a real provider decision and the first applied
 migration — built later, after review (not production mutation).
+
+## Platform payment gateway contract (`src/adapters/paymentGateway.ts`)
+
+Interface-only contract for how the **platform** charges a tenant for its own subscription
+plan (NOT a merchant's WooCommerce store checkout — that stays inside the merchant's site).
+
+- `PaymentGateway` — `createCheckout` (hosted redirect), `verifyPayment`, `getPaymentStatus`,
+  `refundLater`, `handleWebhookLater`, plus `verifyPaymentWebhookSignaturePlaceholder` and the
+  not-implemented stub `createNotImplementedPaymentGateway()`.
+- Provider-agnostic (`stripe | zarinpal | idpay | nextpay | manual | mock`); the redirect →
+  verify shape fits both Stripe Checkout and common Iranian gateways.
+- **No card data, ever** (capture happens on the provider's hosted page); amounts are integer
+  **minor units** + ISO-4217 currency; inputs are scanned and raw secret-like fields rejected;
+  every call is tenant-scoped. Provider keys live **only** in backend env, never committed.
+- Settled payments map to invoice **metadata** via `BillingEventRecord` (no PAN/card detail).
+
+See the repo-root `DEPLOYMENT.md` for how to wire a real provider server-side at go-live.
 
 ## Hard rules for this package
 
