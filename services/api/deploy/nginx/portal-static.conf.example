@@ -1,0 +1,37 @@
+# Static SPA host for one portal (merchant, admin, or affiliate).
+# Copy once per subdomain and set server_name + root accordingly:
+#   app.yourdomain.ir     → root /var/www/portal-web/app;
+#   admin.yourdomain.ir   → root /var/www/portal-web/admin;
+#   partner.yourdomain.ir → root /var/www/portal-web/partner;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name app.yourdomain.ir;
+
+    root /var/www/portal-web/app;
+    index index.html;
+
+    # Certbot will add SSL listen directives here.
+
+    # PWA assets — cache hashed bundles, not index.html
+    location /assets/ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    location = /sw.js {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    location = /manifest.json {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    # Expo Router client-side routes — SPA fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

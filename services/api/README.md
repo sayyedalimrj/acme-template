@@ -86,4 +86,7 @@ curl -s localhost:8080/auth/otp/verify -H 'content-type: application/json' \
 - `npm run build && npm start` (or run the provided container/host of your choice).
 - Run `npm run migrate` once on deploy to apply the schema.
 
-See the repo-root `DEPLOYMENT.md` for the full multi-subdomain runbook.
+See the repo-root `DEPLOYMENT.md` for the full multi-subdomain runbook and
+`SERVER_SETUP.fa.md` for Ubuntu + Nginx + SSL step-by-step (Persian).
+
+Example production configs: `services/api/deploy/` (`portal-api.service`, `nginx/*.example`).
