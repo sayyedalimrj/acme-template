@@ -9,7 +9,7 @@
 import React, { type ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { mobileColors, mobileMetrics, mobileShadow } from '../mobileTokens';
+import { mobileMetrics, useMobileColors, useMobileShadow } from '../mobileTokens';
 import { AnimatedSection } from './AnimatedSection';
 import { PressableScale } from './PressableScale';
 
@@ -34,15 +34,17 @@ export function AnimatedCard({
   accessibilityLabel,
   testID,
 }: AnimatedCardProps): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const surface: StyleProp<ViewStyle> = bare
     ? null
     : [
         {
-          backgroundColor: mobileColors.card,
+          backgroundColor: colors.card,
           borderRadius: mobileMetrics.cardRadius,
           padding: 16,
         },
-        mobileShadow,
+        shadow,
       ];
 
   return (

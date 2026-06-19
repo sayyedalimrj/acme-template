@@ -15,7 +15,7 @@ import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 import type { SiteConnection } from '@/domain/types';
 
-import { mobileColors, mobileMetrics, mobileShadow, mobileType } from '../mobileTokens';
+import { mobileMetrics, useMobileColors, useMobileShadow, useMobileType } from '../mobileTokens';
 import { CustomerStatusBadge } from './CustomerStatusBadge';
 import { PressableScale } from './PressableScale';
 
@@ -50,6 +50,9 @@ export function HeroSiteCard({
   width = '100%',
 }: HeroSiteCardProps): React.JSX.Element {
   const t = useT();
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
+  const type = useMobileType();
   const { rowDirection, isRTL } = useTheme();
 
   return (
@@ -61,12 +64,12 @@ export function HeroSiteCard({
           width,
           minHeight: mobileMetrics.heroHeight,
           borderRadius: mobileMetrics.cardRadius,
-          backgroundColor: mobileColors.hero,
+          backgroundColor: colors.hero,
           padding: 20,
           justifyContent: 'space-between',
           overflow: 'hidden',
         },
-        mobileShadow,
+        shadow,
       ]}
     >
       {/* Soft decorative layer for depth (no gradient dependency). */}
@@ -80,7 +83,7 @@ export function HeroSiteCard({
           width: 160,
           height: 160,
           borderRadius: 80,
-          backgroundColor: mobileColors.heroLayer,
+          backgroundColor: colors.heroLayer,
         }}
       />
 
@@ -90,31 +93,33 @@ export function HeroSiteCard({
             width: 46,
             height: 46,
             borderRadius: 14,
-            backgroundColor: mobileColors.heroLayer,
+            backgroundColor: colors.heroLayer,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: mobileColors.heroText, fontWeight: '700', fontSize: 16 }}>
+          <Text style={{ color: colors.heroText, fontWeight: '700', fontSize: 16 }}>
             {siteInitials(site.name)}
           </Text>
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             style={{
-              fontSize: mobileType.heroTitleSize,
+              fontSize: type.heroTitleSize,
               fontWeight: '700',
-              color: mobileColors.heroText,
+              color: colors.heroText,
               textAlign: isRTL ? 'right' : 'left',
             }}
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
           >
             {site.name}
           </Text>
           <Text
             style={{
-              fontSize: mobileType.heroLabelSize,
-              color: mobileColors.heroTextSoft,
+              fontSize: type.heroLabelSize,
+              color: colors.heroTextSoft,
               writingDirection: 'ltr',
               textAlign: isRTL ? 'right' : 'left',
             }}
@@ -135,11 +140,11 @@ export function HeroSiteCard({
         }}
       >
         <View style={{ minWidth: 0 }}>
-          <Text style={{ fontSize: 12, color: mobileColors.heroTextSoft }}>
+          <Text style={{ fontSize: 12, color: colors.heroTextSoft }}>
             {t('home.hero.renewal')}
           </Text>
           <Text
-            style={{ fontSize: 14, fontWeight: '600', color: mobileColors.heroText }}
+            style={{ fontSize: 14, fontWeight: '600', color: colors.heroText }}
             numberOfLines={1}
           >
             {renewalLabel ?? '—'}
@@ -154,16 +159,16 @@ export function HeroSiteCard({
             paddingHorizontal: 14,
             height: 40,
             borderRadius: 10,
-            backgroundColor: mobileColors.primary,
+            backgroundColor: colors.primary,
           }}
         >
-          <Text style={{ color: mobileColors.onPrimary, fontWeight: '700', fontSize: 14 }}>
+          <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 14 }}>
             {t('home.hero.viewSite')}
           </Text>
           <Ionicons
             name={isRTL ? 'chevron-back' : 'chevron-forward'}
             size={16}
-            color={mobileColors.onPrimary}
+            color={colors.onPrimary}
           />
         </View>
       </View>

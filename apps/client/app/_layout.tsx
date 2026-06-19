@@ -6,15 +6,15 @@
  * root for the whole app.
  */
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 
 import { AppProviders } from '@/providers/AppProviders';
+import { ThemedStatusBar } from '@/theme';
 
 export default function RootLayout(): React.JSX.Element {
   return (
     <AppProviders>
-      <StatusBar style="auto" />
+      <ThemedStatusBar />
       <Stack screenOptions={{ headerShown: false }} />
     </AppProviders>
   );

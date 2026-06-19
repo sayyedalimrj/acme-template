@@ -13,7 +13,7 @@ import { useT } from '@/i18n/I18nProvider';
 import type { SiteStatus } from '@/domain/types';
 import type { StringKey } from '@/i18n/strings';
 
-import { mobileColors, mobileType } from '../mobileTokens';
+import { mobileType, useMobileColors, type MobileColorTokens } from '../mobileTokens';
 
 interface StatusMeta {
   labelKey: StringKey;
@@ -21,28 +21,30 @@ interface StatusMeta {
   soft: string;
 }
 
-const STATUS_META: Record<SiteStatus, StatusMeta> = {
-  connected: {
-    labelKey: 'home.hero.statusActive',
-    color: mobileColors.statusActive,
-    soft: mobileColors.statusActiveSoft,
-  },
-  pending: {
-    labelKey: 'home.hero.statusAttention',
-    color: mobileColors.statusAttention,
-    soft: mobileColors.statusAttentionSoft,
-  },
-  error: {
-    labelKey: 'home.hero.statusAttention',
-    color: mobileColors.statusAttention,
-    soft: mobileColors.statusAttentionSoft,
-  },
-  disconnected: {
-    labelKey: 'home.hero.statusDisconnected',
-    color: mobileColors.statusOffline,
-    soft: mobileColors.statusOfflineSoft,
-  },
-};
+function statusMeta(colors: MobileColorTokens): Record<SiteStatus, StatusMeta> {
+  return {
+    connected: {
+      labelKey: 'home.hero.statusActive',
+      color: colors.statusActive,
+      soft: colors.statusActiveSoft,
+    },
+    pending: {
+      labelKey: 'home.hero.statusAttention',
+      color: colors.statusAttention,
+      soft: colors.statusAttentionSoft,
+    },
+    error: {
+      labelKey: 'home.hero.statusAttention',
+      color: colors.statusAttention,
+      soft: colors.statusAttentionSoft,
+    },
+    disconnected: {
+      labelKey: 'home.hero.statusDisconnected',
+      color: colors.statusOffline,
+      soft: colors.statusOfflineSoft,
+    },
+  };
+}
 
 export interface CustomerStatusBadgeProps {
   status: SiteStatus;
@@ -54,7 +56,8 @@ export function CustomerStatusBadge({
   onDark = false,
 }: CustomerStatusBadgeProps): React.JSX.Element {
   const t = useT();
-  const meta = STATUS_META[status];
+  const colors = useMobileColors();
+  const meta = statusMeta(colors)[status];
 
   return (
     <View
@@ -66,7 +69,7 @@ export function CustomerStatusBadge({
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 999,
-        backgroundColor: onDark ? mobileColors.heroLayer : meta.soft,
+        backgroundColor: onDark ? colors.heroLayer : meta.soft,
       }}
     >
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: meta.color }} />
@@ -74,7 +77,7 @@ export function CustomerStatusBadge({
         style={{
           fontSize: mobileType.captionSize,
           fontWeight: '600',
-          color: onDark ? mobileColors.heroText : meta.color,
+          color: onDark ? colors.heroText : meta.color,
         }}
       >
         {t(meta.labelKey)}

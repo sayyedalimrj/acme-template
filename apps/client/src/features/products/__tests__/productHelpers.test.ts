@@ -11,7 +11,7 @@ import {
 
 describe('filterProducts', () => {
   it('searches by product name (case-insensitive)', () => {
-    const result = filterProducts(products, { search: 'aurora' });
+    const result = filterProducts(products, { search: 'آئورا' });
     expect(result).toHaveLength(1);
     expect(result[0].sku).toBe('APP-TEE-001');
   });
@@ -19,7 +19,7 @@ describe('filterProducts', () => {
   it('searches by SKU', () => {
     const result = filterProducts(products, { search: 'out-btl-750' });
     expect(result).toHaveLength(1);
-    expect(result[0].name.toLowerCase()).toContain('bottle');
+    expect(result[0].name).toContain('بطری');
   });
 
   it('filters by low stock', () => {
@@ -40,9 +40,9 @@ describe('filterProducts', () => {
   });
 
   it('combines search and filters', () => {
-    const result = filterProducts(products, { search: 'lumen', status: 'publish' });
+    const result = filterProducts(products, { search: 'لومن', status: 'publish' });
     expect(result.every((p) => p.status === 'publish')).toBe(true);
-    expect(result.every((p) => p.name.toLowerCase().includes('lumen'))).toBe(true);
+    expect(result.every((p) => p.name.includes('لومن'))).toBe(true);
   });
 });
 

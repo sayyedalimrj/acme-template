@@ -16,7 +16,7 @@ import {
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
-import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '../../mobile/mobileUxSpec';
+import { NO_WEB_OUTLINE, useMobileFontFamily } from '../../mobile/mobileUxSpec';
 import { authColors, authMetrics, authType } from '../authTokens';
 
 export interface AuthFieldProps {
@@ -67,6 +67,7 @@ export const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthFiel
   ref,
 ): React.JSX.Element {
   const { isRTL } = useTheme();
+  const fontFamily = useMobileFontFamily();
   const [focused, setFocused] = useState(false);
   // When Enter should advance to the next field, keep the keyboard open.
   const keepKeyboard = blurOnSubmit ?? returnKeyType === 'next';
@@ -126,7 +127,7 @@ export const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthFiel
           style={{
             fontSize: authType.inputSize,
             color: authColors.text,
-            fontFamily: MOBILE_FONT_FAMILY,
+            fontFamily,
             padding: 0,
             textAlign,
             writingDirection,

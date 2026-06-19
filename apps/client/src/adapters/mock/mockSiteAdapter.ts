@@ -10,6 +10,7 @@ import { DEFAULT_ACTIVE_SITE_ID, sites as seedSites } from '@/mock/data/sites';
 import type { ConnectSiteInput, SiteConnection } from '@/domain/types';
 
 import type { SiteAdapter } from '../types';
+import { setActiveMockSiteId } from './mockActiveSite';
 import { clone, delay } from './mockUtils';
 
 export function createMockSiteAdapter(): SiteAdapter {
@@ -18,6 +19,8 @@ export function createMockSiteAdapter(): SiteAdapter {
     ? DEFAULT_ACTIVE_SITE_ID
     : (sites[0]?.id ?? null);
   let nextId = 1;
+  // Keep the shared mock active-site in sync so site-scoped data adapters return the right view.
+  setActiveMockSiteId(activeSiteId);
 
   return {
     async listSites(): Promise<SiteConnection[]> {
@@ -36,6 +39,7 @@ export function createMockSiteAdapter(): SiteAdapter {
         throw new Error(`Site not found: ${siteId}`);
       }
       activeSiteId = siteId;
+      setActiveMockSiteId(siteId);
       return clone(target);
     },
     async connectMockSite(input: ConnectSiteInput): Promise<SiteConnection> {
@@ -53,6 +57,7 @@ export function createMockSiteAdapter(): SiteAdapter {
       sites = [...sites, site];
       if (!activeSiteId) {
         activeSiteId = site.id;
+        setActiveMockSiteId(activeSiteId);
       }
       return clone(site);
     },
@@ -61,6 +66,7 @@ export function createMockSiteAdapter(): SiteAdapter {
       sites = sites.filter((s) => s.id !== siteId);
       if (activeSiteId === siteId) {
         activeSiteId = sites[0]?.id ?? null;
+        setActiveMockSiteId(activeSiteId);
       }
     },
   };

@@ -76,6 +76,8 @@ function ScreenHeader({
         paddingHorizontal: tokens.spacing.lg,
         paddingVertical: tokens.spacing.sm,
         backgroundColor: tokens.color.background,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: tokens.color.border,
       }}
     >
       {showBack ? (
@@ -157,8 +159,10 @@ export function Screen({
     backgroundColor: tokens.color.background,
   };
 
+  // The top safe-area inset is owned by the persistent GlobalHeader (AppShell), so the
+  // contextual back/title header here sits directly beneath it without re-insetting.
   const header = hasHeader ? (
-    <View style={{ paddingTop: insets.top }}>
+    <View style={{ zIndex: 10, backgroundColor: tokens.color.background }}>
       <ScreenHeader
         title={title as string}
         subtitle={subtitle}

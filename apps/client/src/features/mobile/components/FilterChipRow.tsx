@@ -11,7 +11,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
-import { mobileColors, mobileType } from '../mobileTokens';
+import { mobileType, useMobileColors } from '../mobileTokens';
 import { PressableScale } from './PressableScale';
 
 export interface FilterChipOption<T extends string> {
@@ -32,6 +32,7 @@ export function FilterChipRow<T extends string>({
   onChange,
   testID,
 }: FilterChipRowProps<T>): React.JSX.Element {
+  const colors = useMobileColors();
   const { rowDirection } = useTheme();
 
   return (
@@ -52,14 +53,14 @@ export function FilterChipRow<T extends string>({
               borderRadius: 999,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: active ? mobileColors.primarySoft : mobileColors.tile,
+              backgroundColor: active ? colors.primarySoft : colors.tile,
             }}
           >
             <Text
               style={{
                 fontSize: mobileType.captionSize,
                 fontWeight: active ? '700' : '500',
-                color: active ? mobileColors.primary : mobileColors.textSecondary,
+                color: active ? colors.primary : colors.textSecondary,
               }}
             >
               {option.label}

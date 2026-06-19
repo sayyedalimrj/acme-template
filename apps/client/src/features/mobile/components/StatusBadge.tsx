@@ -9,17 +9,19 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
 
-import { mobileColors, mobileType } from '../mobileTokens';
+import { mobileType, useMobileColors, type MobileColorTokens } from '../mobileTokens';
 
 export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
-const TONES: Record<StatusTone, { fg: string; bg: string }> = {
-  success: { fg: mobileColors.statusActive, bg: mobileColors.statusActiveSoft },
-  warning: { fg: mobileColors.statusAttention, bg: mobileColors.statusAttentionSoft },
-  danger: { fg: mobileColors.statusDanger, bg: mobileColors.statusDangerSoft },
-  info: { fg: mobileColors.primary, bg: mobileColors.primarySoft },
-  neutral: { fg: mobileColors.textSecondary, bg: mobileColors.tile },
-};
+function statusTones(colors: MobileColorTokens): Record<StatusTone, { fg: string; bg: string }> {
+  return {
+    success: { fg: colors.statusActive, bg: colors.statusActiveSoft },
+    warning: { fg: colors.statusAttention, bg: colors.statusAttentionSoft },
+    danger: { fg: colors.statusDanger, bg: colors.statusDangerSoft },
+    info: { fg: colors.primary, bg: colors.primarySoft },
+    neutral: { fg: colors.textSecondary, bg: colors.tile },
+  };
+}
 
 export interface StatusBadgeProps {
   tone: StatusTone;
@@ -27,7 +29,8 @@ export interface StatusBadgeProps {
 }
 
 export function StatusBadge({ tone, label }: StatusBadgeProps): React.JSX.Element {
-  const tones = TONES[tone];
+  const colors = useMobileColors();
+  const tones = statusTones(colors)[tone];
   return (
     <View
       style={{

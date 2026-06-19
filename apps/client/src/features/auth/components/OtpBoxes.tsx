@@ -8,13 +8,16 @@
  */
 import React, { useRef, useState } from 'react';
 import {
+  Platform,
   TextInput,
   View,
   type NativeSyntheticEvent,
   type TextInputKeyPressEventData,
 } from 'react-native';
 
-import { MOBILE_FONT_FAMILY, NO_WEB_OUTLINE } from '../../mobile/mobileUxSpec';
+import { resolveInputFontFamily, useAppFont } from '@/theme';
+
+import { NO_WEB_OUTLINE } from '../../mobile/mobileUxSpec';
 import { authColors, authMetrics, authType } from '../authTokens';
 import { OTP_LENGTH, toAsciiDigits } from '../authHelpers';
 
@@ -32,6 +35,10 @@ export function OtpBoxes({
   editable = true,
 }: OtpBoxesProps): React.JSX.Element {
   const inputs = useRef<(TextInput | null)[]>([]);
+  const { fontsLoaded } = useAppFont();
+  // OTP boxes are TextInputs: use a single registered family on web (comma stacks can break
+  // RN TextInput on web); the bold face is selected via the '700' weight mapping.
+  const otpFontFamily = resolveInputFontFamily(fontsLoaded, '700');
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
   const focusBox = (index: number): void => {
@@ -40,11 +47,9 @@ export function OtpBoxes({
   };
 
   const setDigit = (index: number, raw: string): void => {
-    // Tolerate Persian/Arabic digits; keep only numerics.
     const cleaned = toAsciiDigits(raw).replace(/[^0-9]/g, '');
 
     if (cleaned.length > 1) {
-      // Paste / multi-char: distribute digits across boxes starting at this index.
       const next = [...digits];
       let cursor = index;
       for (const ch of cleaned.split('')) {
@@ -79,15 +84,14 @@ export function OtpBoxes({
 
   return (
     <View
-      // OTP digits always read left-to-right, even in the RTL (Persian) UI. Boxes flex to fill
-      // the row so the group lines up with the full-width verify button beneath it. `alignSelf`
-      // centers the (capped-width) group; `direction: ltr` keeps box order stable under RTL.
+      // Force LTR digit order even in the RTL (Persian) UI. Boxes flex to fill the full width so
+      // they line up with the full-width verify button; `direction: 'ltr'` keeps the visual order
+      // stable under RTL, and `minWidth: 0` on each box (below) lets them shrink so they never
+      // overflow the frame on web.
       style={{
-        flexDirection: 'row',
-        gap: 12,
-        alignSelf: 'center',
         width: '100%',
-        maxWidth: 320,
+        flexDirection: 'row',
+        gap: 14,
         direction: 'ltr',
       }}
       accessibilityLabel={`${OTP_LENGTH}-digit verification code`}
@@ -109,8 +113,7 @@ export function OtpBoxes({
             onBlur={() => setFocusedIndex((prev) => (prev === index ? null : prev))}
             keyboardType="number-pad"
             inputMode="numeric"
-            // Allow a full paste into one box; the value stays a single controlled digit.
-            maxLength={OTP_LENGTH}
+            maxLength={1}
             selectTextOnFocus
             editable={editable}
             returnKeyType="next"
@@ -124,8 +127,9 @@ export function OtpBoxes({
               textAlign: 'center',
               writingDirection: 'ltr',
               fontSize: authType.otpSize,
-              fontWeight: '700',
-              fontFamily: MOBILE_FONT_FAMILY,
+              // Use the bold face directly on native; web keeps fontWeight with a single family name.
+              fontFamily: otpFontFamily,
+              fontWeight: Platform.OS === 'web' ? '700' : undefined,
               color: authColors.text,
               backgroundColor: authColors.inputBackground,
               borderRadius: authMetrics.otpRadius,
@@ -135,6 +139,7 @@ export function OtpBoxes({
                 : active
                   ? authColors.inputBorderFocused
                   : authColors.inputBorder,
+              padding: 0,
               ...NO_WEB_OUTLINE,
             }}
           />

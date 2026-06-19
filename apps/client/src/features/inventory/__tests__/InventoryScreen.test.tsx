@@ -44,9 +44,9 @@ describe('InventoryScreen', () => {
     renderWithProviders(<InventoryScreen />);
     // Out-of-stock product from the mock catalog appears in the alerts list.
     expect(
-      await screen.findByText('Mesa Ceramic Pour-Over Set', {}, { timeout: 4000 }),
+      await screen.findByText('ست دم‌افزار سرامیکی میزا', {}, { timeout: 4000 }),
     ).toBeTruthy();
     // Backordered product also appears.
-    expect(screen.getByText('Lumen Desk Lamp (Walnut)')).toBeTruthy();
+    expect(screen.getByText('چراغ رومیزی لومن (گردو)')).toBeTruthy();
   });
 });

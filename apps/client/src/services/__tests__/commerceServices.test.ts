@@ -39,9 +39,9 @@ describe('productService', () => {
     const published = await productService.listProducts({ status: 'publish' });
     expect(published.items.every((p) => p.status === 'publish')).toBe(true);
 
-    const search = await productService.listProducts({ search: 'tote' });
+    const search = await productService.listProducts({ search: 'بادبان' });
     expect(search.items.length).toBe(1);
-    expect(search.items[0].name.toLowerCase()).toContain('tote');
+    expect(search.items[0].name).toContain('بادبان');
   });
 
   it('gets a product by id and rejects unknown ids', async () => {
@@ -72,9 +72,9 @@ describe('customerService', () => {
     const all = await customerService.listCustomers();
     expect(all.total).toBeGreaterThan(0);
 
-    const search = await customerService.listCustomers({ search: 'priya' });
+    const search = await customerService.listCustomers({ search: 'نیلوفر' });
     expect(search.items.length).toBe(1);
-    expect(search.items[0].firstName).toBe('Priya');
+    expect(search.items[0].firstName).toBe('نیلوفر');
   });
 
   it('gets a customer by id', async () => {

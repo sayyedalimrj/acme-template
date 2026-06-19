@@ -6,7 +6,7 @@
  * already-registered accounts. The `password` here is a NON-SECRET demo credential for local
  * testing only — no real PII, no provider keys, nothing is persisted or sent anywhere.
  */
-import { detectIdentifier, normalizeMobile, type IdentifierChannel } from './authHelpers';
+import { detectIdentifier, mobileDigitsOnly, type IdentifierChannel } from './authHelpers';
 
 /**
  * Shared demo password for every mock account. NOT a secret — this is a local/testing-only
@@ -28,14 +28,14 @@ export interface AuthMockUser {
 export const AUTH_MOCK_USERS: readonly AuthMockUser[] = [
   {
     id: 'usr_mock_operator',
-    name: 'Demo Operator',
+    name: 'اپراتور آزمایشی',
     email: 'operator@demo.local',
     mobile: '09123456789',
     password: MOCK_PASSWORD,
   },
   {
     id: 'usr_mock_sara',
-    name: 'Sara Tajeri',
+    name: 'سارا تجری',
     email: 'sara@shop.example',
     mobile: '09120000000',
     password: MOCK_PASSWORD,
@@ -59,8 +59,15 @@ export function findMockUser(identifier: string, channel?: IdentifierChannel): A
   }
 
   if (resolved === 'mobile') {
-    const mobile = normalizeMobile(trimmed);
-    return AUTH_MOCK_USERS.find((user) => normalizeMobile(user.mobile) === mobile) ?? null;
+    const mobile = mobileDigitsOnly(trimmed);
+    const normalized =
+      mobile.startsWith('98') && mobile.length === 12 ? `0${mobile.slice(2)}` : mobile;
+    return (
+      AUTH_MOCK_USERS.find((user) => {
+        const userDigits = mobileDigitsOnly(user.mobile);
+        return userDigits === normalized || userDigits === mobile;
+      }) ?? null
+    );
   }
 
   return null;

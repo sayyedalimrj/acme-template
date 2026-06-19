@@ -34,7 +34,10 @@ describe('identifier detection', () => {
     expect(detectIdentifier('+98 912 345 6789')).toBe('mobile');
     expect(detectIdentifier('0912-345-6789')).toBe('mobile');
     expect(isValidMobile('09123456789')).toBe(true);
+    expect(isValidMobile('9123456789')).toBe(true);
+    expect(isValidMobile('+98 912 345 6789')).toBe(true);
     expect(isValidMobile('123')).toBe(false);
+    expect(isValidMobile('+98 912 345 678')).toBe(false);
   });
 
   it('normalizes Persian/Arabic digits and separators', () => {
@@ -84,7 +87,9 @@ describe('mock user routing', () => {
     expect(isKnownMockUser('operator@demo.local', 'email')).toBe(true);
     expect(isKnownMockUser('OPERATOR@DEMO.LOCAL')).toBe(true);
     expect(isKnownMockUser('09123456789', 'mobile')).toBe(true);
-    expect(findMockUser('09123456789')?.name).toBe('Demo Operator');
+    expect(isKnownMockUser('+98 912 345 6789', 'mobile')).toBe(true);
+    expect(findMockUser('09123456789')?.name).toBe('اپراتور آزمایشی');
+    expect(findMockUser('+98 912 345 6789')?.name).toBe('اپراتور آزمایشی');
   });
 
   it('treats unknown identifiers as new users (registration)', () => {

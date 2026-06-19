@@ -18,15 +18,16 @@ import {
   FilterChipRow,
   MobilePage,
   MobileSearchField,
+  MobileTabHeader,
   PressableScale,
   StatusBadge,
   type StatusTone,
 } from '@/features/mobile/components';
 import {
-  mobileColors,
   mobileMetrics,
-  mobileShadow,
   mobileType,
+  useMobileColors,
+  useMobileShadow,
 } from '@/features/mobile/mobileTokens';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
@@ -62,47 +63,31 @@ function ScreenTitle({
   onAdd?: () => void;
   addLabel?: string;
 }): React.JSX.Element {
-  const { rowDirection, isRTL } = useTheme();
+  const colors = useMobileColors();
   return (
-    <View
-      style={{
-        flexDirection: rowDirection,
-        alignItems: 'center',
-        gap: 12,
-        paddingHorizontal: mobileMetrics.screenPadding,
-        paddingVertical: 8,
-      }}
-    >
-      <Text
-        style={{
-          flex: 1,
-          fontSize: mobileType.titleSize,
-          fontWeight: '700',
-          color: mobileColors.text,
-          textAlign: isRTL ? 'right' : 'left',
-        }}
-      >
-        {title}
-      </Text>
-      {onAdd ? (
-        <PressableScale
-          onPress={onAdd}
-          accessibilityLabel={addLabel}
-          testID="product-add"
-          pressScale={0.92}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: mobileColors.primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons name="add" size={24} color={mobileColors.onPrimary} />
-        </PressableScale>
-      ) : null}
-    </View>
+    <MobileTabHeader
+      title={title}
+      trailing={
+        onAdd ? (
+          <PressableScale
+            onPress={onAdd}
+            accessibilityLabel={addLabel}
+            testID="product-add"
+            pressScale={0.92}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="add" size={24} color={colors.onPrimary} />
+          </PressableScale>
+        ) : undefined
+      }
+    />
   );
 }
 
@@ -113,6 +98,7 @@ function ProductRow({
   product: Product;
   onPress: () => void;
 }): React.JSX.Element {
+  const colors = useMobileColors();
   const { rowDirection, isRTL } = useTheme();
   const t = useT();
   const fmt = useFormatters();
@@ -136,12 +122,12 @@ function ProductRow({
           width: 46,
           height: 46,
           borderRadius: 13,
-          backgroundColor: mobileColors.tile,
+          backgroundColor: colors.tile,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Ionicons name="cube-outline" size={20} color={mobileColors.muted} />
+        <Ionicons name="cube-outline" size={20} color={colors.muted} />
       </View>
 
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
@@ -149,7 +135,7 @@ function ProductRow({
           style={{
             fontSize: mobileType.labelSize,
             fontWeight: '600',
-            color: mobileColors.text,
+            color: colors.text,
             textAlign: isRTL ? 'right' : 'left',
           }}
           numberOfLines={1}
@@ -159,7 +145,7 @@ function ProductRow({
         <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
           <StatusBadge tone={toStatusTone(stock.tone)} label={t(stock.labelKey)} />
           <Text
-            style={{ fontSize: mobileType.captionSize, color: mobileColors.muted }}
+            style={{ fontSize: mobileType.captionSize, color: colors.muted }}
             numberOfLines={1}
           >
             {product.sku}
@@ -169,7 +155,7 @@ function ProductRow({
 
       <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end', gap: 2 }}>
         <Text
-          style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: mobileColors.text }}
+          style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: colors.text }}
         >
           {fmt.money(product.price, product.currency)}
         </Text>
@@ -177,13 +163,15 @@ function ProductRow({
       <Ionicons
         name={isRTL ? 'chevron-back' : 'chevron-forward'}
         size={16}
-        color={mobileColors.mutedSoft}
+        color={colors.mutedSoft}
       />
     </PressableScale>
   );
 }
 
 export function ProductListScreen(): React.JSX.Element {
+  const colors = useMobileColors();
+  const shadow = useMobileShadow();
   const t = useT();
   const router = useRouter();
   const { isRTL } = useTheme();
@@ -242,7 +230,7 @@ export function ProductListScreen(): React.JSX.Element {
         </AnimatedSection>
 
         {productsQuery.isPending ? (
-          <Text style={{ color: mobileColors.muted, textAlign: isRTL ? 'right' : 'left' }}>
+          <Text style={{ color: colors.muted, textAlign: isRTL ? 'right' : 'left' }}>
             {t('common.loading')}
           </Text>
         ) : productsQuery.isError ? (
@@ -251,14 +239,14 @@ export function ProductListScreen(): React.JSX.Element {
             accessibilityLabel={t('common.retry')}
             style={{ paddingVertical: 24, alignItems: 'center' }}
           >
-            <Text style={{ color: mobileColors.primary, fontWeight: '700' }}>
+            <Text style={{ color: colors.primary, fontWeight: '700' }}>
               {t('products.error')} · {t('common.retry')}
             </Text>
           </PressableScale>
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-            <Ionicons name="cube-outline" size={34} color={mobileColors.mutedSoft} />
-            <Text style={{ color: mobileColors.muted, marginTop: 10 }}>{t('products.empty')}</Text>
+            <Ionicons name="cube-outline" size={34} color={colors.mutedSoft} />
+            <Text style={{ color: colors.muted, marginTop: 10 }}>{t('products.empty')}</Text>
           </View>
         ) : (
           <AnimatedSection index={1}>
@@ -267,17 +255,17 @@ export function ProductListScreen(): React.JSX.Element {
               style={[
                 {
                   borderRadius: mobileMetrics.cardRadius,
-                  backgroundColor: mobileColors.card,
+                  backgroundColor: colors.card,
                   paddingHorizontal: 16,
                   paddingVertical: 4,
                 },
-                mobileShadow,
+                shadow,
               ]}
             >
               {filtered.map((product, index) => (
                 <View key={product.id}>
                   {index > 0 ? (
-                    <View style={{ height: 1, backgroundColor: mobileColors.separator }} />
+                    <View style={{ height: 1, backgroundColor: colors.separator }} />
                   ) : null}
                   <ProductRow
                     product={product}

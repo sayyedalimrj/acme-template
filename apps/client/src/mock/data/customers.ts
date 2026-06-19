@@ -11,8 +11,8 @@ const CURRENCY = 'USD';
 export const customers: Customer[] = [
   {
     id: 'cust_310',
-    firstName: 'Maya',
-    lastName: 'Brennan',
+    firstName: 'سارا',
+    lastName: 'رضایی',
     email: 'maya.brennan@example.test',
     username: 'maya.brennan',
     role: 'customer',
@@ -34,8 +34,8 @@ export const customers: Customer[] = [
   },
   {
     id: 'cust_287',
-    firstName: 'Devon',
-    lastName: 'Lee',
+    firstName: 'امیر',
+    lastName: 'حسینی',
     email: 'devon.lee@example.test',
     username: 'devon.lee',
     role: 'customer',
@@ -57,8 +57,8 @@ export const customers: Customer[] = [
   },
   {
     id: 'cust_142',
-    firstName: 'Priya',
-    lastName: 'Nair',
+    firstName: 'نیلوفر',
+    lastName: 'کریمی',
     email: 'priya.nair@example.test',
     username: 'priya.nair',
     role: 'customer',
@@ -80,8 +80,8 @@ export const customers: Customer[] = [
   },
   {
     id: 'cust_409',
-    firstName: 'Aiko',
-    lastName: 'Tanaka',
+    firstName: 'مریم',
+    lastName: 'احمدی',
     email: 'aiko.tanaka@example.test',
     username: 'aiko.tanaka',
     role: 'customer',
@@ -103,8 +103,8 @@ export const customers: Customer[] = [
   },
   {
     id: 'cust_198',
-    firstName: 'Carlos',
-    lastName: 'Mendez',
+    firstName: 'رضا',
+    lastName: 'محمدی',
     email: 'carlos.mendez@example.test',
     username: 'carlos.mendez',
     role: 'customer',
@@ -126,8 +126,8 @@ export const customers: Customer[] = [
   },
   {
     id: 'cust_521',
-    firstName: 'Hannah',
-    lastName: 'Okoro',
+    firstName: 'زهرا',
+    lastName: 'نوری',
     email: 'hannah.okoro@example.test',
     username: 'hannah.okoro',
     role: 'subscriber',

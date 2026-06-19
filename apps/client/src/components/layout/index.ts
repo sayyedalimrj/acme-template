@@ -1,4 +1,5 @@
 export * from './AppShell';
+export * from './GlobalHeader';
 export * from './Sidebar';
 export * from './TopBar';
 export * from './MobileNav';

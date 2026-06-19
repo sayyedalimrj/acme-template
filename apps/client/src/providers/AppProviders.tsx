@@ -17,7 +17,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { directionForLocale } from '@/i18n/direction';
 import { I18nProvider, useLocale } from '@/i18n/I18nProvider';
 import { SessionProvider } from '@/session/SessionProvider';
-import { ThemeProvider, useTheme } from '@/theme';
+import { FontProvider, ThemeProvider, useTheme } from '@/theme';
 
 export interface AppProvidersProps {
   children: ReactNode;
@@ -62,8 +62,10 @@ export function AppProviders({ children }: AppProvidersProps): React.JSX.Element
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
           <ThemeProvider>
-            <DirectionSync />
-            <SessionProvider>{children}</SessionProvider>
+            <FontProvider>
+              <DirectionSync />
+              <SessionProvider>{children}</SessionProvider>
+            </FontProvider>
           </ThemeProvider>
         </I18nProvider>
       </QueryClientProvider>

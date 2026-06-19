@@ -11,17 +11,19 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
-import { mobileColors, mobileMetrics, mobileType } from '../mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors, type MobileColorTokens } from '../mobileTokens';
 import { PressableScale } from './PressableScale';
 
 export type ActivityTint = 'primary' | 'success' | 'attention' | 'muted';
 
-const TINTS: Record<ActivityTint, { fg: string; bg: string }> = {
-  primary: { fg: mobileColors.primary, bg: mobileColors.tile },
-  success: { fg: mobileColors.statusActive, bg: mobileColors.statusActiveSoft },
-  attention: { fg: mobileColors.statusAttention, bg: mobileColors.statusAttentionSoft },
-  muted: { fg: mobileColors.muted, bg: mobileColors.tile },
-};
+function activityTints(colors: MobileColorTokens): Record<ActivityTint, { fg: string; bg: string }> {
+  return {
+    primary: { fg: colors.primary, bg: colors.tile },
+    success: { fg: colors.statusActive, bg: colors.statusActiveSoft },
+    attention: { fg: colors.statusAttention, bg: colors.statusAttentionSoft },
+    muted: { fg: colors.muted, bg: colors.tile },
+  };
+}
 
 export interface MiniActivityRowProps {
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -42,8 +44,9 @@ export function MiniActivityRow({
   unread = false,
   testID,
 }: MiniActivityRowProps): React.JSX.Element {
+  const colors = useMobileColors();
   const { rowDirection, isRTL } = useTheme();
-  const tones = TINTS[tint];
+  const tones = activityTints(colors)[tint];
 
   const body = (
     <View
@@ -72,7 +75,7 @@ export function MiniActivityRow({
           style={{
             fontSize: mobileType.labelSize,
             fontWeight: '600',
-            color: mobileColors.text,
+            color: colors.text,
             textAlign: isRTL ? 'right' : 'left',
           }}
           numberOfLines={1}
@@ -83,7 +86,7 @@ export function MiniActivityRow({
           <Text
             style={{
               fontSize: mobileType.captionSize,
-              color: mobileColors.textSecondary,
+              color: colors.textSecondary,
               textAlign: isRTL ? 'right' : 'left',
             }}
             numberOfLines={1}
@@ -94,13 +97,13 @@ export function MiniActivityRow({
       </View>
       {unread ? (
         <View
-          style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: mobileColors.badge }}
+          style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: colors.badge }}
         />
       ) : onPress ? (
         <Ionicons
           name={isRTL ? 'chevron-back' : 'chevron-forward'}
           size={16}
-          color={mobileColors.mutedSoft}
+          color={colors.mutedSoft}
         />
       ) : null}
     </View>

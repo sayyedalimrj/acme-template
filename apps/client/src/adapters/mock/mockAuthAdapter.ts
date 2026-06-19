@@ -9,13 +9,15 @@
 import type { AuthSession, AuthUser } from '@/domain/types';
 
 import type { AuthAdapter } from '../types';
+import { DEMO_AVATAR_DATA_URI } from './mockDemoAvatar';
 import { clone, delay } from './mockUtils';
 
 // Clearly non-production demo user. Not a real account; carries no secrets.
 const DEMO_USER: AuthUser = {
   id: 'usr_mock_001',
-  name: 'Demo Operator',
+  name: 'اپراتور آزمایشی',
   email: 'operator@demo.local',
+  avatarUrl: DEMO_AVATAR_DATA_URI,
   role: 'owner',
 };
 
