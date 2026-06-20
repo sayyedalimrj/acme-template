@@ -19,6 +19,7 @@ import {
   getSite,
   getWooCredentials,
   listSites,
+  resyncProduct,
   setWooWebhookSecret,
   startConnection,
   syncWooSite,
@@ -30,6 +31,7 @@ import {
   getProduct,
   getSalesReport,
   updateOrderStatus,
+  updateProduct,
   updateProductStock,
 } from '../../services/woocommerce/wooClient';
 import { authenticate, requirePortal, type AuthedRequest } from '../middleware/auth';
@@ -259,10 +261,13 @@ merchantRouter.get(
     const { page, pageSize, offset } = parsePagination(req.query as Record<string, unknown>);
     const search = req.query.search ? `%${String(req.query.search)}%` : null;
     const items = await query(
-      `SELECT external_id, name, sku, status, price_minor, currency, stock_status, stock_qty, updated_at
-         FROM synced_product
-        WHERE site_id = $1 AND ($2::text IS NULL OR name ILIKE $2 OR sku ILIKE $2)
-        ORDER BY updated_at DESC LIMIT $3 OFFSET $4`,
+      `SELECT p.external_id, p.name, p.sku, p.status, p.type, p.price_minor, p.currency,
+              p.stock_status, p.stock_qty, p.updated_at,
+              (SELECT src FROM synced_product_image i WHERE i.product_id = p.id
+                 ORDER BY i.position ASC LIMIT 1) AS image_src
+         FROM synced_product p
+        WHERE p.site_id = $1 AND ($2::text IS NULL OR p.name ILIKE $2 OR p.sku ILIKE $2)
+        ORDER BY p.updated_at DESC LIMIT $3 OFFSET $4`,
       [site.id, search, pageSize, offset],
     );
     const total = await queryOne<{ count: number }>(
@@ -287,21 +292,60 @@ merchantRouter.get(
           name: p.name,
           sku: p.sku,
           status: p.status,
+          type: p.type,
           price_minor: p.priceMinor,
           currency: p.currency,
           stock_status: p.stockStatus,
           stock_qty: p.stockQty,
+          categories: p.categories.map((c) => ({ external_id: c.externalId, name: c.name })),
+          images: p.images.map((i) => ({ src: i.src, alt: i.alt, position: i.position })),
         },
       });
       return;
     }
-    const product = await queryOne(
-      `SELECT external_id, name, sku, status, price_minor, currency, stock_status, stock_qty
+    const product = await queryOne<{ id: string }>(
+      `SELECT id, external_id, name, sku, status, type, price_minor, currency, stock_status, stock_qty
          FROM synced_product WHERE site_id = $1 AND external_id = $2`,
       [site.id, req.params.productId],
     );
     if (!product) throw notFound('محصول یافت نشد.');
-    res.json({ product });
+    const images = await query(
+      `SELECT external_id, src, alt, position FROM synced_product_image
+         WHERE product_id = $1 ORDER BY position ASC`,
+      [(product as { id: string }).id],
+    );
+    const categories = await query(
+      `SELECT c.external_id, c.name FROM synced_product_category pc
+         JOIN synced_category c ON c.id = pc.category_id
+        WHERE pc.product_id = $1`,
+      [(product as { id: string }).id],
+    );
+    const variants = await query(
+      `SELECT external_id, sku, price_minor, currency, stock_status, stock_qty, attributes
+         FROM synced_product_variant WHERE product_id = $1 ORDER BY updated_at DESC`,
+      [(product as { id: string }).id],
+    );
+    const { id: _id, ...productPublic } = product as { id: string } & Record<string, unknown>;
+    void _id;
+    res.json({ product: { ...productPublic, images, categories, variants } });
+  }),
+);
+
+merchantRouter.get(
+  '/sites/:siteId/categories',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    const { page, pageSize, offset } = parsePagination(req.query as Record<string, unknown>);
+    const items = await query(
+      `SELECT external_id, parent_external_id, name, slug, updated_at
+         FROM synced_category WHERE site_id = $1 ORDER BY name ASC LIMIT $2 OFFSET $3`,
+      [site.id, pageSize, offset],
+    );
+    const total = await queryOne<{ count: number }>(
+      `SELECT count(*)::int AS count FROM synced_category WHERE site_id = $1`,
+      [site.id],
+    );
+    res.json({ items, page, pageSize, total: total?.count ?? 0 });
   }),
 );
 
@@ -446,6 +490,79 @@ merchantRouter.patch(
       meta: { siteId: site.id, stockQuantity: parsed.data.stockQuantity },
     });
     res.json({ product });
+  }),
+);
+
+const productUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(300).optional(),
+    regularPrice: z.string().trim().regex(/^\d+(\.\d{1,4})?$/).max(20).optional(),
+    status: z.enum(['publish', 'draft', 'pending', 'private']).optional(),
+    stockQuantity: z.number().int().optional(),
+    stockStatus: z.enum(['instock', 'outofstock', 'onbackorder']).optional(),
+    categoryExternalIds: z.array(z.string().trim().min(1).max(40)).max(50).optional(),
+    // Images by EXISTING WooCommerce media id or already-hosted URL only (no binary upload).
+    images: z
+      .array(z.object({ id: z.string().trim().max(40).optional(), src: z.string().trim().url().max(2000).optional() }))
+      .max(20)
+      .optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'هیچ تغییری ارسال نشده است.' });
+
+merchantRouter.patch(
+  '/sites/:siteId/products/:productId',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    ensureManage(req);
+    const site = await siteFor(req, req.params.siteId);
+    const parsed = productUpdateSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('اطلاعات محصول نامعتبر است.');
+    const creds = await getWooCredentials(site.id);
+    if (!creds) throw badRequest('این فروشگاه اتصال REST فعال ندارد.');
+
+    const product = await updateProduct(creds, req.params.productId, {
+      name: parsed.data.name,
+      regularPrice: parsed.data.regularPrice,
+      status: parsed.data.status,
+      stockQuantity: parsed.data.stockQuantity,
+      manageStock: parsed.data.stockQuantity !== undefined ? true : undefined,
+      stockStatus: parsed.data.stockStatus,
+      categoryExternalIds: parsed.data.categoryExternalIds,
+      images: parsed.data.images,
+    });
+
+    // Refresh the read-model (product + images + categories + variations) so the UI reloads real data.
+    try {
+      await resyncProduct(site.id, req.params.productId);
+    } catch {
+      /* read-model refresh is best-effort; the WooCommerce write already succeeded */
+    }
+
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'product.update',
+      targetType: 'product',
+      targetId: req.params.productId,
+      requestIp: req.ip,
+      meta: {
+        siteId: site.id,
+        fields: Object.keys(parsed.data),
+      },
+    });
+    res.json({
+      product: {
+        external_id: product.externalId,
+        name: product.name,
+        sku: product.sku,
+        status: product.status,
+        type: product.type,
+        price_minor: product.priceMinor,
+        currency: product.currency,
+        stock_status: product.stockStatus,
+        stock_qty: product.stockQty,
+        categories: product.categories.map((c) => ({ external_id: c.externalId, name: c.name })),
+        images: product.images.map((i) => ({ src: i.src, alt: i.alt, position: i.position })),
+      },
+    });
   }),
 );
 

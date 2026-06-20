@@ -11,6 +11,18 @@ reviewed operation.
 - Always take a backup first: `pg_dump <db> | gzip > backup.sql.gz`.
 - Prefer a forward fix-migration over a rollback in production.
 
+## Roll back migration 003 (product catalog — additive)
+
+```sql
+BEGIN;
+DROP TABLE IF EXISTS synced_product_image, synced_product_variant,
+  synced_product_category, synced_category CASCADE;
+ALTER TABLE synced_product DROP COLUMN IF EXISTS raw;
+ALTER TABLE synced_product DROP COLUMN IF EXISTS type;
+DELETE FROM schema_migrations WHERE version = '003_product_catalog.sql';
+COMMIT;
+```
+
 ## Roll back migration 002 (additive)
 
 ```sql

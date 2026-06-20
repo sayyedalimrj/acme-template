@@ -396,6 +396,21 @@ export interface ProductListQuery {
   pageSize?: number;
 }
 
+/**
+ * Controlled product-update input (merchant edit). Only fields the backend can safely write to
+ * WooCommerce are included. `regularPrice` is a major-unit number (e.g. 120000 Toman). Images are
+ * intentionally NOT editable here yet (no binary upload path); category assignment uses synced
+ * category ids.
+ */
+export interface ProductUpdateInput {
+  name?: string;
+  regularPrice?: number;
+  status?: ProductStatus;
+  stockQuantity?: number;
+  stockStatus?: StockStatus;
+  categoryIds?: string[];
+}
+
 export interface OrderListQuery {
   search?: string;
   status?: OrderStatus;

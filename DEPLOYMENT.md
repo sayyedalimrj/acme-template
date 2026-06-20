@@ -236,9 +236,16 @@ A merchant token calling `/admin/*` gets `403`. Admin login is restricted to
 `services/api/db/migrations/` holds ordered, tracked Postgres migrations (users, OTP, sessions,
 tenants + members, sites + connections + **encrypted credentials**, sync read-models, webhook +
 plugin events, replay nonces, plans/subscriptions/billing, marketers/referrals/commissions/
-payouts, audit log). Apply with `npm run migrate` (idempotent; re-runnable). Money is stored as
-integer minor units; **no card data and no raw secrets** are ever stored. Rollback guidance:
-`services/api/db/migrations/ROLLBACK.md`.
+payouts, audit log). Migration `003_product_catalog.sql` adds the full product catalog read-models
+(categories, product↔category links, variations, product images, and a `raw` payload column on
+`synced_product`) that back the real WooCommerce product sync. Apply with `npm run migrate`
+(idempotent; re-runnable) **before starting the API** — it applies all pending migrations,
+including `003`, in order. Money is stored as integer minor units; **no card data and no raw
+secrets** are ever stored. Rollback guidance: `services/api/db/migrations/ROLLBACK.md`.
+
+After migrating and connecting a WooCommerce site (REST key/secret), the catalog is populated by
+`POST /merchant/sites/:siteId/sync` (manual/initial pull, paginated) or the signed plugin/webhook
+push; product list/detail then serve real synced data (image, categories, price, stock, status).
 
 ---
 
