@@ -27,8 +27,8 @@ export default function AffiliateGroupLayout(): React.JSX.Element {
     return <Redirect href={'/sign-in' as Href} />;
   }
 
-  if (portal !== 'affiliate') {
-    return <Redirect href={'/' as Href} />;
+  if (status === 'access_denied' || portal !== 'affiliate') {
+    return <Redirect href={'/access-denied' as Href} />;
   }
 
   return (

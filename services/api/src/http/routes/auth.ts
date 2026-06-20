@@ -5,7 +5,7 @@ import { Router, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 
-import { isMerchantRole, type Portal } from '../../auth/rbac';
+import { allowedPortalsForRole, canonicalizePortal, isMerchantRole, type Portal } from '../../auth/rbac';
 import { env } from '../../env';
 import { audit } from '../../services/audit';
 import {
@@ -22,13 +22,16 @@ import { normalizeMobile } from '../../util/mobile';
 import { authenticate, type AuthedRequest } from '../middleware/auth';
 import { asyncHandler } from '../asyncHandler';
 
-const portalSchema = z.enum(['merchant', 'admin', 'affiliate']).default('merchant');
+const portalField = z.preprocess(
+  (v) => (typeof v === 'string' ? (canonicalizePortal(v) ?? v) : v),
+  z.enum(['merchant', 'admin', 'affiliate']),
+);
 
-const requestSchema = z.object({ mobile: z.string().min(1), portal: portalSchema });
+const requestSchema = z.object({ mobile: z.string().min(1), portal: portalField });
 const verifySchema = z.object({
   mobile: z.string().min(1),
   code: z.string().min(3),
-  portal: portalSchema,
+  portal: portalField,
   name: z.string().trim().min(1).max(120).optional(),
   referralCode: z.string().trim().min(1).max(40).optional(),
 });
@@ -100,9 +103,12 @@ authRouter.post(
 
     res.json({
       token: session.accessToken,
+      accessToken: session.accessToken,
       refreshToken: session.refreshToken,
       user: { id: user.id, name: user.name, mobile: user.mobile, role: user.role },
+      roles: [user.role],
       portal,
+      allowedPortals: allowedPortalsForRole(user.role),
       tenantId,
     });
   }),
@@ -125,9 +131,12 @@ authRouter.post(
     );
     res.json({
       token: rotated.accessToken,
+      accessToken: rotated.accessToken,
       refreshToken: rotated.refreshToken,
       user: { id: user.id, name: user.name, mobile: user.mobile, role: user.role },
+      roles: [user.role],
       portal: live.portal,
+      allowedPortals: allowedPortalsForRole(user.role),
       tenantId,
     });
   }),

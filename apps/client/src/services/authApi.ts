@@ -2,14 +2,15 @@
  * Backend auth client (phone OTP).
  *
  * Talks to `services/api` (`/auth/otp/request`, `/auth/otp/verify`). Used only when a backend
- * is configured (`EXPO_PUBLIC_API_BASE_URL`); otherwise the app uses the mock auth flow. The
- * JWT is held in memory here and attached to future authorized data requests.
+ * is configured (`EXPO_PUBLIC_API_BASE_URL` or runtime `/config.json`); otherwise the app uses
+ * the mock auth flow. The JWT is held in memory here and attached to future authorized data
+ * requests.
  *
  * Security: no secrets live in the frontend. The token is a short-lived session reference issued
  * by our backend, never a store/provider credential.
  */
 import { getApiBaseUrl } from '@/config/api.config';
-import { ACTIVE_PORTAL } from '@/config/portal.config';
+import { getActivePortal } from '@/config/portal.config';
 import type { AppPortal } from '@/domain/types';
 
 let authToken: string | null = null;
@@ -80,16 +81,26 @@ export interface RequestOtpResponse {
 
 export function requestOtp(
   mobile: string,
-  portal: AppPortal = ACTIVE_PORTAL,
+  portal: AppPortal = getActivePortal(),
 ): Promise<RequestOtpResponse> {
   return postJson<RequestOtpResponse>('/auth/otp/request', { mobile, portal });
 }
 
+export interface VerifyOtpUser {
+  id: string;
+  name: string | null;
+  mobile: string;
+  role: string;
+}
+
 export interface VerifyOtpResponse {
   token: string;
+  accessToken: string;
   refreshToken: string;
-  user: { id: string; name: string | null; mobile: string; role: string };
-  portal?: string;
+  user: VerifyOtpUser;
+  roles: string[];
+  portal: AppPortal;
+  allowedPortals: AppPortal[];
   tenantId?: string | null;
 }
 
@@ -97,7 +108,7 @@ export function verifyOtp(
   mobile: string,
   code: string,
   name?: string,
-  portal: AppPortal = ACTIVE_PORTAL,
+  portal: AppPortal = getActivePortal(),
 ): Promise<VerifyOtpResponse> {
   return postJson<VerifyOtpResponse>('/auth/otp/verify', { mobile, code, portal, name });
 }
@@ -107,7 +118,7 @@ export async function refreshSession(): Promise<boolean> {
   if (!refreshToken) return false;
   try {
     const res = await postJson<VerifyOtpResponse>('/auth/refresh', { refreshToken });
-    setSessionTokens({ token: res.token, refreshToken: res.refreshToken });
+    setSessionTokens({ token: res.accessToken ?? res.token, refreshToken: res.refreshToken });
     return true;
   } catch {
     clearSessionTokens();

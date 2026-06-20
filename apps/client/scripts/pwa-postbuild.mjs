@@ -9,7 +9,7 @@
  *
  * It is idempotent (guarded by a marker) and a no-op if dist/index.html is missing.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { copyFileSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -97,3 +97,20 @@ html = html.replace('</head>', `${HEAD}</head>`);
 
 writeFileSync(indexPath, html, 'utf8');
 console.log(`[pwa-postbuild] patched ${outDir}/index.html for PWA install (portal: ${PORTAL}).`);
+
+// 4) Copy portal-specific runtime config (never a shared merchant config for all builds).
+const configEnv = process.env.RUNTIME_CONFIG_ENV === 'local-preview' ? 'local-preview' : 'production';
+const configSrc = resolve(here, '..', 'config', `${PORTAL}.${configEnv}.json`);
+const configDest = resolve(here, '..', outDir, 'config.json');
+if (existsSync(configSrc)) {
+  copyFileSync(configSrc, configDest);
+  console.log(`[pwa-postbuild] copied config/${PORTAL}.${configEnv}.json → ${outDir}/config.json`);
+} else {
+  const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
+  writeFileSync(
+    configDest,
+    `${JSON.stringify({ portal: PORTAL, apiBaseUrl: apiBase }, null, 2)}\n`,
+    'utf8',
+  );
+  console.warn(`[pwa-postbuild] config template missing — wrote build-time fallback for ${PORTAL}.`);
+}

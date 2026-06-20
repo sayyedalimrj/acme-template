@@ -27,8 +27,8 @@ export default function AdminGroupLayout(): React.JSX.Element {
     return <Redirect href={'/sign-in' as Href} />;
   }
 
-  if (portal !== 'admin') {
-    return <Redirect href={'/' as Href} />;
+  if (status === 'access_denied' || portal !== 'admin') {
+    return <Redirect href={'/access-denied' as Href} />;
   }
 
   return (

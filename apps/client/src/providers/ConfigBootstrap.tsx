@@ -1,59 +1,54 @@
 /**
- * Loads `/config.json` before rendering the app tree.
+ * Loads runtime config in the background; never blocks the login UI.
  */
 import React, { useEffect, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { LoadingState, Text } from '@/components/ui';
-import { loadRuntimeConfig } from '@/config/runtimeConfig';
 import { resetAdaptersForTests } from '@/adapters';
+import { Text } from '@/components/ui';
+import { getConfigWarning, loadRuntimeConfig } from '@/config/runtimeConfig';
 
 export interface ConfigBootstrapProps {
   children: ReactNode;
 }
 
+function ConfigWarningBar({ message }: { message: string }): React.JSX.Element {
+  return (
+    <View
+      style={{
+        backgroundColor: '#FFF4E5',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F5D090',
+      }}
+    >
+      <Text variant="caption" style={{ textAlign: 'center', color: '#8A5A00' }}>
+        {message}
+      </Text>
+    </View>
+  );
+}
+
 export function ConfigBootstrap({ children }: ConfigBootstrapProps): React.JSX.Element {
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | undefined>(() => getConfigWarning());
 
   useEffect(() => {
     let active = true;
-    loadRuntimeConfig()
-      .then(() => {
-        if (active) {
-          // Adapter cache may have been created before config loaded in dev HMR.
-          resetAdaptersForTests();
-          setReady(true);
-        }
-      })
-      .catch((err: unknown) => {
-        if (active) {
-          setError(err instanceof Error ? err.message : 'Config load failed');
-          setReady(true);
-        }
-      });
+    void loadRuntimeConfig().then(() => {
+      if (!active) return;
+      resetAdaptersForTests();
+      setWarning(getConfigWarning());
+    });
     return () => {
       active = false;
     };
   }, []);
 
-  if (!ready) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <LoadingState label="در حال بارگذاری…" />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
-        <Text variant="body" tone="muted">
-          خطا در بارگذاری تنظیمات: {error}
-        </Text>
-      </View>
-    );
-  }
-
-  return <>{children}</>;
+  return (
+    <>
+      {warning ? <ConfigWarningBar message={warning} /> : null}
+      {children}
+    </>
+  );
 }

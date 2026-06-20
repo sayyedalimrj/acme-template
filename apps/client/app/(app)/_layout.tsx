@@ -29,6 +29,10 @@ export default function AppGroupLayout(): React.JSX.Element {
     return <Redirect href={'/sign-in' as Href} />;
   }
 
+  if (status === 'access_denied') {
+    return <Redirect href={'/access-denied' as Href} />;
+  }
+
   // One build hosts three role-based experiences. Send admins/affiliates to their portal; the
   // merchant dashboard is the default experience served from this group.
   if (portal === 'admin') {

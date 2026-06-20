@@ -2,18 +2,26 @@
 # Live deployment verification (run on the server after install).
 #
 # Usage:
-#   ./scripts/verify-live.sh [--base-url http://192.168.101.181] [--api-url http://192.168.101.181]
+#   ./scripts/verify-live.sh --base-url http://192.168.101.181
 #   ./scripts/verify-live.sh --base-url https://app.jet-web.ir --api-url https://api.jet-web.ir
+#   ./scripts/verify-live.sh --merchant-url https://app.jet-web.ir --admin-url https://admin.jet-web.ir \
+#       --affiliate-url https://partner.jet-web.ir --api-url https://api.jet-web.ir
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://192.168.101.181}"
 API_URL="${API_URL:-$BASE_URL}"
+MERCHANT_URL="${MERCHANT_URL:-$BASE_URL}"
+ADMIN_URL="${ADMIN_URL:-}"
+AFFILIATE_URL="${AFFILIATE_URL:-}"
 SMS_TEST_NUMBER=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --base-url) BASE_URL="$2"; shift 2 ;;
+    --base-url) BASE_URL="$2"; MERCHANT_URL="$2"; shift 2 ;;
     --api-url) API_URL="$2"; shift 2 ;;
+    --merchant-url) MERCHANT_URL="$2"; shift 2 ;;
+    --admin-url) ADMIN_URL="$2"; shift 2 ;;
+    --affiliate-url) AFFILIATE_URL="$2"; shift 2 ;;
     --sms-test-number) SMS_TEST_NUMBER="$2"; shift 2 ;;
     *) echo "Unknown arg: $1" >&2; exit 1 ;;
   esac
@@ -24,7 +32,9 @@ fail() { echo "  ✗ $*" >&2; ERR=1; }
 
 ERR=0
 echo "=== verify-live.sh ==="
-echo "base: $BASE_URL  api: $API_URL"
+echo "merchant: $MERCHANT_URL  api: $API_URL"
+[[ -n "$ADMIN_URL" ]] && echo "admin: $ADMIN_URL"
+[[ -n "$AFFILIATE_URL" ]] && echo "affiliate: $AFFILIATE_URL"
 
 if systemctl is-active --quiet portal-api 2>/dev/null; then
   pass "portal-api systemd active"
@@ -72,21 +82,40 @@ else
   fail "nginx -t failed"
 fi
 
-for path in / /verify /sign-in /config.json; do
-  code=$(curl -so /dev/null -w '%{http_code}' "${BASE_URL}${path}")
-  if [[ "$code" == "200" ]]; then
-    pass "frontend GET ${path} → 200"
+check_frontend() {
+  local label="$1" url="$2" expected_portal="${3:-}"
+  for path in / /verify /sign-in /config.json; do
+    code=$(curl -so /dev/null -w '%{http_code}' "${url}${path}")
+    if [[ "$code" == "200" ]]; then
+      pass "${label} GET ${path} → 200"
+    else
+      fail "${label} GET ${path} → ${code}"
+    fi
+  done
+  if curl -sf "${url}/config.json" | grep -q apiBaseUrl; then
+    pass "${label} runtime config.json present"
+    if [[ -n "$expected_portal" ]]; then
+      if curl -sf "${url}/config.json" | grep -q "\"portal\"[[:space:]]*:[[:space:]]*\"${expected_portal}\""; then
+        pass "${label} config portal=${expected_portal}"
+      else
+        fail "${label} config portal mismatch (expected ${expected_portal})"
+      fi
+    fi
   else
-    fail "frontend GET ${path} → ${code}"
+    fail "${label} config.json missing or invalid"
   fi
-done
+}
 
-if curl -sf "${BASE_URL}/config.json" | grep -q apiBaseUrl; then
-  pass "runtime config.json present"
-  cfg_api=$(curl -sf "${BASE_URL}/config.json" | grep -o '"apiBaseUrl"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1)
-  echo "    ${cfg_api}"
-else
-  fail "config.json missing or invalid"
+check_frontend merchant "$MERCHANT_URL" merchant
+if [[ -n "$ADMIN_URL" ]]; then
+  check_frontend admin "$ADMIN_URL" admin
+fi
+if [[ -n "$AFFILIATE_URL" ]]; then
+  check_frontend affiliate "$AFFILIATE_URL" affiliate
+fi
+
+if [[ -z "$ADMIN_URL" && -z "$AFFILIATE_URL" ]]; then
+  echo "  ℹ IP-only preview validates merchant only. Map admin/partner hostnames for full portal QA."
 fi
 
 if [[ -n "$SMS_TEST_NUMBER" ]]; then

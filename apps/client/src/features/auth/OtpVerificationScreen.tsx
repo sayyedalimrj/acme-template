@@ -16,6 +16,9 @@ import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
+import { getActivePortal, getActivePortalMeta } from '@/config/portal.config';
+import { homeRouteForPortal } from '@/config/portalAccess';
+import { canonicalizePortal } from '@/config/runtimeConfig';
 import { useT } from '@/i18n/I18nProvider';
 import { requestOtp, verifyOtp } from '@/services/authApi';
 import { usePublicAuthConfig } from './usePublicAuthConfig';
@@ -36,7 +39,7 @@ import {
 } from './authHelpers';
 import { findMockUser, verifyMockPassword } from './authMockUsers';
 
-import type { AppPortal } from '@/domain/types';
+import type { AppPortal, AuthUser } from '@/domain/types';
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -45,9 +48,10 @@ function firstParam(value: string | string[] | undefined): string {
   return value ?? '';
 }
 
-/** Parse a portal route-param, defaulting safely to the merchant experience. */
-function parsePortal(value: string): AppPortal {
-  return value === 'admin' || value === 'affiliate' ? value : 'merchant';
+/** Parse portal route param; missing → this build's portal; invalid → null. */
+function parsePortalParam(value: string, buildPortal: AppPortal): AppPortal | null {
+  if (!value.trim()) return buildPortal;
+  return canonicalizePortal(value);
 }
 
 type Mode = 'otp' | 'password';
@@ -57,14 +61,22 @@ export function OtpVerificationScreen(): React.JSX.Element {
   const router = useRouter();
   const authConfig = usePublicAuthConfig();
   const { rowDirection } = useTheme();
-  const { signIn, signInWithSession } = useSession();
+  const { signIn, signInWithSession, status } = useSession();
   const params = useLocalSearchParams<{ identifier?: string; channel?: string; portal?: string }>();
 
+  const buildPortal = getActivePortal();
+  const buildMeta = getActivePortalMeta();
   const identifier = firstParam(params.identifier);
   const channelParam = firstParam(params.channel);
   const channel: IdentifierChannel | undefined =
     channelParam === 'email' || channelParam === 'mobile' ? channelParam : undefined;
-  const portal = parsePortal(firstParam(params.portal));
+  const routePortalRaw = firstParam(params.portal);
+  const routePortal = parsePortalParam(routePortalRaw, buildPortal);
+  const portalMismatch =
+    routePortalRaw.trim() !== '' && routePortal !== null && routePortal !== buildPortal;
+  const invalidPortal = routePortalRaw.trim() !== '' && routePortal === null;
+
+  const portal: AppPortal = routePortal ?? buildPortal;
 
   // Only already-registered numbers get the password-login option.
   const knownUser = findMockUser(identifier, channel);
@@ -75,7 +87,6 @@ export function OtpVerificationScreen(): React.JSX.Element {
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [resent, setResent] = useState(false);
-  // Guards against the auto-submit firing more than once for a single completed code.
   const submittedRef = useRef(false);
 
   const masked = identifier ? maskIdentifier(identifier, channel) : undefined;
@@ -84,24 +95,37 @@ export function OtpVerificationScreen(): React.JSX.Element {
     router.replace('/sign-in' as Href);
   };
 
-  // Submit once per completed code. The ref guard means the auto-submit (effect) and a manual
-  // tap on the verify button can never double-navigate / double-sign-in.
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace(homeRouteForPortal(buildPortal) as Href);
+    } else if (status === 'access_denied') {
+      router.replace('/access-denied' as Href);
+    }
+  }, [status, buildPortal, router]);
+
   const submit = (): void => {
-    if (submittedRef.current) {
+    if (submittedRef.current || portalMismatch || invalidPortal) {
       return;
     }
     submittedRef.current = true;
     setError(undefined);
 
     if (isApiConfigured()) {
-      // Real OTP: verify with the backend; on success it returns a user + JWT session.
       void (async () => {
         try {
           const res = await verifyOtp(identifier, digits.join(''), undefined, portal);
           signInWithSession({
-            user: { id: res.user.id, name: res.user.name ?? '', email: '' },
-            token: res.token,
+            user: {
+              id: res.user.id,
+              name: res.user.name ?? '',
+              email: '',
+              role: res.user.role as AuthUser['role'],
+            },
+            token: res.accessToken ?? res.token,
             refreshToken: res.refreshToken,
+            roles: res.roles,
+            allowedPortals: res.allowedPortals,
+            portal: res.portal,
           });
         } catch (e) {
           submittedRef.current = false;
@@ -112,11 +136,9 @@ export function OtpVerificationScreen(): React.JSX.Element {
     }
 
     if (knownUser) {
-      // Known mock user → mock session; the (auth) layout redirects to the chosen portal.
       void signIn({ name: knownUser.name, email: knownUser.email, portal });
       return;
     }
-    // New user → continue to registration (carry the identifier + portal forward).
     router.replace({
       pathname: '/register',
       params: { identifier, channel: channel ?? '', portal },
@@ -131,11 +153,9 @@ export function OtpVerificationScreen(): React.JSX.Element {
     submit();
   };
 
-  // Auto-submit as soon as all digits are entered (no extra tap needed); reset the guard if the
-  // user clears/edits so a corrected code can submit again.
   const complete = isOtpComplete(digits);
   useEffect(() => {
-    if (mode !== 'otp' || !identifier) {
+    if (mode !== 'otp' || !identifier || portalMismatch || invalidPortal) {
       return;
     }
     if (complete) {
@@ -143,10 +163,8 @@ export function OtpVerificationScreen(): React.JSX.Element {
     } else {
       submittedRef.current = false;
     }
-    // We intentionally key only on completion so the auto-submit fires once when the code
-    // becomes complete; `submit` reads the latest identifier/channel each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [complete, mode, identifier]);
+  }, [complete, mode, identifier, portalMismatch, invalidPortal]);
 
   const onResend = (): void => {
     if (isApiConfigured()) {
@@ -185,6 +203,44 @@ export function OtpVerificationScreen(): React.JSX.Element {
     );
   }
 
+  if (invalidPortal) {
+    return (
+      <AuthFrame
+        testID="otp-screen"
+        iconName="shield-checkmark-outline"
+        title={t('otp.title')}
+        subtitle={t('otp.subtitle')}
+        showBack
+        onBack={goBack}
+        backAccessibilityLabel={t('otp.back')}
+      >
+        <Text style={{ fontSize: authType.helperSize, color: authColors.danger, textAlign: 'center' }}>
+          پورتال در آدرس نامعتبر است. لطفاً از صفحه ورود صحیح استفاده کنید.
+        </Text>
+        <AuthPrimaryButton label={t('otp.back')} onPress={goBack} />
+      </AuthFrame>
+    );
+  }
+
+  if (portalMismatch) {
+    return (
+      <AuthFrame
+        testID="otp-screen"
+        iconName={buildMeta.authIcon}
+        title={buildMeta.name}
+        subtitle={t('otp.subtitle')}
+        showBack
+        onBack={goBack}
+        backAccessibilityLabel={t('otp.back')}
+      >
+        <Text style={{ fontSize: authType.helperSize, color: authColors.danger, textAlign: 'center' }}>
+          این لینک تأیید برای پورتال دیگری است. از صفحه ورود {buildMeta.name} استفاده کنید.
+        </Text>
+        <AuthPrimaryButton label={t('otp.back')} onPress={goBack} />
+      </AuthFrame>
+    );
+  }
+
   const footerHint = authConfig.smsDryRun ? t('otp.devHint') : t('otp.liveHint');
   const resentMessage = authConfig.smsDryRun ? t('otp.resent') : t('otp.resentLive');
 
@@ -205,7 +261,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
   return (
     <AuthFrame
       testID="otp-screen"
-      iconName={mode === 'password' ? 'lock-closed-outline' : 'shield-checkmark-outline'}
+      iconName={mode === 'password' ? 'lock-closed-outline' : buildMeta.authIcon}
       title={mode === 'password' ? t('auth.password.title') : t('otp.title')}
       subtitle={t('otp.subtitle')}
       maskedTarget={masked}
@@ -286,7 +342,6 @@ export function OtpVerificationScreen(): React.JSX.Element {
             </Text>
           ) : null}
 
-          {/* Password login — only for already-registered numbers. */}
           {knownUser ? (
             <Pressable
               accessibilityRole="button"

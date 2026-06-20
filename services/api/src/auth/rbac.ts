@@ -98,6 +98,21 @@ export function roleCanUsePortal(role: Role, portal: Portal): boolean {
   return portalForRole(role) === portal;
 }
 
+/** Portals a role may authenticate into. */
+export function allowedPortalsForRole(role: Role): Portal[] {
+  if (role === 'platform_admin') return ['merchant', 'admin', 'affiliate'];
+  const home = portalForRole(role);
+  return home ? [home] : [];
+}
+
+/** Canonical portal id (`partner` → `affiliate`). */
+export function canonicalizePortal(raw: string): Portal | null {
+  const v = raw.trim().toLowerCase();
+  if (v === 'partner') return 'affiliate';
+  if (v === 'merchant' || v === 'admin' || v === 'affiliate') return v;
+  return null;
+}
+
 export function isAdminRole(role: Role): boolean {
   return ADMIN_ROLES.includes(role);
 }

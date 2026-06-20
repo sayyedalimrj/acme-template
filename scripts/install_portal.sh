@@ -110,7 +110,7 @@ IPPANEL_ORIGINATOR=+983000505
 IPPANEL_OTP_VARIABLE=verification-code
 IPPANEL_API_KEY=
 TRUST_PROXY=true
-ADMIN_MOBILE_ALLOWLIST=
+  ADMIN_MOBILE_ALLOWLIST=09125233608
 EOF
   chmod 600 "$ENV_FILE"
   mark_step env
@@ -141,14 +141,17 @@ fi
 if ! step_done config; then
   log "Deploying runtime config.json per portal…"
   if [[ "$MODE" == "local-preview" ]]; then
-    CFG="public/config.local-preview.json"
+    ENV_SUFFIX="local-preview"
   else
-    CFG="public/config.production.json"
+    ENV_SUFFIX="production"
   fi
-  for dir in dist-merchant dist-admin dist-affiliate; do
-    cp "${INSTALL_ROOT}/apps/client/${CFG}" "${INSTALL_ROOT}/apps/client/${dir}/config.json"
-    sed -i "s|api.jet-web.ir|api.${DOMAIN}|g" "${INSTALL_ROOT}/apps/client/${dir}/config.json" || true
-    sed -i "s|192.168.101.181|${SERVER_IP}|g" "${INSTALL_ROOT}/apps/client/${dir}/config.json" || true
+  for portal in merchant admin affiliate; do
+    src="${INSTALL_ROOT}/apps/client/config/${portal}.${ENV_SUFFIX}.json"
+    dest="${INSTALL_ROOT}/apps/client/dist-${portal}/config.json"
+    cp "$src" "$dest"
+    sed -i "s|api.jet-web.ir|api.${DOMAIN}|g" "$dest" || true
+    sed -i "s|192.168.101.181|${SERVER_IP}|g" "$dest" || true
+    log "  ${portal} → config.json (portal=$(grep -o '"portal"[[:space:]]*:[[:space:]]*"[^"]*"' "$dest" | head -1))"
   done
   mark_step config
 fi
@@ -165,6 +168,9 @@ fi
 
 if ! step_done nginx; then
   log "Installing nginx configs…"
+  mkdir -p /etc/nginx/snippets
+  cp "${INSTALL_ROOT}/services/api/deploy/nginx/portal-api-proxy.conf" /etc/nginx/snippets/
+  cp "${INSTALL_ROOT}/services/api/deploy/nginx/portal-spa.conf" /etc/nginx/snippets/
   if [[ "$MODE" == "local-preview" ]]; then
     cp "${INSTALL_ROOT}/services/api/deploy/nginx/jet-web.local-preview.conf" \
       /etc/nginx/sites-available/portal-local
