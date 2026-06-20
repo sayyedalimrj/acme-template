@@ -18,7 +18,7 @@ import {
 import { mobileMetrics } from '@/features/mobile/mobileTokens';
 import type { ReferralStatus } from '@/domain/affiliate';
 
-import { AFFILIATE_OVERVIEW, AFFILIATE_REFERRALS } from './affiliateMockData';
+import { useAffiliateOverview, useAffiliateReferrals } from '@/services/affiliateApi';
 import { referralStatusMeta } from './affiliateFormat';
 
 type ReferralFilter = 'all' | ReferralStatus;
@@ -33,11 +33,12 @@ const FILTERS: readonly FilterChipOption<ReferralFilter>[] = [
 
 export function AffiliateReferralsScreen(): React.JSX.Element {
   const [filter, setFilter] = useState<ReferralFilter>('all');
-  const o = AFFILIATE_OVERVIEW;
+  const { data: o } = useAffiliateOverview();
+  const { data: referrals } = useAffiliateReferrals();
 
   const results = useMemo(
-    () => AFFILIATE_REFERRALS.filter((r) => filter === 'all' || r.status === filter),
-    [filter],
+    () => referrals.filter((r) => filter === 'all' || r.status === filter),
+    [filter, referrals],
   );
 
   return (

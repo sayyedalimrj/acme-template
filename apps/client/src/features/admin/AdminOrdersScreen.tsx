@@ -18,7 +18,7 @@ import {
 import { mobileMetrics } from '@/features/mobile/mobileTokens';
 import type { OrderStatus } from '@/domain/types';
 
-import { ADMIN_ORDERS } from './adminMockData';
+import { useAdminOrders } from '@/services/adminApi';
 import { orderStatusMeta } from './adminFormat';
 
 type OrderFilter = 'all' | OrderStatus;
@@ -35,10 +35,11 @@ const FILTERS: readonly FilterChipOption<OrderFilter>[] = [
 export function AdminOrdersScreen(): React.JSX.Element {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<OrderFilter>('all');
+  const { data: orders } = useAdminOrders();
 
   const results = useMemo(() => {
     const q = search.trim();
-    return ADMIN_ORDERS.filter((o) => {
+    return orders.filter((o) => {
       const matchesStatus = filter === 'all' || o.status === filter;
       const matchesQuery =
         q.length === 0 ||
@@ -47,7 +48,7 @@ export function AdminOrdersScreen(): React.JSX.Element {
         o.customerName.includes(q);
       return matchesStatus && matchesQuery;
     });
-  }, [search, filter]);
+  }, [search, filter, orders]);
 
   return (
     <MobilePage testID="admin-orders-screen" header={<MobileTabHeader title="سفارش‌ها" />}>

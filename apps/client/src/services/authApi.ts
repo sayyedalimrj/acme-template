@@ -13,6 +13,7 @@ import { ACTIVE_PORTAL } from '@/config/portal.config';
 import type { AppPortal } from '@/domain/types';
 
 let authToken: string | null = null;
+let refreshToken: string | null = null;
 
 export function setAuthToken(token: string | null): void {
   authToken = token;
@@ -20,6 +21,25 @@ export function setAuthToken(token: string | null): void {
 
 export function getAuthToken(): string | null {
   return authToken;
+}
+
+export function setRefreshToken(token: string | null): void {
+  refreshToken = token;
+}
+
+export function getRefreshToken(): string | null {
+  return refreshToken;
+}
+
+/** Set both tokens at once (called on sign-in / refresh). */
+export function setSessionTokens(tokens: { token: string; refreshToken?: string | null }): void {
+  authToken = tokens.token;
+  if (tokens.refreshToken !== undefined) refreshToken = tokens.refreshToken;
+}
+
+export function clearSessionTokens(): void {
+  authToken = null;
+  refreshToken = null;
 }
 
 interface ApiErrorShape {
@@ -61,7 +81,10 @@ export function requestOtp(
 
 export interface VerifyOtpResponse {
   token: string;
+  refreshToken: string;
   user: { id: string; name: string | null; mobile: string; role: string };
+  portal?: string;
+  tenantId?: string | null;
 }
 
 export function verifyOtp(
@@ -71,4 +94,29 @@ export function verifyOtp(
   portal: AppPortal = ACTIVE_PORTAL,
 ): Promise<VerifyOtpResponse> {
   return postJson<VerifyOtpResponse>('/auth/otp/verify', { mobile, code, portal, name });
+}
+
+/** Exchange a refresh token for a new access token (used by the http client on 401). */
+export async function refreshSession(): Promise<boolean> {
+  if (!refreshToken) return false;
+  try {
+    const res = await postJson<VerifyOtpResponse>('/auth/refresh', { refreshToken });
+    setSessionTokens({ token: res.token, refreshToken: res.refreshToken });
+    return true;
+  } catch {
+    clearSessionTokens();
+    return false;
+  }
+}
+
+/** Revoke the current refresh session on the backend (best-effort) and clear local tokens. */
+export async function logoutSession(): Promise<void> {
+  const rt = refreshToken;
+  clearSessionTokens();
+  if (!rt) return;
+  try {
+    await postJson('/auth/logout', { refreshToken: rt });
+  } catch {
+    /* ignore network errors on logout */
+  }
 }

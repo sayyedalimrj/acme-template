@@ -8,6 +8,7 @@
  *
  * No secrets, keys, or credentials are ever stored in this file or in the frontend bundle.
  */
+import { API_BASE_URL, isApiConfigured } from './api.config';
 
 export type DataSource = 'mock' | 'http';
 
@@ -27,8 +28,9 @@ export interface AppConfig {
 }
 
 export const appConfig: AppConfig = {
-  dataSource: 'mock',
-  apiBaseUrl: '',
+  // Use the real backend when EXPO_PUBLIC_API_BASE_URL is set; otherwise stay on mock data.
+  dataSource: isApiConfigured ? 'http' : 'mock',
+  apiBaseUrl: API_BASE_URL,
   defaultLocale: 'fa',
   defaultDirection: 'rtl',
   appName: 'Store Manager',

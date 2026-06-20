@@ -21,7 +21,7 @@ import {
 import { mobileMetrics } from '@/features/mobile/mobileTokens';
 import type { MerchantAccountStatus } from '@/domain/admin';
 
-import { ADMIN_MERCHANTS } from './adminMockData';
+import { useAdminMerchants } from '@/services/adminApi';
 import { merchantStatusMeta } from './adminFormat';
 
 type StatusFilter = 'all' | MerchantAccountStatus;
@@ -38,16 +38,17 @@ export function AdminMerchantsScreen(): React.JSX.Element {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const { data: merchants } = useAdminMerchants();
 
   const results = useMemo(() => {
     const q = search.trim();
-    return ADMIN_MERCHANTS.filter((m) => {
+    return merchants.filter((m) => {
       const matchesStatus = filter === 'all' || m.status === filter;
       const matchesQuery =
         q.length === 0 || m.storeName.includes(q) || m.ownerName.includes(q) || m.url.includes(q);
       return matchesStatus && matchesQuery;
     });
-  }, [search, filter]);
+  }, [search, filter, merchants]);
 
   return (
     <MobilePage testID="admin-merchants-screen" header={<MobileTabHeader title="فروشندگان" />}>

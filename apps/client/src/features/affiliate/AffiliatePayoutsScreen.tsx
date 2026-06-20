@@ -13,27 +13,32 @@ import { MobilePage, MobileTabHeader } from '@/features/mobile/components';
 import { mobileMetrics, mobileType, useMobileColors } from '@/features/mobile/mobileTokens';
 import { useTheme } from '@/theme';
 import { payoutMethodLabel, payoutStatusMeta } from '@/features/admin/adminFormat';
+import { requestFullPayout, useAffiliateOverview, useAffiliatePayouts } from '@/services/affiliateApi';
 import type { AffiliatePayout } from '@/domain/affiliate';
-
-import { AFFILIATE_OVERVIEW, AFFILIATE_PAYOUTS } from './affiliateMockData';
 
 export function AffiliatePayoutsScreen(): React.JSX.Element {
   const colors = useMobileColors();
   const { isRTL } = useTheme();
-  const [payouts, setPayouts] = useState<AffiliatePayout[]>(() => [...AFFILIATE_PAYOUTS]);
+  const { data: overview } = useAffiliateOverview();
+  const { data: livePayouts } = useAffiliatePayouts();
+  // Locally-added optimistic payout requests, prepended to the live history (no mirroring effect).
+  const [extra, setExtra] = useState<AffiliatePayout[]>([]);
   const [requested, setRequested] = useState(false);
+  const payouts = [...extra, ...livePayouts];
 
   const requestPayout = (): void => {
     const entry: AffiliatePayout = {
-      id: `ap-new-${payouts.length + 1}`,
-      amountLabel: AFFILIATE_OVERVIEW.availableLabel,
+      id: `ap-new-${extra.length + 1}`,
+      amountLabel: overview.availableLabel,
       method: 'bank_card',
       maskedDestination: 'کارت •••• ۴۳۲۱',
       status: 'requested',
       requestedAt: '1404-03-30',
     };
-    setPayouts((prev) => [entry, ...prev]);
+    setExtra((prev) => [entry, ...prev]);
     setRequested(true);
+    // Fire the real backend request when configured (full available balance).
+    void requestFullPayout().catch(() => undefined);
   };
 
   return (
@@ -51,7 +56,7 @@ export function AffiliatePayoutsScreen(): React.JSX.Element {
             موجودی قابل برداشت
           </Text>
           <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text, textAlign: isRTL ? 'right' : 'left' }}>
-            {AFFILIATE_OVERVIEW.availableLabel}
+            {overview.availableLabel}
           </Text>
           <Button
             label={requested ? 'درخواست ثبت شد' : 'درخواست تسویه'}
@@ -65,8 +70,8 @@ export function AffiliatePayoutsScreen(): React.JSX.Element {
         </View>
 
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <PortalMetricTile label="در انتظار" value={AFFILIATE_OVERVIEW.pendingLabel} tone="warning" />
-          <PortalMetricTile label="پرداخت‌شده" value={AFFILIATE_OVERVIEW.paidLabel} tone="success" />
+          <PortalMetricTile label="در انتظار" value={overview.pendingLabel} tone="warning" />
+          <PortalMetricTile label="پرداخت‌شده" value={overview.paidLabel} tone="success" />
         </View>
 
         <View style={{ gap: 12 }}>

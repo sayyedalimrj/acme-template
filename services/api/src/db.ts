@@ -9,7 +9,15 @@ export const pool = new Pool({
   connectionString: env.DATABASE_URL,
   // Managed Postgres providers usually require TLS in production.
   ssl: isProduction ? { rejectUnauthorized: false } : undefined,
-  max: 10,
+  max: 20,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000,
+});
+
+// Surface (but never crash on) idle client errors.
+pool.on('error', (err) => {
+  // eslint-disable-next-line no-console
+  console.error('[db] idle client error:', err.message);
 });
 
 /** Run a parameterized query and return the rows (typed by the caller). */

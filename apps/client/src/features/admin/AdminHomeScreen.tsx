@@ -12,7 +12,7 @@ import { PortalMetricTile, PortalRowCard, PortalSectionTitle } from '@/component
 import { AnimatedSection, MobilePage, QuickActionCard } from '@/features/mobile/components';
 import { mobileMetrics } from '@/features/mobile/mobileTokens';
 
-import { ADMIN_OVERVIEW } from './adminMockData';
+import { useAdminOverview } from '@/services/adminApi';
 
 const ACTIVITY_ICON: Record<string, React.ComponentProps<typeof PortalRowCard>['icon']> = {
   merchant: 'storefront-outline',
@@ -26,7 +26,7 @@ const ACTIVITY_ICON: Record<string, React.ComponentProps<typeof PortalRowCard>['
 export function AdminHomeScreen(): React.JSX.Element {
   const router = useRouter();
   const go = (href: string): void => router.navigate(href as never);
-  const o = ADMIN_OVERVIEW;
+  const { data: o } = useAdminOverview();
 
   return (
     <MobilePage testID="admin-home-screen">
