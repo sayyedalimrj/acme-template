@@ -92,8 +92,12 @@ export function QuickActionCard({
           fontWeight: '600',
           color: colors.text,
           textAlign: 'center',
+          alignSelf: 'stretch',
         }}
-        numberOfLines={1}
+        // Wrap to a second line instead of relying on adjustsFontSizeToFit, which is a no-op on
+        // react-native-web and caused long Persian labels to clip/truncate on narrow widths.
+        // Two lines fit within the existing fixed card height (no card-size change).
+        numberOfLines={2}
         adjustsFontSizeToFit
         minimumFontScale={0.75}
       >

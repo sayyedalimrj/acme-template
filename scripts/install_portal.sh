@@ -133,7 +133,9 @@ if ! step_done frontend; then
   cd "${INSTALL_ROOT}/apps/client"
   npm ci
   for portal in merchant admin affiliate; do
-    EXPO_PUBLIC_PORTAL="$portal" npm run "export:web:${portal}"
+    # Own-server builds are PRODUCTION runtime: the app must never silently fall back to mock
+    # data and must show a visible error (not a blank screen) if config.json is missing/invalid.
+    EXPO_PUBLIC_PORTAL="$portal" EXPO_PUBLIC_RUNTIME_ENV=production npm run "export:web:${portal}"
   done
   mark_step frontend
 fi

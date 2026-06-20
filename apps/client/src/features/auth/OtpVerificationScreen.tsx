@@ -119,6 +119,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
               id: res.user.id,
               name: res.user.name ?? '',
               email: '',
+              mobile: res.user.mobile ?? identifier,
               role: res.user.role as AuthUser['role'],
             },
             token: res.accessToken ?? res.token,

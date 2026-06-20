@@ -368,6 +368,48 @@ Nginx examples: `services/api/deploy/nginx/jet-web.local-preview.conf`, `jet-web
 
 Backend smoke test (same entry as systemd): `cd services/api && npm run smoke:start`.
 
+### B5a. Own-server build (manual, outside Vercel)
+
+The same Expo static export runs on a normal Ubuntu/Nginx box — no Vercel, no Windows hosts file.
+Build each portal as a **production runtime** so it never silently uses mock data:
+
+```bash
+cd apps/client && npm ci
+EXPO_PUBLIC_RUNTIME_ENV=production npm run export:web:merchant     # -> dist-merchant/
+EXPO_PUBLIC_RUNTIME_ENV=production npm run export:web:admin        # -> dist-admin/
+EXPO_PUBLIC_RUNTIME_ENV=production npm run export:web:affiliate    # -> dist-affiliate/
+
+# Deploy the per-portal runtime config (real API base URL, correct portal):
+cp config/merchant.production.json   dist-merchant/config.json
+cp config/admin.production.json      dist-admin/config.json
+cp config/affiliate.production.json  dist-affiliate/config.json
+```
+
+Verify each export carries the right portal before serving:
+
+```bash
+for p in merchant admin affiliate; do
+  node -e "const c=require('./apps/client/dist-'+'$p'+'/config.json'); console.log('$p ->', c.portal, c.apiBaseUrl)"
+done
+# expect: merchant -> merchant https://api.jet-web.ir   (and admin/affiliate respectively)
+```
+
+Map each hostname to its dist directory in Nginx (server-side host isolation — never rely on a
+client hosts file):
+
+| Hostname | Nginx root |
+| :--- | :--- |
+| `app.jet-web.ir` | `…/apps/client/dist-merchant` |
+| `admin.jet-web.ir` | `…/apps/client/dist-admin` |
+| `partner.jet-web.ir` | `…/apps/client/dist-affiliate` |
+| `api.jet-web.ir` | reverse-proxy → backend (`services/api`, port 8080) |
+
+**Production runtime safety:** production builds (`EXPO_PUBLIC_RUNTIME_ENV=production`, set by the
+per-portal Vercel configs and `install_portal.sh`) refuse to run on mock data. If `config.json` is
+missing, has an invalid/empty `apiBaseUrl`, or declares a portal that mismatches the build, the app
+shows a **visible Persian error screen** (never a blank page and never a silent mock fallback). The
+default Vercel preview build (no `EXPO_PUBLIC_RUNTIME_ENV`) keeps the mock demo behavior.
+
 ### B6. CI / verification
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR:
