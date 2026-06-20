@@ -231,7 +231,7 @@ export interface ConnectSiteInput {
 // Auth / session (frontend-safe; no credentials)
 // ---------------------------------------------------------------------------
 
-export type AuthStatus = 'authenticated' | 'unauthenticated' | 'loading';
+export type AuthStatus = 'authenticated' | 'unauthenticated' | 'loading' | 'access_denied';
 
 /**
  * Which product experience ("portal") the signed-in person uses. One build ships three

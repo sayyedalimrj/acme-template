@@ -1,0 +1,8 @@
+{
+  "buildCommand": "EXPO_PUBLIC_PORTAL=admin RUNTIME_CONFIG_ENV=production expo export -p web --output-dir dist-admin && EXPO_PUBLIC_PORTAL=admin RUNTIME_CONFIG_ENV=production node scripts/pwa-postbuild.mjs dist-admin",
+  "outputDirectory": "dist-admin",
+  "devCommand": "EXPO_PUBLIC_PORTAL=admin expo start --web",
+  "cleanUrls": true,
+  "framework": null,
+  "rewrites": [{ "source": "/:path*", "destination": "/" }]
+}

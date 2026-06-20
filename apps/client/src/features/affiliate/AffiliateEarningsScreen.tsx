@@ -17,7 +17,7 @@ import {
 import { mobileMetrics } from '@/features/mobile/mobileTokens';
 import type { CommissionStatus } from '@/domain/affiliate';
 
-import { AFFILIATE_COMMISSIONS, AFFILIATE_OVERVIEW } from './affiliateMockData';
+import { useAffiliateCommissions, useAffiliateOverview } from '@/services/affiliateApi';
 import { commissionStatusMeta } from './affiliateFormat';
 
 type CommissionFilter = 'all' | CommissionStatus;
@@ -32,11 +32,12 @@ const FILTERS: readonly FilterChipOption<CommissionFilter>[] = [
 
 export function AffiliateEarningsScreen(): React.JSX.Element {
   const [filter, setFilter] = useState<CommissionFilter>('all');
-  const o = AFFILIATE_OVERVIEW;
+  const { data: o } = useAffiliateOverview();
+  const { data: commissions } = useAffiliateCommissions();
 
   const results = useMemo(
-    () => AFFILIATE_COMMISSIONS.filter((c) => filter === 'all' || c.status === filter),
-    [filter],
+    () => commissions.filter((c) => filter === 'all' || c.status === filter),
+    [filter, commissions],
   );
 
   return (

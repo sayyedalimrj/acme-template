@@ -31,6 +31,8 @@ import {
   useDisconnectSite,
   useSetActiveSite,
 } from '@/features/site/useSiteMutations';
+import { isApiConfigured } from '@/config/api.config';
+import { verifyWooConnection } from '@/services/connectionApi';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 import type { SiteConnection, SiteStatus } from '@/domain/types';
@@ -139,23 +141,43 @@ export function ConnectSiteScreen(): React.JSX.Element {
 
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
+  const [consumerKey, setConsumerKey] = useState('');
+  const [consumerSecret, setConsumerSecret] = useState('');
   const [touched, setTouched] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   const nameError = touched && name.trim().length === 0 ? t('connectSite.nameRequired') : undefined;
   const urlError = touched && !isValidUrl(url) ? t('connectSite.urlRequired') : undefined;
-  const mutating = connect.isPending || setActive.isPending || disconnect.isPending;
+  const mutating = connect.isPending || setActive.isPending || disconnect.isPending || verifying;
 
   const onConnect = () => {
     setTouched(true);
+    setVerifyError(null);
     if (name.trim().length === 0 || !isValidUrl(url)) {
       return;
     }
     connect.mutate(
       { name: name.trim(), url: url.trim() },
       {
-        onSuccess: () => {
+        onSuccess: async (site) => {
+          // When connected to the real backend with REST credentials, verify them now so the
+          // store becomes "connected" and an initial sync runs server-side.
+          if (isApiConfigured() && consumerKey.trim() && consumerSecret.trim()) {
+            try {
+              setVerifying(true);
+              await verifyWooConnection(site.id, consumerKey.trim(), consumerSecret.trim());
+              await sitesQuery.refetch();
+            } catch (err) {
+              setVerifyError((err as Error).message ?? 'اتصال ناموفق بود.');
+            } finally {
+              setVerifying(false);
+            }
+          }
           setName('');
           setUrl('');
+          setConsumerKey('');
+          setConsumerSecret('');
           setTouched(false);
         },
       },
@@ -226,10 +248,41 @@ export function ConnectSiteScreen(): React.JSX.Element {
             onSubmitEditing={onConnect}
           />
         </FormField>
+        {isApiConfigured() ? (
+          <View style={{ gap: tokens.spacing.sm }}>
+            <Text variant="caption" tone="muted">
+              اعتبارنامه REST ووکامرس (اختیاری برای اتصال مستقیم). از مسیر ووکامرس ← تنظیمات ←
+              پیشرفته ← REST API یک کلید با دسترسی خواندن/نوشتن بسازید.
+            </Text>
+            <FormField label="Consumer key (ck_…)">
+              <Input
+                value={consumerKey}
+                onChangeText={setConsumerKey}
+                placeholder="ck_xxxxxxxxxxxx"
+                autoCapitalize="none"
+                editable={!mutating}
+              />
+            </FormField>
+            <FormField label="Consumer secret (cs_…)" error={verifyError ?? undefined}>
+              <Input
+                value={consumerSecret}
+                onChangeText={setConsumerSecret}
+                placeholder="cs_xxxxxxxxxxxx"
+                autoCapitalize="none"
+                secureTextEntry
+                editable={!mutating}
+              />
+            </FormField>
+          </View>
+        ) : null}
         <Button
-          label={connect.isPending ? t('connectSite.connecting') : t('connectSite.connectCta')}
+          label={
+            connect.isPending || verifying
+              ? t('connectSite.connecting')
+              : t('connectSite.connectCta')
+          }
           onPress={onConnect}
-          loading={connect.isPending}
+          loading={connect.isPending || verifying}
           leading={<Ionicons name="add" size={16} color={tokens.color.onPrimary} />}
         />
       </Card>

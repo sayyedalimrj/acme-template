@@ -1,36 +1,28 @@
 /**
- * Active portal (deploy target).
+ * Active portal (deploy target) — resolved at runtime from build + config.json.
  *
- * Each subdomain is a SEPARATE deployment of this same codebase, fixed to ONE portal via the
- * build-time env var `EXPO_PUBLIC_PORTAL` (Expo inlines `EXPO_PUBLIC_*` at build time). This is
- * how we ship three standalone apps — merchant / admin / affiliate — each with its own login,
- * its own subdomain, and its own security boundary, while sharing one design system.
- *
- *   EXPO_PUBLIC_PORTAL=merchant   →  app.example       (store owners)
- *   EXPO_PUBLIC_PORTAL=admin      →  admin.example     (platform owner)
- *   EXPO_PUBLIC_PORTAL=affiliate  →  partner.example   (marketers)
- *
- * If unset (local dev / tests) it defaults to `merchant`.
+ * Each subdomain is a SEPARATE deployment fixed to ONE portal via `EXPO_PUBLIC_PORTAL`
+ * at build time. Runtime config may change API URL but never the portal identity of this build.
  */
 import type { AppPortal } from '@/domain/types';
 
-function resolveActivePortal(): AppPortal {
-  const raw = process.env.EXPO_PUBLIC_PORTAL;
-  return raw === 'admin' || raw === 'affiliate' ? raw : 'merchant';
+import { BUILD_PORTAL, getRuntimePortal } from './runtimeConfig';
+
+export type { AppPortal };
+
+/** The portal this build was compiled for (immutable). */
+export { BUILD_PORTAL as BUILD_TIME_PORTAL };
+
+/** Current active portal for this deployment (always matches build portal). */
+export function getActivePortal(): AppPortal {
+  return getRuntimePortal();
 }
 
-/** The single portal this deployment serves. */
-export const ACTIVE_PORTAL: AppPortal = resolveActivePortal();
-
-/** Per-portal branding for the (shared-theme) login + chrome. */
+/** Per-portal branding for login + chrome. */
 export interface PortalMeta {
-  /** Short product name shown in the top bar / login. */
   name: string;
-  /** Login subtitle. */
   loginSubtitle: string;
-  /** Home route for this portal. */
   homeHref: string;
-  /** Brand icon for the auth screen. */
   authIcon: 'storefront-outline' | 'shield-checkmark-outline' | 'megaphone-outline';
 }
 
@@ -55,5 +47,12 @@ export const PORTAL_META: Record<AppPortal, PortalMeta> = {
   },
 };
 
-/** Branding for the active deployment's portal. */
-export const ACTIVE_PORTAL_META: PortalMeta = PORTAL_META[ACTIVE_PORTAL];
+export function getActivePortalMeta(): PortalMeta {
+  return PORTAL_META[getActivePortal()];
+}
+
+/** @deprecated Use getActivePortal() — kept for gradual migration. */
+export const ACTIVE_PORTAL: AppPortal = BUILD_PORTAL;
+
+/** @deprecated Use getActivePortalMeta(). */
+export const ACTIVE_PORTAL_META: PortalMeta = PORTAL_META[BUILD_PORTAL];

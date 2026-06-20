@@ -1,0 +1,8 @@
+{
+  "buildCommand": "EXPO_PUBLIC_PORTAL=merchant RUNTIME_CONFIG_ENV=production expo export -p web --output-dir dist-merchant && EXPO_PUBLIC_PORTAL=merchant RUNTIME_CONFIG_ENV=production node scripts/pwa-postbuild.mjs dist-merchant",
+  "outputDirectory": "dist-merchant",
+  "devCommand": "EXPO_PUBLIC_PORTAL=merchant expo start --web",
+  "cleanUrls": true,
+  "framework": null,
+  "rewrites": [{ "source": "/:path*", "destination": "/" }]
+}

@@ -8,8 +8,8 @@ asks you to put secrets in git or in the frontend bundle (see `.kiro/steering/se
 > - **`SERVER_SETUP.fa.md`** — **راهنمای قدم‌به‌قدم فارسی** برای VPS (Ubuntu + Nginx + SSL + systemd)
 > - `PORTALS.md` — the three role-based experiences (merchant / admin / affiliate) in one build
 > - `apps/client/README.md` — the frontend app
-> - `services/api/README.md` — the runnable OTP/RBAC backend (`services/api`)
-> - `apps/api/README.md` + `apps/api/src/database/README.md` — the backend/proxy + DB design
+> - `services/api/README.md` — the **only deployable** production backend (OTP, RBAC, vault, WooCommerce proxy, plugin sync, billing)
+> - `apps/api/README.md` — **reference-only** design contracts (not deployed; see Appendix R)
 > - `wordpress-plugin/README.md` + `wordpress-plugin/SECURITY.md` — the WordPress companion
 
 ---
@@ -18,12 +18,15 @@ asks you to put secrets in git or in the frontend bundle (see `.kiro/steering/se
 
 این پروژه سه بخش دارد:
 
-1. **`apps/client`** — اپ داشبورد (Expo + React Native Web). همین حالا به‌صورت **PWA وب** قابل
-   اجرا و انتشار است و روی **داده‌ی ماک** کار می‌کند (هنوز به سرور واقعی وصل نیست).
-2. **`apps/api`** — لایه‌ی بک‌اند/پراکسی امن. در حال حاضر فقط **طراحی و قراردادها (types)** است و
-   **سرور اجرایی ندارد**؛ برای اتصال واقعی باید پیاده‌سازی شود.
+1. **`apps/client`** — اپ داشبورد (Expo + React Native Web). سه پورتال جدا (merchant / admin /
+   affiliate) به‌صورت **PWA وب** قابل انتشار است. با `EXPO_PUBLIC_API_BASE_URL` به بک‌اند واقعی
+   وصل می‌شود؛ بدون آن روی داده‌ی ماک اجرا می‌شود.
+2. **`services/api`** — **تنها بک‌اند قابل استقرار**. OTP، RBAC، Postgres، vault، پراکسی
+   ووکامرس، همگام‌سازی افزونه، وب‌هوک و صورتحساب.
 3. **`wordpress-plugin`** — افزونه‌ی همراه وردپرس برای **همگام‌سازی امن فقط‑خواندنی** فروشگاه
    ووکامرس.
+
+> `apps/api` فقط **مرجع طراحی/قرارداد** است — سرور اجرایی ندارد و **نباید** deploy شود.
 
 **برای راه‌اندازی همین امروز (فقط فرانت‌اند، روی داده‌ی نمونه):**
 
@@ -35,9 +38,9 @@ npm run export:web   # خروجی استاتیک در ./dist برای انتشا
 ```
 
 **برای رفتن به حالت واقعی (اتصال به فروشگاه‌ها + پرداخت):**
-باید بک‌اند `apps/api` را با یک پایگاه‌داده‌ی Postgres، انبار امن کلیدها (vault)، و درگاه پرداخت
-سمت سرور پیاده‌سازی کنید، سپس در فرانت‌اند `dataSource` را به `http` و `apiBaseUrl` را به آدرس
-بک‌اند تغییر دهید. جزئیات قدم‌به‌قدم در بخش‌های انگلیسی پایین آمده است.
+باید بک‌اند `services/api` را با Postgres و ippanel روی سرور بالا بیاورید و سه ساب‌دامین جدا
+بیلد کنید. **راهنمای قدم‌به‌قدم فارسی:** `SERVER_SETUP.fa.md`. جزئیات فنی انگلیسی در بخش‌های
+پایین همین فایل (`DEPLOYMENT.md`) آمده است.
 
 > امنیت (مهم): هیچ کلید/رمز فروشگاه یا درگاه پرداخت **هرگز** نباید داخل فرانت‌اند یا داخل گیت
 > قرار بگیرد. همه‌ی کلیدها فقط در متغیرهای محیطی سمت سرور (Secret Manager) نگه‌داری می‌شوند.
@@ -48,27 +51,27 @@ npm run export:web   # خروجی استاتیک در ./dist برای انتشا
 
 ```
 ┌─────────────────┐     HTTPS (frontend-safe data only)      ┌──────────────────────────┐
-│  apps/client     │  ───────────────────────────────────▶   │  apps/api (backend/proxy) │
-│  Expo RN Web PWA │  ◀───────────────────────────────────   │  + Postgres + vault       │
-└─────────────────┘                                          └────────────┬─────────────┘
-        ▲                                                                  │ signed, server-side
-        │ install / connect                                               ▼
-        │                                              ┌───────────────────────────────────┐
-        │                                              │ Merchant WordPress / WooCommerce    │
-        └───────── PWA install on phone/desktop        │ + wordpress-plugin (companion)      │
-                                                       └───────────────────────────────────┘
-                                                       Payment provider (Stripe / Zarinpal / …)
-                                                       is called ONLY by apps/api, server-side.
+│  apps/client     │  ───────────────────────────────────▶   │  services/api             │
+│  Expo RN Web PWA │  ◀───────────────────────────────────   │  Express + Postgres + vault│
+│  (×3 subdomains) │                                          └────────────┬─────────────┘
+└─────────────────┘                                                       │ signed, server-side
+        ▲                                                                   ▼
+        │ install / connect                              ┌───────────────────────────────────┐
+        │                                                │ Merchant WordPress / WooCommerce    │
+        └───────── PWA install on phone/desktop          │ + wordpress-plugin (companion)      │
+                                                         └───────────────────────────────────┘
+                                                         Payment provider (Zarinpal / …)
+                                                         is called ONLY by services/api, server-side.
 ```
 
 | Component          | Status today                              | Needed for go‑live                                  |
 | ------------------ | ----------------------------------------- | --------------------------------------------------- |
-| `apps/client`      | ✅ 3 portal builds (merchant/admin/affiliate) on mock UI data; **real phone-OTP login** when wired | Set `EXPO_PUBLIC_PORTAL` + `EXPO_PUBLIC_API_BASE_URL` per subdomain |
-| `services/api`     | ✅ **Runnable** Express API: OTP (ippanel) + JWT + RBAC + Postgres | Provide DB + ippanel keys + secrets; deploy        |
-| `apps/api`         | 🟡 Design/contracts skeleton (proxy/vault/payments) | Implement the WooCommerce/WP proxy + credential vault |
-| Database           | ✅ Postgres schema (`services/api/db/schema.sql`) + migration runner | Provision Postgres, run `npm run migrate`           |
-| Payments           | 🟡 Gateway **contract** (`apps/api`)      | Implement one provider server-side + webhooks       |
-| `wordpress-plugin` | ✅ PHP companion + signed sync contracts   | Install on the merchant site, share signing secret  |
+| `apps/client`      | ✅ 3 portal builds (merchant/admin/affiliate); **real backend data + phone-OTP login** when `EXPO_PUBLIC_API_BASE_URL` is set (mock otherwise) | Set `EXPO_PUBLIC_PORTAL` + `EXPO_PUBLIC_API_BASE_URL` per subdomain |
+| `services/api`     | ✅ **Production backend**: OTP+JWT+refresh, granular RBAC + tenant/site isolation, AES-256-GCM credential vault, **WooCommerce REST proxy**, **plugin signed sync**, webhooks, billing, audit | Provide DB + secrets + ippanel/gateway keys; deploy |
+| `apps/api`         | 🟡 Design/contracts reference (the runnable backend lives in `services/api`) | Optional: keep as reference; no deploy needed       |
+| Database           | ✅ Ordered, tracked Postgres migrations (`services/api/db/migrations/`) | Provision Postgres, run `npm run migrate`           |
+| Payments           | ✅ Gateway adapter (manual/mock/zarinpal) + checkout→verify + idempotent billing events | Configure `BILLING_PROVIDER` + provider keys        |
+| `wordpress-plugin` | ✅ Production companion: settings + **HMAC-signed handshake/sync** + WP-cron + sync-now | Install on the merchant site, paste connection + signing secret |
 
 > **Three subdomains:** the client is deployed **three times** — one per portal — each fixed to a
 > portal via `EXPO_PUBLIC_PORTAL` and pointed at the one backend via `EXPO_PUBLIC_API_BASE_URL`.
@@ -80,9 +83,8 @@ npm run export:web   # خروجی استاتیک در ./dist برای انتشا
 
 - **Node.js 18+** (developed on Node 22) and **npm 9+**.
 - Git, and a deploy target for static hosting (Vercel is preconfigured via `apps/client/vercel.json`).
-- For the backend (go‑live): a Node host (Vercel/Render/Fly/AWS/etc.), a **managed Postgres**
-  (Neon, Supabase, Vercel Postgres, RDS/Aurora — see `apps/api/src/database/dbProviderDecision.md`),
-  a **secret manager**, and a payment provider account.
+- For the backend (go‑live): a Node host, a **managed Postgres** (Neon, Supabase, RDS/Aurora, or
+  self-hosted — see `services/api/README.md`), a **secret manager**, and a payment provider account.
 - For the WordPress side: a WooCommerce store you control + ability to install a plugin.
 
 ---
@@ -141,26 +143,31 @@ icons, service worker, iOS viewport) and sets the document shell.
 
 ### A5. Switch the app from mock data to the real backend (at go‑live)
 
-The data source is controlled in `apps/client/src/config/app.config.ts`:
+The data source is now **automatic**: `apps/client/src/config/app.config.ts` selects `http` when
+`EXPO_PUBLIC_API_BASE_URL` is set at build time, and `mock` otherwise. There is nothing to edit:
 
-```ts
-export const appConfig: AppConfig = {
-  dataSource: 'mock',   // ← change to 'http' once the backend is live
-  apiBaseUrl: '',       // ← set to your backend base URL, e.g. 'https://api.example.com'
-  defaultLocale: 'fa',
-  defaultDirection: 'rtl',
-  appName: 'Store Manager',
-  appVersion: '0.1.0',
-};
+```bash
+EXPO_PUBLIC_API_BASE_URL=https://api.example.com EXPO_PUBLIC_PORTAL=merchant npm run export:web:merchant
 ```
 
-- Until the backend exists, keep `dataSource: 'mock'` (the app is fully usable as a demo).
-- The frontend talks **only** to `apps/api`, never directly to a merchant store, and never
-  holds store/payment secrets.
+- With no `EXPO_PUBLIC_API_BASE_URL`, the app runs entirely on in-memory mock data (great for demos
+  and tests).
+- With it set, the three portals call the real backend for login (OTP + refresh) and data:
+  merchant store data (products/orders/customers/coupons/reports via the server-side WooCommerce
+  proxy), admin platform data, and affiliate referrals/commissions/payouts.
+- The frontend talks **only** to `services/api`, never directly to a merchant store, and never
+  holds store/payment secrets. WooCommerce keys are entered once on the Connect-Site screen and go
+  straight to the backend vault (HTTPS) — they are never persisted in the app.
+- A few AI/ops surfaces (advisor, media studio, intelligence, automation, support inbox, plan
+  display) have no production backend yet and remain on in-memory demo data even in `http` mode;
+  they are clearly isolated and non-critical.
 
 ---
 
 ## Part S — Three subdomains + phone‑OTP backend (recommended setup)
+
+> **Persian VPS walkthrough:** see **`SERVER_SETUP.fa.md`** (Ubuntu 24.04, Postgres, Nginx, Certbot,
+> systemd, ippanel). Example configs: `services/api/deploy/`.
 
 This is the concrete path to deploy the three portals on three subdomains with **real OTP login**.
 
@@ -226,188 +233,219 @@ A merchant token calling `/admin/*` gets `403`. Admin login is restricted to
 
 ### S5. Database
 
-`services/api/db/schema.sql` is the concrete Postgres schema (users, OTP, marketers, merchants,
-referrals, commissions, payouts, platform orders, audit log). Apply it with `npm run migrate`.
-Money is stored as integer minor units; no card data is ever stored.
+`services/api/db/migrations/` holds ordered, tracked Postgres migrations (users, OTP, sessions,
+tenants + members, sites + connections + **encrypted credentials**, sync read-models, webhook +
+plugin events, replay nonces, plans/subscriptions/billing, marketers/referrals/commissions/
+payouts, audit log). Apply with `npm run migrate` (idempotent; re-runnable). Money is stored as
+integer minor units; **no card data and no raw secrets** are ever stored. Rollback guidance:
+`services/api/db/migrations/ROLLBACK.md`.
 
 ---
 
-## Part B — Backend / Proxy (`apps/api`)
+## Part W — Connect a merchant's WooCommerce store
 
-> **Current status:** `apps/api` is **interface‑first and dependency‑free** — TypeScript
-> contracts, security helpers, pure validators, and not‑implemented stubs. There is **no HTTP
-> server, no DB client, and no real network call** yet, by deliberate design (security review
-> gate). Going live means implementing a server behind these contracts.
+Two server-side connection modes (the frontend never holds store keys):
 
-### B1. What to build
+### Mode A — WooCommerce REST credentials (direct)
 
-1. **Server runtime** — Express/Fastify/Nest (pick one). Mount routes for the contracts in
-   `apps/api/src/routes/contracts.ts` and wire the adapters:
-   - WooCommerce reads → `WooCommerceProxy` (`src/adapters/woocommerceProxy.ts`)
-   - Site ownership/connect → `WordPressBridge` (`src/adapters/wordpressBridge.ts`)
-   - Inbound store webhooks → `WebhookReceiver` (`src/adapters/webhookReceiver.ts`)
-   - Plugin signed sync delivery → `handlePluginSyncDelivery` (`src/plugin/pluginDeliveryEndpoint.ts`)
-   - Platform billing → `PaymentGateway` (`src/adapters/paymentGateway.ts`)
-   The provided `createNotImplemented…()` stubs return safe errors and are safe to mount first,
-   then replace one method at a time.
-2. **Auth** — real authentication + sessions for the merchant users (`ApiUser`/`ApiRole`), and
-   enforce RBAC using `checkPermission` (`src/domain/permission.ts`) on every privileged route.
-3. **Credential vault** — encrypted‑at‑rest, per‑site secret storage with rotation/revocation.
-   The skeleton stores **metadata only** (`buildCredentialMetadata`); the real secret lives in
-   the vault/KMS and is referenced, never returned to the client.
-4. **Tenant isolation** — apply `assertTenantScope` / `assertSiteScope`
-   (`src/database/tenantIsolation.ts`) + DB row‑level security (see Part C).
-5. **Output safety** — pass every response through the redaction helpers
-   (`src/security/redaction.ts`) so secrets/PII can never leak.
+1. Merchant opens the merchant portal → **Connect site**, enters the store name + URL, and (with a
+   live backend) the WooCommerce **consumer key + secret**.
+2. In WooCommerce: **WooCommerce → Settings → Advanced → REST API → Add key** (Read/Write).
+3. The backend verifies the keys against the store (with SSRF protection), seals them in the
+   AES‑256‑GCM vault, marks the site **connected**, and runs a **full paginated initial sync**
+   (all WooCommerce list pages, 100 items/page — not just the first page). Merchant data then
+   loads from the server-side WooCommerce proxy.
+4. (Optional realtime) `POST /merchant/sites/:id/webhook-secret` returns a secret + delivery URL;
+   add a WooCommerce webhook (Settings → Advanced → Webhooks) to that URL using that secret. The
+   backend verifies the `x-wc-webhook-signature` HMAC and updates the read-model idempotently.
 
-### B2. Backend environment variables (set in your host's secret manager — never in git)
+### Mode B — WordPress companion plugin (signed sync)
 
-Names only (see `apps/api/src/database/environmentContract.md`):
+1. Merchant opens **Connect site → Plugin mode**. The backend returns `siteId`, `tenantId`, a
+   one-time **signing secret**, and the plugin delivery base URL.
+2. Install `wordpress-plugin/` on the store, open **WordPress Commerce OS → Backend connection**,
+   and paste the backend URL (`https://api.example.com/plugin`), site id, tenant id, and signing
+   secret. Click **Connect (handshake)**.
+3. The plugin signs every request (HMAC‑SHA256 over the exact body + timestamp + nonce). The
+   backend verifies the signature, timestamp window, and nonce (replay protection), then persists
+   the normalized read-model. A WP‑cron job syncs hourly; **Sync now** triggers it on demand.
 
-| Name                          | Purpose                                                       |
-| ----------------------------- | ------------------------------------------------------------ |
-| `DATABASE_URL`                | Primary Postgres connection reference                        |
-| `DATABASE_READONLY_URL`       | Optional read‑replica for read‑heavy queries                 |
-| `DATABASE_MIGRATION_URL`      | Optional elevated connection used only by the migration runner|
-| `ENCRYPTION_KEY_REF`          | Vault/KMS **reference** to the encryption key (not the key)  |
-| `SIGNING_SECRET_PROVIDER_REF` | Vault **reference** to the plugin signing‑secret provider    |
-
-Plus (added at their integration phases, names only — values via the secret manager):
-
-| Name                          | Purpose                                                       |
-| ----------------------------- | ------------------------------------------------------------ |
-| `PAYMENT_PROVIDER`            | Which gateway is active (`stripe` / `zarinpal` / …)          |
-| `PAYMENT_API_KEY_REF`         | Vault reference to the provider secret key                   |
-| `PAYMENT_WEBHOOK_SECRET_REF`  | Vault reference to the provider webhook signing secret       |
-| `PAYMENT_RETURN_URL`          | Backend callback URL the gateway redirects back to           |
-
-> **Rules:** names only in the repo; **no `.env` committed**; secret material lives in a
-> vault/KMS and the backend reads **references**, never raw secrets; nothing sensitive is ever
-> shipped to the frontend.
+Verify a connection: `GET /merchant/sites/:id/status` (shows connection + last sync run); the
+admin portal shows all sites + sync runs and can trigger a resync.
 
 ---
 
-## Part C — Database
+## Part X — Production checklist (go‑live)
 
-The full schema, isolation, retention, and migration plan already exist as **typed
-descriptors** under `apps/api/src/database/` (no SQL is executed by importing them).
+- [ ] `services/api` deployed on `api.example.com` behind HTTPS (Nginx reverse proxy).
+- [ ] Postgres provisioned; `npm run migrate` applied (no `--seed` in production).
+- [ ] Secrets set: `JWT_SECRET`, `OTP_HASH_SECRET`, `CREDENTIAL_ENCRYPTION_KEY` (32‑byte),
+      `ADMIN_MOBILE_ALLOWLIST`, ippanel keys, billing keys, `PAYMENT_WEBHOOK_SECRET`.
+- [ ] `CORS_ORIGINS` = exactly the three portal origins (`https://app…,https://admin…,https://partner…`) — **server refuses to start if empty in production**.
+- [ ] `SMS_DRY_RUN=false` with valid ippanel pattern/originator.
+- [ ] Three frontend builds deployed per subdomain with `EXPO_PUBLIC_PORTAL` + `EXPO_PUBLIC_API_BASE_URL`.
+- [ ] No secrets in git or the frontend bundle; CI quality gates pass (`.github/workflows/ci.yml`) or run `./scripts/verify-production.sh` locally.
+- [ ] OTP login works on each portal; non-admin token → 403 on `/admin/*` (RBAC verified).
+- [ ] At least one WooCommerce store connected (REST or plugin) and showing real data.
 
-### C1. Choose a provider
+---
 
-Use a **managed, Postgres‑compatible** database (relational fits the `Tenant → Site → Resource`
-model with strong FKs and per‑tenant isolation). Candidates and selection criteria are in
-`apps/api/src/database/dbProviderDecision.md` (Neon, Supabase, Vercel Postgres, RDS/Aurora).
+## Part B — Production backend (`services/api`)
 
-### C2. Provision & connect
+> **This is the only backend you deploy.** Express + Postgres + JWT/OTP + RBAC + credential vault +
+> WooCommerce REST proxy (with SSRF protection) + plugin signed sync + webhooks + billing.
 
-1. Create the database; capture its connection string into `DATABASE_URL` (secret manager).
-2. Enable **row‑level security (RLS)** and/or enforce the query‑layer tenant guard.
-3. Configure automated **backups** and **point‑in‑time recovery**.
+### B1. Install, migrate, run
 
-### C3. Run the migrations
+```bash
+cd services/api
+cp .env.example .env          # set secrets (see B2)
+npm install
+npm run db:up                 # optional local Postgres via docker compose
+npm run migrate               # apply schema (add --seed only in dev)
+npm run dev                   # http://localhost:8080
+```
 
-The ordered manifest is `apps/api/src/database/migrations/migrationManifest.ts`
-(`001_initial_platform_schema` → `004_security_audit_usage`). These are **descriptors**, so:
+Production: `npm run build && npm start` behind Nginx (see `services/api/deploy/` and
+`SERVER_SETUP.fa.md`).
 
-1. Implement a small migration runner (or generate SQL) that consumes `MIGRATION_MANIFEST` in
-   order. The descriptors include tables, columns, indexes, constraints, rollback plans, and
-   safety checks.
-2. Apply migrations using `DATABASE_MIGRATION_URL` (elevated), then run the app on `DATABASE_URL`.
-3. Enforce the invariants the scaffold checks: every tenant‑scoped table has `tenantId`,
-   site‑scoped tables have `siteId`+`tenantId`, sync tables have `syncRunId`, and there are
-   **no raw‑secret / raw‑payload columns**.
+### B2. Required environment variables
 
-See `apps/api/src/database/migrations/README.md`, `seedStrategy.md`, `rollbackStrategy.md`, and
-`tenantIsolationChecklist.md`.
+See `services/api/.env.example` and `services/api/README.md`. Production **must** set:
 
-### C4. Financial data rules
+| Variable | Purpose |
+| -------- | ------- |
+| `DATABASE_URL` | Postgres connection string |
+| `JWT_SECRET` | Access token signing (≥16 chars) |
+| `OTP_HASH_SECRET` | OTP hashing (≥16 chars) |
+| `CREDENTIAL_ENCRYPTION_KEY` | AES-256-GCM vault key (32 bytes hex/base64) — **required in production** |
+| `CORS_ORIGINS` | Comma-separated portal origins — **required in production** (empty → process exit) |
+| `ADMIN_MOBILE_ALLOWLIST` | Mobiles allowed into admin portal |
+| `IPPANEL_PROVIDER=edge` + `IPPANEL_BASE_URL=https://edge.ippanel.com/v1` | ippanel Edge API (recommended) |
+| `TRUST_PROXY=true` | Honor `X-Forwarded-Proto` behind Nginx Proxy Manager |
 
-- `SubscriptionRecord`, `PlanRecord`, `UsageCounterRecord`, and `BillingEventRecord` hold
-  **provider metadata and display labels only** — **never** card/PAN data.
-- A settled payment becomes a `BillingEventRecord` (`invoice_paid` / `payment_failed` / …) with
-  an opaque `providerEventRef`; the gateway's secrets stay server‑side.
+Optional but recommended: `PUBLIC_API_BASE_URL`, portal URLs, `BILLING_PROVIDER`, payment webhook
+secret, ippanel pattern/originator.
+
+### B3. Security built-in
+
+- **SSRF guard** on merchant store URLs before any WooCommerce fetch (`src/util/ssrf.ts`): blocks
+  localhost, private/link-local/metadata IPs, non-http(s), embedded credentials, and unsafe redirects.
+- **Full paginated sync** on connect/resync — walks every WooCommerce list page (100/page), not only
+  the first 100 records.
+- Encrypted credential vault, tenant/site isolation, audit log, plugin HMAC + replay guard, webhook
+  idempotency.
+
+### B4. Runtime frontend config (build once, deploy everywhere)
+
+Each portal static export serves `/config.json` (copied from `apps/client/public/config.*.json`).
+Swap this file on the server to point at your API **without rebuilding**:
+
+```json
+{ "apiBaseUrl": "https://api.jet-web.ir", "portal": "merchant" }
+```
+
+Templates: `config.local-preview.json` (HTTP internal IP), `config.production.json` (HTTPS subdomains).
+
+**Build defaults (important for cloud hosts like Vercel):** the build only bakes a preset
+`config.json` when you opt in with `RUNTIME_CONFIG_ENV=local-preview|production` (used by
+`install_portal.sh`). A plain `expo export -p web && node scripts/pwa-postbuild.mjs` build
+instead writes `config.json` from `EXPO_PUBLIC_API_BASE_URL`; when that env var is empty the app
+runs on self-contained **mock data** so the public preview (login + dashboard) works with no
+backend. Set `EXPO_PUBLIC_API_BASE_URL` (or swap `config.json` at runtime) to point at a
+**publicly reachable** API — the self-hosted `api.jet-web.ir` / internal IP is not reachable from
+a cloud host.
+
+### B5. Automated install (Ubuntu 24.04)
+
+```bash
+sudo ./scripts/install_portal.sh --mode local-preview --domain jet-web.ir --server-ip 192.168.101.181
+sudo ./scripts/install_portal.sh --mode production-behind-npm --domain jet-web.ir --dry-run-sms false
+./scripts/verify-live.sh --base-url http://192.168.101.181 --api-url http://192.168.101.181
+```
+
+Nginx examples: `services/api/deploy/nginx/jet-web.local-preview.conf`, `jet-web.production.conf`.
+
+Backend smoke test (same entry as systemd): `cd services/api && npm run smoke:start`.
+
+### B6. CI / verification
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR:
+
+- **Backend:** `npm ci` → typecheck → test → build → migrate (Postgres service)
+- **Frontend:** `npm ci` → typecheck → lint → test → `export:web:all`
+
+Locally, reproduce with:
+
+```bash
+./scripts/verify-production.sh 2>&1 | tee docs/VERIFY.log
+```
+
+---
+
+## Part C — Database (`services/api/db`)
+
+`services/api/db/migrations/` holds ordered, tracked Postgres migrations. Apply with `npm run migrate`
+(idempotent). Rollback guidance: `services/api/db/migrations/ROLLBACK.md`.
+
+- Money stored as integer minor units; **no card data and no raw secrets**.
+- Seed data (`npm run migrate -- --seed`) is blocked in production.
 
 ---
 
 ## Part D — Payments (platform subscription billing)
 
-> Scope: this is how **the platform charges a tenant for its plan**. A merchant's own store
-> checkout stays inside their WooCommerce site and is not handled here.
-
-The contract is `apps/api/src/adapters/paymentGateway.ts` (`PaymentGateway`), provider‑agnostic
-and built around the universal **create → redirect → verify** flow that fits both Stripe Checkout
-and Iranian gateways (Zarinpal, IDPay, NextPay).
-
-### D1. Implement one provider server‑side
-
-1. Implement `PaymentGateway` (replace `createNotImplementedPaymentGateway()`):
-   - `createCheckout(req, ctx)` → call the provider with the **server‑side** key, return a
-     `redirectUrl` + opaque `providerRef`. Amounts are integer **minor units** + ISO‑4217
-     currency. **Never** accept card data.
-   - `verifyPayment(providerRef, ctx)` → verify on the gateway return/callback, then write a
-     `BillingEventRecord` and activate/renew the `SubscriptionRecord`.
-   - `getPaymentStatus`, `refundLater`, `handleWebhookLater` as needed.
-2. Add a **return/callback route** (`PAYMENT_RETURN_URL`) that calls `verifyPayment` and is
-   **idempotent** (use `providerEventRef`/`providerRef` to dedupe).
-3. Add a **webhook route** that verifies the provider signature (replace
-   `verifyPaymentWebhookSignaturePlaceholder` with real HMAC/asymmetric verification using
-   `PAYMENT_WEBHOOK_SECRET_REF`) before applying any state change.
-
-### D2. Payment security checklist
-
-- [ ] Provider secret key only in `PAYMENT_API_KEY_REF` (vault) — never in git/frontend.
-- [ ] Card capture happens on the provider's hosted page / element — never on our servers.
-- [ ] Webhooks are signature‑verified and idempotent.
-- [ ] Amounts are integer minor units; currency is explicit.
-- [ ] Every payment action is tenant‑scoped and written to the audit log (secrets redacted).
+Implemented in `services/api` via `src/services/billing/` and `BILLING_PROVIDER` (`manual` / `mock` /
+`zarinpal`). Merchant store checkout stays on WooCommerce; this bills tenants for platform plans only.
 
 ---
 
 ## Part E — WordPress companion plugin (`wordpress-plugin`)
 
-This PHP plugin lets a merchant connect their store for **secure, read‑only sync** and signed
-delivery (and controlled actions later). See `wordpress-plugin/README.md` and `SECURITY.md`.
-
-1. Package `wordpress-plugin/` and install/activate it on the merchant's WordPress site
-   (requires WooCommerce).
-2. In the plugin admin, generate/connect using the handshake (see
-   `wordpress-plugin/examples/handshake-request.example.json`).
-3. Share a **signing secret** between the plugin and `apps/api` via the secret manager
-   (`SIGNING_SECRET_PROVIDER_REF`) — never hard‑code it.
-4. The plugin signs sync packages/events (HMAC‑SHA256); `apps/api` verifies them with
-   `verifyPluginSyncSignature` and a replay guard before persisting summary‑only read models.
+1. Package `wordpress-plugin/` and install/activate on the merchant's WordPress site (requires WooCommerce).
+2. In plugin admin, paste backend URL (`https://api.example.com/plugin`), site id, tenant id, and the
+   one-time signing secret from Connect Site (plugin mode).
+3. The plugin signs sync packages/events (HMAC-SHA256); **`services/api`** verifies signature + replay
+   guard before persisting read models. WP-cron syncs hourly; **Sync now** triggers on demand.
 
 ---
 
 ## Part F — Go‑live runbook (ordered)
 
-1. **Frontend demo** — deploy `apps/client` on mock data (Part A). Verify the PWA installs and
-   the RTL layout is correct (header, bottom nav, products list + filters, hero carousel/swipe,
-   login screen).
-2. **Database** — provision Postgres, enable RLS/backups, run migrations (Part C).
-3. **Vault/secrets** — create the secret manager entries from the env tables (Parts B & D).
-4. **Backend** — implement and deploy `apps/api` (server runtime, auth, RBAC, credential vault,
-   adapters), starting from the not‑implemented stubs and replacing method‑by‑method (Part B).
-5. **Payments** — implement one provider + return/webhook routes; test in the provider's
-   sandbox first (Part D).
-6. **WordPress** — install the companion plugin on a test store, complete the handshake, confirm
-   signed read‑only sync flows into the backend (Part E).
-7. **Flip the frontend** — set `dataSource: 'http'` and `apiBaseUrl` in `app.config.ts`,
-   redeploy `apps/client`, and verify against the live backend (Part A5).
-8. **Security review** — complete the checklist below before serving real merchants.
+1. **Database** — provision Postgres, run `npm run migrate` (no `--seed` in production).
+2. **Secrets** — set all production env vars (Part B2); confirm `CORS_ORIGINS` and vault key.
+3. **Backend** — deploy `services/api` on `api.example.com` behind HTTPS.
+4. **Frontends** — build three portals (`export:web:merchant|admin|affiliate`) and deploy per subdomain.
+5. **Payments** — configure `BILLING_PROVIDER` + webhook secret; test in sandbox first.
+6. **WordPress** — install companion plugin, handshake, confirm signed sync.
+7. **Verify** — OTP on each portal, RBAC 403 checks, connect a real store, run CI or `verify-production.sh`.
+8. **Security review** — complete Part G checklist.
 
 ---
 
 ## Part G — Security checklist (must pass before go‑live)
 
 - [ ] No secrets in git (code, config, fixtures, `.env`) — anywhere.
-- [ ] No secrets in the frontend bundle; the frontend talks only to `apps/api`.
-- [ ] Store credentials & payment keys live encrypted in a vault; backend reads references.
-- [ ] Per‑site / per‑tenant isolation enforced (RLS + `assertTenantScope`/`assertSiteScope`).
-- [ ] Disconnect revokes credentials server‑side and invalidates the connection reference.
-- [ ] All privileged actions are audited with secrets/PII redacted.
+- [ ] No secrets in the frontend bundle; the frontend talks only to **`services/api`**.
+- [ ] Store credentials & payment keys encrypted in the vault; never returned to clients.
+- [ ] Per‑site / per‑tenant isolation enforced server-side (`assertTenantAccess` / `assertSiteAccess`).
+- [ ] Merchant store URLs SSRF-checked before outbound WooCommerce fetches.
+- [ ] `CORS_ORIGINS` set in production (server exits if empty).
+- [ ] Disconnect revokes credentials server-side.
+- [ ] All privileged actions audited with secrets/PII redacted.
 - [ ] All traffic over HTTPS; webhooks signature‑verified and idempotent.
 - [ ] RBAC enforced server‑side on every privileged route.
+
+---
+
+## Appendix R — `apps/api` (reference only — do not deploy)
+
+`apps/api/` contains **TypeScript design contracts** from early architecture work: route interfaces,
+adapter stubs, database descriptors, and security helpers. It has **no HTTP server, no DB client, and
+no runnable entrypoint**.
+
+Use it as documentation when extending `services/api`. All production endpoints, migrations, and
+deployment configs live under **`services/api/`** only.
 
 ---
 

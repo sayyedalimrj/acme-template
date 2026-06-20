@@ -12,9 +12,11 @@ import React, { useState } from 'react';
 
 import { Text } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
-import { ACTIVE_PORTAL, ACTIVE_PORTAL_META } from '@/config/portal.config';
+import { getActivePortal, getActivePortalMeta } from '@/config/portal.config';
 import { useT } from '@/i18n/I18nProvider';
 import { requestOtp } from '@/services/authApi';
+
+import { usePublicAuthConfig } from './usePublicAuthConfig';
 
 import { AuthField } from './components/AuthField';
 import { AuthFrame } from './components/AuthFrame';
@@ -25,6 +27,7 @@ import { isValidMobile, sendOtpMock } from './authHelpers';
 export function AuthEntryScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
+  const authConfig = usePublicAuthConfig();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
@@ -33,10 +36,13 @@ export function AuthEntryScreen(): React.JSX.Element {
   const trimmedValue = value.trim();
   const canContinue = trimmedValue.length > 0 && isValidMobile(trimmedValue) && !submitting;
 
+  const portal = getActivePortal();
+  const portalMeta = getActivePortalMeta();
+
   const goToVerify = (mobile: string): void => {
     router.navigate({
       pathname: '/verify',
-      params: { identifier: mobile, channel: 'mobile', portal: ACTIVE_PORTAL },
+      params: { identifier: mobile, channel: 'mobile', portal },
     } as unknown as Href);
   };
 
@@ -52,11 +58,11 @@ export function AuthEntryScreen(): React.JSX.Element {
     }
     setError(undefined);
 
-    if (isApiConfigured) {
+    if (isApiConfigured()) {
       // Real OTP: ask the backend to send the code via SMS (ippanel).
       try {
         setSubmitting(true);
-        await requestOtp(trimmed, ACTIVE_PORTAL);
+        await requestOtp(trimmed, portal);
         setSubmitting(false);
         goToVerify(trimmed);
       } catch (e) {
@@ -74,9 +80,9 @@ export function AuthEntryScreen(): React.JSX.Element {
   return (
     <AuthFrame
       testID="auth-entry-screen"
-      iconName={ACTIVE_PORTAL_META.authIcon}
-      title={ACTIVE_PORTAL === 'merchant' ? '' : ACTIVE_PORTAL_META.name}
-      subtitle={ACTIVE_PORTAL === 'merchant' ? t('auth.entry.subtitle') : ACTIVE_PORTAL_META.loginSubtitle}
+      iconName={portalMeta.authIcon}
+      title={portal === 'merchant' ? '' : portalMeta.name}
+      subtitle={portal === 'merchant' ? t('auth.entry.subtitle') : portalMeta.loginSubtitle}
       footer={
         <Text
           style={{
@@ -86,7 +92,7 @@ export function AuthEntryScreen(): React.JSX.Element {
             lineHeight: 20,
           }}
         >
-          {t('auth.entry.helper')}
+          {authConfig.smsDryRun ? t('auth.entry.helper') : t('auth.entry.helperLive')}
         </Text>
       }
     >

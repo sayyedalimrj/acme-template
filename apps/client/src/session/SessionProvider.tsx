@@ -22,15 +22,25 @@ import React, {
   type ReactNode,
 } from 'react';
 
-import { ACTIVE_PORTAL } from '@/config/portal.config';
+import { getActivePortal } from '@/config/portal.config';
+import { roleCanUsePortal } from '@/config/portalAccess';
 import { authService } from '@/services';
-import { setAuthToken } from '@/services/authApi';
+import { clearSessionTokens, logoutSession, setSessionTokens } from '@/services/authApi';
 import type { AppPortal, AuthStatus, AuthUser } from '@/domain/types';
 
 export interface SignInInput {
   name?: string;
   email?: string;
-  /** Which experience to sign into (defaults to the merchant dashboard). */
+  /** Which experience to sign into (defaults to this build's portal). */
+  portal?: AppPortal;
+}
+
+export interface SignInWithSessionInput {
+  user: AuthUser;
+  token: string;
+  refreshToken?: string;
+  roles?: string[];
+  allowedPortals?: AppPortal[];
   portal?: AppPortal;
 }
 
@@ -41,8 +51,8 @@ export interface SessionContextValue {
   portal: AppPortal;
   /** Establish a mock session via AuthService. */
   signIn: (input?: SignInInput) => Promise<void>;
-  /** Establish a real session from a backend OTP verification (user + JWT). */
-  signInWithSession: (input: { user: AuthUser; token: string }) => void;
+  /** Establish a real session from a backend OTP verification (user + JWT + refresh token). */
+  signInWithSession: (input: SignInWithSessionInput) => void;
   /** Clear the session via AuthService. */
   signOut: () => Promise<void>;
   /** Switch the active portal in-app (mock convenience; persisted in memory only). */
@@ -51,43 +61,67 @@ export interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
 
+function resolveRole(user: AuthUser, roles?: string[]): string | undefined {
+  return user.role ?? roles?.[0];
+}
+
+function canAccessBuildPortal(role: string | undefined, allowedPortals?: AppPortal[]): boolean {
+  const buildPortal = getActivePortal();
+  if (allowedPortals?.includes(buildPortal)) return true;
+  if (!role) return false;
+  return roleCanUsePortal(role, buildPortal);
+}
+
 export interface SessionProviderProps {
   children: ReactNode;
 }
 
 export function SessionProvider({ children }: SessionProviderProps): React.JSX.Element {
+  const buildPortal = getActivePortal();
   const [status, setStatus] = useState<AuthStatus>('unauthenticated');
   const [user, setUser] = useState<AuthUser | null>(null);
-  // Each deployment is fixed to ONE portal (its subdomain); default to this build's portal.
-  const [portal, setPortal] = useState<AppPortal>(ACTIVE_PORTAL);
+  const [portal, setPortal] = useState<AppPortal>(buildPortal);
 
   const signIn = useCallback(async (input?: SignInInput) => {
     setStatus('loading');
     try {
       const session = await authService.signInMock({ name: input?.name, email: input?.email });
+      const targetPortal = input?.portal ?? buildPortal;
       setUser(session.user);
+      setPortal(targetPortal);
       setStatus(session.status);
-      setPortal(input?.portal ?? ACTIVE_PORTAL);
     } catch {
       setUser(null);
       setStatus('unauthenticated');
     }
-  }, []);
+  }, [buildPortal]);
 
-  const signInWithSession = useCallback((input: { user: AuthUser; token: string }) => {
-    setAuthToken(input.token);
-    setUser(input.user);
+  const signInWithSession = useCallback((input: SignInWithSessionInput) => {
+    const role = resolveRole(input.user, input.roles);
+    const userWithRole: AuthUser = role ? { ...input.user, role: role as AuthUser['role'] } : input.user;
+
+    if (!canAccessBuildPortal(role, input.allowedPortals)) {
+      setSessionTokens({ token: input.token, refreshToken: input.refreshToken ?? null });
+      setUser(userWithRole);
+      setPortal(buildPortal);
+      setStatus('access_denied');
+      return;
+    }
+
+    setSessionTokens({ token: input.token, refreshToken: input.refreshToken ?? null });
+    setUser(userWithRole);
+    setPortal(buildPortal);
     setStatus('authenticated');
-    setPortal(ACTIVE_PORTAL);
-  }, []);
+  }, [buildPortal]);
 
   const signOut = useCallback(async () => {
-    setAuthToken(null);
+    await logoutSession();
+    clearSessionTokens();
     const session = await authService.signOut();
     setUser(session.user);
     setStatus(session.status);
-    setPortal(ACTIVE_PORTAL);
-  }, []);
+    setPortal(buildPortal);
+  }, [buildPortal]);
 
   const value = useMemo<SessionContextValue>(
     () => ({ status, user, portal, signIn, signInWithSession, signOut, setPortal }),

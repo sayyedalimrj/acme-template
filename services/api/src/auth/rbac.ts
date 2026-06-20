@@ -1,39 +1,122 @@
 /**
- * Roles, portals, and the access matrix (the single source of truth for "who can do what").
+ * Roles, portals, permissions — the single source of truth for "who can do what".
  *
- * Enforced server-side by the auth middleware. A JWT carries the user's role; each portal's
- * routes require the matching role, so a merchant token can never read admin/affiliate data.
+ * Enforced server-side by the auth middleware + per-route guards. A JWT carries the user's
+ * role, portal scope, and (for merchant users) tenant scope. Cross-portal and cross-tenant
+ * access is denied server-side, so frontend hiding is never the only line of defense.
  */
-export type Role = 'merchant' | 'admin' | 'affiliate' | 'support';
+
+/** Account-level roles (stored on app_user.role and carried in the JWT). */
+export type Role =
+  | 'platform_admin'
+  | 'support_admin'
+  | 'merchant_owner'
+  | 'merchant_manager'
+  | 'merchant_staff'
+  | 'merchant_viewer'
+  | 'affiliate'
+  | 'system';
+
+/** Per-tenant membership roles (stored on tenant_member.role). */
+export type MerchantMemberRole =
+  | 'merchant_owner'
+  | 'merchant_manager'
+  | 'merchant_staff'
+  | 'merchant_viewer';
+
 export type Portal = 'merchant' | 'admin' | 'affiliate';
 
-/** Which role a successful login on a given portal grants/requires. */
-export const PORTAL_ROLE: Record<Portal, Role> = {
-  merchant: 'merchant',
-  admin: 'admin',
-  affiliate: 'affiliate',
-};
+export const ADMIN_ROLES: readonly Role[] = ['platform_admin', 'support_admin'];
+export const MERCHANT_ROLES: readonly Role[] = [
+  'merchant_owner',
+  'merchant_manager',
+  'merchant_staff',
+  'merchant_viewer',
+];
+
+/** Which portal a role belongs to (system has no portal). */
+export function portalForRole(role: Role): Portal | null {
+  if (ADMIN_ROLES.includes(role)) return 'admin';
+  if (MERCHANT_ROLES.includes(role)) return 'merchant';
+  if (role === 'affiliate') return 'affiliate';
+  return null;
+}
 
 /** Privileged actions governed by RBAC. */
 export type Permission =
+  // merchant
   | 'merchant.read'
+  | 'merchant.manage_products'
+  | 'merchant.manage_orders'
+  | 'merchant.manage_settings'
+  | 'merchant.connect_site'
+  // admin
   | 'admin.read'
   | 'admin.manage'
+  // affiliate
   | 'affiliate.read'
   | 'affiliate.request_payout';
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
-  merchant: ['merchant.read'],
+  platform_admin: [
+    'admin.read',
+    'admin.manage',
+    'merchant.read',
+    'merchant.manage_products',
+    'merchant.manage_orders',
+    'merchant.manage_settings',
+    'merchant.connect_site',
+    'affiliate.read',
+  ],
+  support_admin: ['admin.read', 'merchant.read', 'affiliate.read'],
+  merchant_owner: [
+    'merchant.read',
+    'merchant.manage_products',
+    'merchant.manage_orders',
+    'merchant.manage_settings',
+    'merchant.connect_site',
+  ],
+  merchant_manager: [
+    'merchant.read',
+    'merchant.manage_products',
+    'merchant.manage_orders',
+    'merchant.manage_settings',
+  ],
+  merchant_staff: ['merchant.read', 'merchant.manage_orders'],
+  merchant_viewer: ['merchant.read'],
   affiliate: ['affiliate.read', 'affiliate.request_payout'],
-  support: ['admin.read'],
-  admin: ['admin.read', 'admin.manage', 'merchant.read', 'affiliate.read'],
+  system: [],
 };
 
 export function roleHasPermission(role: Role, permission: Permission): boolean {
-  return ROLE_PERMISSIONS[role].includes(permission);
+  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
 }
 
-/** A role can use a portal if it equals the portal's role, or it is the all-seeing admin. */
+/** True if the role is allowed to use the given portal. platform_admin may use any portal. */
 export function roleCanUsePortal(role: Role, portal: Portal): boolean {
-  return role === 'admin' ? true : role === PORTAL_ROLE[portal];
+  if (role === 'platform_admin') return true;
+  return portalForRole(role) === portal;
+}
+
+/** Portals a role may authenticate into. */
+export function allowedPortalsForRole(role: Role): Portal[] {
+  if (role === 'platform_admin') return ['merchant', 'admin', 'affiliate'];
+  const home = portalForRole(role);
+  return home ? [home] : [];
+}
+
+/** Canonical portal id (`partner` → `affiliate`). */
+export function canonicalizePortal(raw: string): Portal | null {
+  const v = raw.trim().toLowerCase();
+  if (v === 'partner') return 'affiliate';
+  if (v === 'merchant' || v === 'admin' || v === 'affiliate') return v;
+  return null;
+}
+
+export function isAdminRole(role: Role): boolean {
+  return ADMIN_ROLES.includes(role);
+}
+
+export function isMerchantRole(role: Role): boolean {
+  return MERCHANT_ROLES.includes(role);
 }

@@ -166,9 +166,11 @@ PORT=8080
 
 DATABASE_URL=postgres://portal_app:رمز@localhost:5432/portal
 
-# دو مقدار تصادفی — هر کدام: openssl rand -hex 32
+# سه مقدار تصادفی — هر کدام: openssl rand -hex 32
 JWT_SECRET=...
 OTP_HASH_SECRET=...
+# کلید رمزنگاری انبار اعتبارنامه‌ها (AES-256-GCM) — در پروداکشن الزامی است (۳۲ بایت hex).
+CREDENTIAL_ENCRYPTION_KEY=...
 
 JWT_EXPIRES_IN=7d
 
@@ -193,6 +195,11 @@ IPPANEL_AUTH_SCHEME=accesskey
 ```bash
 openssl rand -hex 32
 ```
+
+> **اتصال فروشگاه ووکامرس:** بعد از راه‌اندازی، فروشنده در پنل خود از مسیر «اتصال فروشگاه» یا با
+> نصب افزونه‌ی `wordpress-plugin/` فروشگاهش را وصل می‌کند. کلیدهای ووکامرس فقط سمت سرور (در انبار
+> رمزنگاری‌شده) ذخیره می‌شوند و هرگز در فرانت‌اند نمی‌مانند. جزئیات کامل در `DEPLOYMENT.md` بخش
+> «Part W».
 
 ### ۶.۳ مایگریشن دیتابیس
 

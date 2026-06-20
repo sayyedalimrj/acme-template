@@ -12,22 +12,22 @@ import { MobilePage, MobileTabHeader } from '@/features/mobile/components';
 import { mobileMetrics, mobileType, useMobileColors } from '@/features/mobile/mobileTokens';
 import { useTheme } from '@/theme';
 
-import { AFFILIATE_PROFILE } from './affiliateMockData';
-
-const SHARE_MESSAGE = `با کد معرفی من فروشگاه اینترنتی‌ت رو راه بنداز و مدیریت کن: ${AFFILIATE_PROFILE.referralLink}`;
+import { useAffiliateProfile } from '@/services/affiliateApi';
 
 export function AffiliateProfileScreen(): React.JSX.Element {
   const colors = useMobileColors();
   const { isRTL } = useTheme();
+  const { data: profile } = useAffiliateProfile();
+  const shareMessage = `با کد معرفی من فروشگاه اینترنتی‌ت رو راه بنداز و مدیریت کن: ${profile.referralLink}`;
 
   return (
     <MobilePage testID="affiliate-profile-screen" header={<MobileTabHeader title="پروفایل بازاریاب" />}>
       <View style={{ paddingHorizontal: mobileMetrics.screenPadding, gap: mobileMetrics.sectionGap }}>
         <View style={{ gap: 12 }}>
           <PortalSectionTitle title="هویت معرفی" />
-          <PortalRowCard icon="pricetag-outline" title="کد معرفی" meta={AFFILIATE_PROFILE.code} />
-          <PortalRowCard icon="ribbon-outline" title="سطح" meta={AFFILIATE_PROFILE.tierLabel} />
-          <PortalRowCard icon="cash-outline" title="نرخ پورسانت" meta={AFFILIATE_PROFILE.commissionRateLabel} />
+          <PortalRowCard icon="pricetag-outline" title="کد معرفی" meta={profile.code} />
+          <PortalRowCard icon="ribbon-outline" title="سطح" meta={profile.tierLabel} />
+          <PortalRowCard icon="cash-outline" title="نرخ پورسانت" meta={profile.commissionRateLabel} />
         </View>
 
         <View style={{ gap: 12 }}>
@@ -40,7 +40,7 @@ export function AffiliateProfileScreen(): React.JSX.Element {
             }}
           >
             <Text style={{ fontSize: mobileType.captionSize, color: colors.text, writingDirection: 'ltr', textAlign: 'left' }}>
-              {AFFILIATE_PROFILE.referralLink}
+              {profile.referralLink}
             </Text>
           </View>
         </View>
@@ -62,7 +62,7 @@ export function AffiliateProfileScreen(): React.JSX.Element {
                 textAlign: isRTL ? 'right' : 'left',
               }}
             >
-              {SHARE_MESSAGE}
+              {shareMessage}
             </Text>
           </View>
         </View>

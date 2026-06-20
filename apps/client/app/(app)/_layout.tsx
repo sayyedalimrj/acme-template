@@ -9,6 +9,7 @@
 import { Redirect, Slot, type Href } from 'expo-router';
 import React from 'react';
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppShell } from '@/components/layout';
 import { LoadingState, Screen } from '@/components/ui';
 import { useSession } from '@/session/SessionProvider';
@@ -28,6 +29,10 @@ export default function AppGroupLayout(): React.JSX.Element {
     return <Redirect href={'/sign-in' as Href} />;
   }
 
+  if (status === 'access_denied') {
+    return <Redirect href={'/access-denied' as Href} />;
+  }
+
   // One build hosts three role-based experiences. Send admins/affiliates to their portal; the
   // merchant dashboard is the default experience served from this group.
   if (portal === 'admin') {
@@ -38,8 +43,10 @@ export default function AppGroupLayout(): React.JSX.Element {
   }
 
   return (
-    <AppShell>
-      <Slot />
-    </AppShell>
+    <ErrorBoundary scope="merchant">
+      <AppShell>
+        <Slot />
+      </AppShell>
+    </ErrorBoundary>
   );
 }

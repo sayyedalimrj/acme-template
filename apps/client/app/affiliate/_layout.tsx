@@ -8,6 +8,7 @@ import { Redirect, Slot, type Href } from 'expo-router';
 import React from 'react';
 
 import { LoadingState, Screen } from '@/components/ui';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AffiliateShell } from '@/features/affiliate/AffiliateShell';
 import { useSession } from '@/session/SessionProvider';
 
@@ -26,13 +27,15 @@ export default function AffiliateGroupLayout(): React.JSX.Element {
     return <Redirect href={'/sign-in' as Href} />;
   }
 
-  if (portal !== 'affiliate') {
-    return <Redirect href={'/' as Href} />;
+  if (status === 'access_denied' || portal !== 'affiliate') {
+    return <Redirect href={'/access-denied' as Href} />;
   }
 
   return (
-    <AffiliateShell>
-      <Slot />
-    </AffiliateShell>
+    <ErrorBoundary scope="affiliate">
+      <AffiliateShell>
+        <Slot />
+      </AffiliateShell>
+    </ErrorBoundary>
   );
 }
