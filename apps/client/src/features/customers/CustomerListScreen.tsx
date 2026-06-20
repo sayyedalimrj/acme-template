@@ -46,6 +46,7 @@ interface CustomerRowProps {
 
 function CustomerRow({ customer, onPress }: CustomerRowProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
+  const isRTL = rowDirection === 'row-reverse';
   const t = useT();
   const fmt = useFormatters();
   const segment = segmentBadge(customerSegment(customer));
@@ -112,7 +113,10 @@ function CustomerRow({ customer, onPress }: CustomerRowProps): React.JSX.Element
           {t('customers.label.totalSpent')}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={tokens.color.textMuted} />
+      {/* Trailing navigation chevron — mirrored in RTL so it points toward the detail screen. */}
+      <View testID="customer-row-chevron" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }}>
+        <Ionicons name="chevron-forward" size={18} color={tokens.color.textMuted} />
+      </View>
     </Pressable>
   );
 }
@@ -125,7 +129,7 @@ const SEGMENT_FILTERS: { value: SegmentFilter; labelKey: StringKey }[] = [
 ];
 
 export function CustomerListScreen(): React.JSX.Element {
-  const { tokens } = useTheme();
+  const { tokens, direction } = useTheme();
   const t = useT();
   const fmt = useFormatters();
   const router = useRouter();
@@ -173,6 +177,12 @@ export function CustomerListScreen(): React.JSX.Element {
           placeholder={t('customers.searchPlaceholder')}
           autoCapitalize="none"
           testID="customer-search"
+          // Keep placeholder + caret + typed text correctly aligned for Persian/RTL (the shared
+          // Input sets textAlign but not writingDirection, which web needs for the placeholder).
+          style={{
+            writingDirection: direction === 'rtl' ? 'rtl' : 'ltr',
+            textAlign: direction === 'rtl' ? 'right' : 'left',
+          }}
         />
         <SegmentedControl
           options={SEGMENT_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}

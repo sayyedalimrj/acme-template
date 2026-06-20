@@ -73,4 +73,13 @@ describe('ProductDetailScreen', () => {
     // SKU is shown in the header.
     expect(screen.getByText('APP-TEE-001')).toBeTruthy();
   });
+
+  it('does NOT render a product edit action (deferred to backend; no broken button)', async () => {
+    renderWithProviders(<ProductDetailScreen productId="prod_1001" />);
+    await screen.findByText('تی‌شرت نخی آئورا', {}, { timeout: 4000 });
+    // Product edit/write backend is not available yet — there must be no edit affordance.
+    expect(screen.queryByTestId('product-edit')).toBeNull();
+    expect(screen.queryByText('ویرایش')).toBeNull();
+  });
 });
+

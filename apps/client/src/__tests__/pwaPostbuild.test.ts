@@ -89,3 +89,40 @@ describe('pwa-postbuild no-blank-screen safety net', () => {
     expect(a).not.toEqual(b);
   });
 });
+
+
+// Per-portal production config.json generation: each portal build must emit a config.json whose
+// `portal` matches the build and whose `apiBaseUrl` points at the production API. This guards the
+// own-server multi-portal deployment (app/admin/partner -> distinct builds).
+function runPostbuildConfig(portal: string): { portal: string; apiBaseUrl: string } {
+  const dir = mkdtempSync(join(tmpdir(), 'pwa-postbuild-cfg-'));
+  try {
+    writeFileSync(join(dir, 'index.html'), FIXTURE_INDEX, 'utf8');
+    writeFileSync(join(dir, 'sw.js'), FIXTURE_SW, 'utf8');
+    execFileSync('node', [SCRIPT, dir], {
+      env: {
+        ...process.env,
+        BUILD_ID: `cfg-${portal}`,
+        EXPO_PUBLIC_PORTAL: portal,
+        RUNTIME_CONFIG_ENV: 'production',
+      },
+      stdio: 'ignore',
+    });
+    return JSON.parse(readFileSync(join(dir, 'config.json'), 'utf8'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+describe('per-portal production config.json generation', () => {
+  it.each(['merchant', 'admin', 'affiliate'])(
+    'emits config.json with portal=%s and a production apiBaseUrl',
+    (portal) => {
+      const cfg = runPostbuildConfig(portal);
+      expect(cfg.portal).toBe(portal);
+      expect(typeof cfg.apiBaseUrl).toBe('string');
+      expect(cfg.apiBaseUrl).toMatch(/^https:\/\//);
+      expect(cfg.apiBaseUrl).not.toContain('localhost');
+    },
+  );
+});

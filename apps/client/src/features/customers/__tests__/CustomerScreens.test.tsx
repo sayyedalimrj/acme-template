@@ -8,6 +8,7 @@ import {
   type RenderResult,
 } from '@testing-library/react-native';
 import { type ReactElement, type ReactNode } from 'react';
+import { StyleSheet } from 'react-native';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import { resetAdaptersForTests } from '@/adapters';
@@ -62,6 +63,23 @@ describe('CustomerListScreen', () => {
 
     await waitFor(() => expect(screen.queryByText('سارا رضایی')).toBeNull());
     expect(screen.getByText('نیلوفر کریمی')).toBeTruthy();
+  });
+
+  it('aligns the search box for RTL (writingDirection + textAlign)', async () => {
+    renderWithProviders(<CustomerListScreen />);
+    await screen.findByText('سارا رضایی', {}, { timeout: 4000 });
+    const input = screen.getByTestId('customer-search');
+    const flat = StyleSheet.flatten(input.props.style) as { writingDirection?: string; textAlign?: string };
+    expect(flat.writingDirection).toBe('rtl');
+    expect(flat.textAlign).toBe('right');
+  });
+
+  it('mirrors the trailing row chevron for RTL navigation', async () => {
+    renderWithProviders(<CustomerListScreen />);
+    await screen.findByText('سارا رضایی', {}, { timeout: 4000 });
+    const chevron = screen.getAllByTestId('customer-row-chevron')[0];
+    const flat = StyleSheet.flatten(chevron.props.style) as { transform?: { scaleX?: number }[] };
+    expect(flat.transform?.some((t) => t.scaleX === -1)).toBe(true);
   });
 });
 

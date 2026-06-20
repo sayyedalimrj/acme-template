@@ -26,7 +26,6 @@ import {
   useMobileType,
   type MobileColorTokens,
 } from '@/features/mobile/mobileTokens';
-import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
 import { useSession } from '@/session/SessionProvider';
 import { useTheme } from '@/theme';
@@ -92,12 +91,13 @@ export function GlobalHeader(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { rowDirection, isRTL } = useTheme();
   const { user } = useSession();
-  const { data: activeSite } = useActiveSite();
 
   const go = (href: string): void => router.navigate(href as never);
 
-  const storeName = activeSite?.name ?? t('home.businessFallback');
-  const initials = activeSite ? siteInitials(activeSite.name) : siteInitials(user?.name ?? '');
+  // Top identity is the authenticated USER (not the active store). The store name is shown only
+  // in store-specific UI (home carousel / site cards), so switching stores never changes this.
+  const displayName = user?.name?.trim() || user?.mobile?.trim() || t('home.userFallback');
+  const initials = siteInitials(user?.name?.trim() || user?.mobile?.trim() || '');
   const avatarSize = mobileMetrics.avatarSize;
 
   return (
@@ -137,13 +137,17 @@ export function GlobalHeader(): React.JSX.Element {
         >
           {user?.avatarUrl ? (
             <Image
+              testID="header-avatar-image"
               source={{ uri: user.avatarUrl }}
               accessibilityIgnoresInvertColors
               style={{ width: avatarSize, height: avatarSize }}
               resizeMode="cover"
             />
           ) : (
-            <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 16 }}>
+            <Text
+              testID="header-avatar-initials"
+              style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 16 }}
+            >
               {initials}
             </Text>
           )}
@@ -167,10 +171,10 @@ export function GlobalHeader(): React.JSX.Element {
               color: colors.text,
               textAlign: isRTL ? 'right' : 'left',
             }}
-            // Allow up to two lines so longer store names are never clipped.
+            // Allow up to two lines so a longer user name is never clipped.
             numberOfLines={2}
           >
-            {storeName}
+            {displayName}
           </Text>
         </View>
 

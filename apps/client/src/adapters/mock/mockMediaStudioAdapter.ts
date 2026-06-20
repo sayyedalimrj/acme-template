@@ -73,7 +73,7 @@ export function createMockMediaStudioAdapter(): MediaStudioAdapter {
         id: `asset_${input.productId}_${input.preset}`,
         productId: input.productId,
         preset: input.preset,
-        label: `نمونه تصویر «${product.name}»`,
+        label: `تصویر «${product.name}»`,
         quality: analysis.quality,
         qualityScore: analysis.score,
         issues: analysis.issues,

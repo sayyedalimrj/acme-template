@@ -65,7 +65,7 @@ export function AffiliatePayoutsScreen(): React.JSX.Element {
             testID="affiliate-request-payout"
           />
           <Text style={{ fontSize: mobileType.captionSize, color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left', lineHeight: 20 }}>
-            این یک نمونه‌ی نمایشی است. تسویه واقعی پس از اتصال درگاه پرداخت سمت سرور انجام می‌شود.
+            تسویه پس از تأیید و از طریق درگاه پرداخت امن انجام می‌شود.
           </Text>
         </View>
 

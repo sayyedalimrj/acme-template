@@ -88,8 +88,8 @@ describe('mock user routing', () => {
     expect(isKnownMockUser('OPERATOR@DEMO.LOCAL')).toBe(true);
     expect(isKnownMockUser('09123456789', 'mobile')).toBe(true);
     expect(isKnownMockUser('+98 912 345 6789', 'mobile')).toBe(true);
-    expect(findMockUser('09123456789')?.name).toBe('اپراتور آزمایشی');
-    expect(findMockUser('+98 912 345 6789')?.name).toBe('اپراتور آزمایشی');
+    expect(findMockUser('09123456789')?.name).toBe('سارا محمدی');
+    expect(findMockUser('+98 912 345 6789')?.name).toBe('سارا محمدی');
   });
 
   it('treats unknown identifiers as new users (registration)', () => {
@@ -104,7 +104,7 @@ describe('password login (mock)', () => {
     const result = verifyMockPassword('operator@demo.local', MOCK_PASSWORD, 'email');
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.user.name).toBe('اپراتور آزمایشی');
+      expect(result.user.name).toBe('سارا محمدی');
     }
   });
 

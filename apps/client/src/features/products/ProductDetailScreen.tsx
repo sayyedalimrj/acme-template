@@ -4,6 +4,11 @@
  * Read-only view of a single product organized into commerce-style sections (pricing,
  * inventory, organization, performance) with placeholders for variants and media. No
  * create/edit/delete in this module. Active-site-aware via `useProduct`.
+ *
+ * TODO(PR #58): add a product "ویرایش" (edit) action here once the edit route
+ * (`/products/[id]/edit`), product image add/upload, and the WooCommerce product-update backend
+ * (`PATCH /merchant/sites/:siteId/products/:productId`) exist. No edit affordance is rendered
+ * until then, to avoid a broken button.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
