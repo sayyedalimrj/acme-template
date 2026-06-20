@@ -2,10 +2,9 @@
  * Loads runtime config in the background; never blocks the login UI.
  */
 import React, { useEffect, useState, type ReactNode } from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { resetAdaptersForTests } from '@/adapters';
-import { Text } from '@/components/ui';
 import { getConfigWarning, loadRuntimeConfig } from '@/config/runtimeConfig';
 
 export interface ConfigBootstrapProps {
@@ -23,9 +22,7 @@ function ConfigWarningBar({ message }: { message: string }): React.JSX.Element {
         borderBottomColor: '#F5D090',
       }}
     >
-      <Text variant="caption" style={{ textAlign: 'center', color: '#8A5A00' }}>
-        {message}
-      </Text>
+      <Text style={{ fontSize: 12, textAlign: 'center', color: '#8A5A00' }}>{message}</Text>
     </View>
   );
 }

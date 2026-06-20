@@ -1,10 +1,15 @@
 /**
  * Global error boundary — prevents blank white screens on uncaught render errors.
+ *
+ * IMPORTANT: this component can be mounted ABOVE the app providers (theme / i18n / query),
+ * e.g. the root boundary in `app/_layout.tsx` wraps `ConfigBootstrap` + `AppProviders`. Its
+ * fallback therefore MUST NOT use any themed/i18n-aware component (`@/components/ui`, `useT`,
+ * `useTheme`, …) — doing so would throw again while rendering the fallback ("useTheme must be
+ * used within a ThemeProvider") and leave the user on a blank page. The fallback below uses only
+ * primitive `react-native` elements with inline styles so it can render anywhere.
  */
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { View } from 'react-native';
-
-import { Button, Text } from '@/components/ui';
+import { Pressable, Text, View } from 'react-native';
 
 export interface ErrorBoundaryProps {
   children: ReactNode;
@@ -45,13 +50,26 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
             gap: 16,
           }}
         >
-          <Text variant="heading">خطایی رخ داد</Text>
-          <Text variant="body" tone="muted" style={{ textAlign: 'center' }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1F2A44', textAlign: 'center' }}>
+            خطایی رخ داد
+          </Text>
+          <Text style={{ fontSize: 15, color: '#5B6577', textAlign: 'center', lineHeight: 22 }}>
             {this.props.scope
               ? `مشکلی در بخش «${this.props.scope}» پیش آمد.`
               : 'مشکلی در بارگذاری صفحه پیش آمد.'}
           </Text>
-          <Button label="تلاش مجدد" variant="primary" onPress={this.reset} />
+          <Pressable
+            accessibilityRole="button"
+            onPress={this.reset}
+            style={{
+              backgroundColor: '#456EFE',
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 12,
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>تلاش مجدد</Text>
+          </Pressable>
         </View>
       );
     }
