@@ -163,7 +163,7 @@ export function ConnectSiteScreen(): React.JSX.Element {
         onSuccess: async (site) => {
           // When connected to the real backend with REST credentials, verify them now so the
           // store becomes "connected" and an initial sync runs server-side.
-          if (isApiConfigured && consumerKey.trim() && consumerSecret.trim()) {
+          if (isApiConfigured() && consumerKey.trim() && consumerSecret.trim()) {
             try {
               setVerifying(true);
               await verifyWooConnection(site.id, consumerKey.trim(), consumerSecret.trim());
@@ -248,7 +248,7 @@ export function ConnectSiteScreen(): React.JSX.Element {
             onSubmitEditing={onConnect}
           />
         </FormField>
-        {isApiConfigured ? (
+        {isApiConfigured() ? (
           <View style={{ gap: tokens.spacing.sm }}>
             <Text variant="caption" tone="muted">
               اعتبارنامه REST ووکامرس (اختیاری برای اتصال مستقیم). از مسیر ووکامرس ← تنظیمات ←

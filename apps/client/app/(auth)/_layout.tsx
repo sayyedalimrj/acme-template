@@ -7,6 +7,7 @@
 import { Redirect, Slot, type Href } from 'expo-router';
 import React from 'react';
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useSession } from '@/session/SessionProvider';
 
 export default function AuthGroupLayout(): React.JSX.Element {
@@ -16,5 +17,5 @@ export default function AuthGroupLayout(): React.JSX.Element {
     return <Redirect href={'/' as Href} />;
   }
 
-  return <Slot />;
+  return <ErrorBoundary scope="auth"><Slot /></ErrorBoundary>;
 }

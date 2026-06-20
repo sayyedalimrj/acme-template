@@ -10,6 +10,8 @@ import React from 'react';
 import { I18nManager } from 'react-native';
 
 import { AppProviders } from '@/providers/AppProviders';
+import { ConfigBootstrap } from '@/providers/ConfigBootstrap';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemedStatusBar } from '@/theme';
 
 // Keep the ambient platform direction deterministically LTR on every platform.
@@ -33,9 +35,13 @@ if (I18nManager.isRTL || I18nManager.doLeftAndRightSwapInRTL) {
 
 export default function RootLayout(): React.JSX.Element {
   return (
-    <AppProviders>
-      <ThemedStatusBar />
-      <Stack screenOptions={{ headerShown: false }} />
-    </AppProviders>
+    <ErrorBoundary scope="root">
+      <ConfigBootstrap>
+        <AppProviders>
+          <ThemedStatusBar />
+          <Stack screenOptions={{ headerShown: false }} />
+        </AppProviders>
+      </ConfigBootstrap>
+    </ErrorBoundary>
   );
 }

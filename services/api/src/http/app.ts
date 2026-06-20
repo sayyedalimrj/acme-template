@@ -7,7 +7,7 @@ import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
 
-import { corsOrigins, isProduction } from '../env';
+import { corsOrigins, env, isProduction } from '../env';
 import { AppError } from '../util/errors';
 import { redactSensitiveText } from '../services/security/redaction';
 import { adminRouter } from './routes/admin';
@@ -30,11 +30,38 @@ function requestTimeout(ms: number) {
   };
 }
 
+function requestIsHttps(req: Request): boolean {
+  if (env.FORCE_SECURE_HEADERS) return true;
+  const forwarded = req.headers['x-forwarded-proto'];
+  const proto = (typeof forwarded === 'string' ? forwarded.split(',')[0] : req.protocol).trim();
+  return proto === 'https';
+}
+
+/** Helmet with HSTS/CSP upgrade only when the client connection is HTTPS (or forced). */
+function dynamicHelmet() {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const secure = requestIsHttps(req);
+    helmet({
+      strictTransportSecurity: secure ? { maxAge: 31536000, includeSubDomains: true } : false,
+      contentSecurityPolicy: secure
+        ? undefined
+        : {
+            useDefaults: true,
+            directives: {
+              upgradeInsecureRequests: null,
+            },
+          },
+      crossOriginOpenerPolicy: secure ? undefined : false,
+      crossOriginResourcePolicy: secure ? undefined : false,
+    })(req, res, next);
+  };
+}
+
 export function createApp(): express.Express {
   const app = express();
-  app.set('trust proxy', 1);
+  app.set('trust proxy', env.TRUST_PROXY ? 1 : false);
   app.disable('x-powered-by');
-  app.use(helmet());
+  app.use(dynamicHelmet());
   app.use(compression());
   app.use(requestTimeout(30_000));
   app.use(

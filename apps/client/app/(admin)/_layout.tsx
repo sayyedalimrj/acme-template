@@ -8,6 +8,7 @@ import { Redirect, Slot, type Href } from 'expo-router';
 import React from 'react';
 
 import { LoadingState, Screen } from '@/components/ui';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AdminShell } from '@/features/admin/AdminShell';
 import { useSession } from '@/session/SessionProvider';
 
@@ -31,8 +32,10 @@ export default function AdminGroupLayout(): React.JSX.Element {
   }
 
   return (
-    <AdminShell>
-      <Slot />
-    </AdminShell>
+    <ErrorBoundary scope="admin">
+      <AdminShell>
+        <Slot />
+      </AdminShell>
+    </ErrorBoundary>
   );
 }

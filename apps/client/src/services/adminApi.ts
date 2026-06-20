@@ -146,6 +146,6 @@ export async function adminPayoutAction(
   id: string,
   action: 'approve' | 'reject' | 'mark_paid',
 ): Promise<void> {
-  if (!isApiConfigured) return;
+  if (!isApiConfigured()) return;
   await http.patch(`/admin/payouts/${id}`, { action });
 }

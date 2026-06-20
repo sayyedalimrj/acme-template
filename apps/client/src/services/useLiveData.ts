@@ -19,14 +19,14 @@ export interface LiveData<T> {
 
 export function useLiveData<T>(mock: T, fetcher: () => Promise<T>): LiveData<T> {
   const [data, setData] = useState<T>(mock);
-  const [isLoading, setIsLoading] = useState<boolean>(isApiConfigured);
+  const [isLoading, setIsLoading] = useState<boolean>(() => isApiConfigured());
   const [isError, setIsError] = useState<boolean>(false);
   const [tick, setTick] = useState(0);
 
   const refetch = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
-    if (!isApiConfigured) return undefined;
+    if (!isApiConfigured()) return undefined;
     let active = true;
     // Defer to a microtask so no setState runs synchronously inside the effect body.
     Promise.resolve()

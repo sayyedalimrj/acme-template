@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 
 import { isMerchantRole, type Portal } from '../../auth/rbac';
+import { env } from '../../env';
 import { audit } from '../../services/audit';
 import {
   findLiveSession,
@@ -57,6 +58,15 @@ authRouter.post(
     res.json({ ok: true, ...result });
   }),
 );
+
+/** Safe public config for the frontend (no secrets). */
+authRouter.get('/public-config', (_req, res: Response) => {
+  res.json({
+    smsDryRun: env.SMS_DRY_RUN,
+    otpLength: env.OTP_LENGTH,
+    otpResendCooldownSeconds: env.OTP_RESEND_COOLDOWN_SECONDS,
+  });
+});
 
 authRouter.post(
   '/otp/verify',

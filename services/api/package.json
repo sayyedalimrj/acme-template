@@ -11,6 +11,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
+    "smoke:start": "bash scripts/smoke-start.sh",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:ci": "jest --ci --runInBand",

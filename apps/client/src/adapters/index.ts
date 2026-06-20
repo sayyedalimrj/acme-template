@@ -8,8 +8,7 @@
  * The instance is cached so stateful mock adapters (auth/site) keep their in-memory state
  * across the app session. `resetAdaptersForTests` clears the cache so tests start isolated.
  */
-import { appConfig } from '@/config/app.config';
-
+import { isApiConfigured } from '@/config/api.config';
 import { createHttpAdapters } from './http';
 import { createMockAIAdvisorAdapter } from './mock/mockAIAdvisorAdapter';
 import { createMockAuthAdapter } from './mock/mockAuthAdapter';
@@ -52,14 +51,10 @@ function createMockAdapters(): Adapters {
 }
 
 function createAdapters(): Adapters {
-  switch (appConfig.dataSource) {
-    case 'mock':
-      return createMockAdapters();
-    case 'http':
-      return createHttpAdapters();
-    default:
-      throw new Error(`Unknown data source: ${String(appConfig.dataSource)}`);
+  if (isApiConfigured()) {
+    return createHttpAdapters();
   }
+  return createMockAdapters();
 }
 
 export function getAdapters(): Adapters {

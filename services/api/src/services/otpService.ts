@@ -3,13 +3,16 @@
  *
  * Security: raw codes are never stored — only an HMAC-SHA256 hash with a server pepper. Codes
  * are short-lived, attempt-limited, single-use, and per-mobile rate-limited.
+ *
+ * Delivery order: SMS is sent BEFORE the OTP row is persisted. Provider failure does NOT
+ * consume resend cooldown or hourly quota.
  */
 import { createHmac, randomInt } from 'node:crypto';
 
 import { env, isProduction } from '../env';
 import { query, queryOne } from '../db';
 import type { Portal } from '../auth/rbac';
-import { badRequest, tooMany } from '../util/errors';
+import { AppError, badRequest, tooMany } from '../util/errors';
 import { sendOtpSms } from '../providers/ippanel';
 
 interface OtpRow {
@@ -36,20 +39,18 @@ export interface RequestOtpResult {
   devCode?: string;
 }
 
-export async function requestOtp(
-  mobile: string,
-  portal: Portal,
-  ip?: string,
-): Promise<RequestOtpResult> {
+async function assertWithinHourlyLimit(mobile: string): Promise<void> {
   const recent = await queryOne<{ count: string }>(
     `SELECT count(*)::int AS count FROM otp_code
        WHERE mobile = $1 AND created_at > now() - interval '1 hour'`,
     [mobile],
   );
   if (recent && Number(recent.count) >= env.OTP_REQUESTS_PER_HOUR) {
-    throw tooMany('تعداد درخواست کد امروز زیاد است. بعداً تلاش کنید.');
+    throw tooMany('تعداد درخواست کد امروز زیاد است. بعداً تلاش کنید.', 'otp_rate_limited');
   }
+}
 
+async function assertResendCooldown(mobile: string): Promise<void> {
   const last = await queryOne<{ created_at: string }>(
     `SELECT created_at FROM otp_code WHERE mobile = $1 ORDER BY created_at DESC LIMIT 1`,
     [mobile],
@@ -57,18 +58,37 @@ export async function requestOtp(
   if (last) {
     const elapsed = (Date.now() - new Date(last.created_at).getTime()) / 1000;
     if (elapsed < env.OTP_RESEND_COOLDOWN_SECONDS) {
-      throw tooMany('کمی صبر کنید و دوباره کد بخواهید.');
+      throw tooMany('کمی صبر کنید و دوباره کد بخواهید.', 'otp_rate_limited');
     }
   }
+}
+
+export async function requestOtp(
+  mobile: string,
+  portal: Portal,
+  ip?: string,
+): Promise<RequestOtpResult> {
+  await assertWithinHourlyLimit(mobile);
+  await assertResendCooldown(mobile);
 
   const code = generateCode();
+
+  let sms;
+  try {
+    sms = await sendOtpSms(mobile, code);
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    // eslint-disable-next-line no-console
+    console.error('[otp] SMS provider error:', (err as Error)?.message?.slice(0, 300));
+    throw badRequest('ارسال پیامک ناموفق بود. لطفاً دوباره تلاش کنید.', 'sms_delivery_failed');
+  }
+
+  // Persist OTP only after SMS path succeeded (dry-run or delivered).
   await query(
     `INSERT INTO otp_code (mobile, code_hash, portal, expires_at, request_ip)
        VALUES ($1, $2, $3, now() + ($4 || ' seconds')::interval, $5)`,
     [mobile, hashCode(mobile, code), portal, String(env.OTP_TTL_SECONDS), ip ?? null],
   );
-
-  const sms = await sendOtpSms(mobile, code);
 
   return {
     expiresInSeconds: env.OTP_TTL_SECONDS,

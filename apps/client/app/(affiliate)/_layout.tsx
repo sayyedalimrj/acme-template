@@ -8,6 +8,7 @@ import { Redirect, Slot, type Href } from 'expo-router';
 import React from 'react';
 
 import { LoadingState, Screen } from '@/components/ui';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AffiliateShell } from '@/features/affiliate/AffiliateShell';
 import { useSession } from '@/session/SessionProvider';
 
@@ -31,8 +32,10 @@ export default function AffiliateGroupLayout(): React.JSX.Element {
   }
 
   return (
-    <AffiliateShell>
-      <Slot />
-    </AffiliateShell>
+    <ErrorBoundary scope="affiliate">
+      <AffiliateShell>
+        <Slot />
+      </AffiliateShell>
+    </ErrorBoundary>
   );
 }

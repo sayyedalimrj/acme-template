@@ -335,6 +335,29 @@ secret, ippanel pattern/originator.
 - Encrypted credential vault, tenant/site isolation, audit log, plugin HMAC + replay guard, webhook
   idempotency.
 
+### B4. Runtime frontend config (build once, deploy everywhere)
+
+Each portal static export serves `/config.json` (copied from `apps/client/public/config.*.json`).
+Swap this file on the server to point at your API **without rebuilding**:
+
+```json
+{ "apiBaseUrl": "https://api.jet-web.ir", "portal": "merchant" }
+```
+
+Templates: `config.local-preview.json` (HTTP internal IP), `config.production.json` (HTTPS subdomains).
+
+### B5. Automated install (Ubuntu 24.04)
+
+```bash
+sudo ./scripts/install_portal.sh --mode local-preview --domain jet-web.ir --server-ip 192.168.101.181
+sudo ./scripts/install_portal.sh --mode production-behind-npm --domain jet-web.ir --dry-run-sms false
+./scripts/verify-live.sh --base-url http://192.168.101.181 --api-url http://192.168.101.181
+```
+
+Nginx examples: `services/api/deploy/nginx/jet-web.local-preview.conf`, `jet-web.production.conf`.
+
+Backend smoke test (same entry as systemd): `cd services/api && npm run smoke:start`.
+
 ### B4. CI / verification
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR:

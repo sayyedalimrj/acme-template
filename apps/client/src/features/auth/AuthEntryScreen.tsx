@@ -16,6 +16,8 @@ import { ACTIVE_PORTAL, ACTIVE_PORTAL_META } from '@/config/portal.config';
 import { useT } from '@/i18n/I18nProvider';
 import { requestOtp } from '@/services/authApi';
 
+import { usePublicAuthConfig } from './usePublicAuthConfig';
+
 import { AuthField } from './components/AuthField';
 import { AuthFrame } from './components/AuthFrame';
 import { AuthPrimaryButton } from './components/AuthPrimaryButton';
@@ -25,6 +27,7 @@ import { isValidMobile, sendOtpMock } from './authHelpers';
 export function AuthEntryScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
+  const authConfig = usePublicAuthConfig();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
@@ -52,7 +55,7 @@ export function AuthEntryScreen(): React.JSX.Element {
     }
     setError(undefined);
 
-    if (isApiConfigured) {
+    if (isApiConfigured()) {
       // Real OTP: ask the backend to send the code via SMS (ippanel).
       try {
         setSubmitting(true);
@@ -86,7 +89,7 @@ export function AuthEntryScreen(): React.JSX.Element {
             lineHeight: 20,
           }}
         >
-          {t('auth.entry.helper')}
+          {authConfig.smsDryRun ? t('auth.entry.helper') : t('auth.entry.helperLive')}
         </Text>
       }
     >

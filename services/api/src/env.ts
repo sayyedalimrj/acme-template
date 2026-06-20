@@ -8,6 +8,8 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
+import { validateSmsConfigAtStartup } from './services/smsConfig';
+
 /** Coerce common truthy strings to a boolean (zod's coerce.boolean treats any non-empty as true). */
 const boolish = (def: boolean) =>
   z
@@ -42,11 +44,17 @@ const schema = z.object({
 
   SMS_DRY_RUN: boolish(false),
   IPPANEL_API_KEY: z.string().optional().default(''),
-  IPPANEL_BASE_URL: z.string().default('https://api.ippanel.com/v1'),
+  IPPANEL_BASE_URL: z.string().default('https://edge.ippanel.com/v1'),
+  IPPANEL_PROVIDER: z.enum(['edge', 'legacy']).default('edge'),
   IPPANEL_PATTERN_CODE: z.string().optional().default(''),
   IPPANEL_ORIGINATOR: z.string().optional().default(''),
-  IPPANEL_OTP_VARIABLE: z.string().default('code'),
+  IPPANEL_OTP_VARIABLE: z.string().default('verification-code'),
   IPPANEL_AUTH_SCHEME: z.enum(['accesskey', 'apikey']).default('accesskey'),
+
+  /** Trust X-Forwarded-* headers from Nginx Proxy Manager / reverse proxy. */
+  TRUST_PROXY: boolish(true),
+  /** When true, force secure Helmet headers even on HTTP (not recommended for local preview). */
+  FORCE_SECURE_HEADERS: boolish(false),
 
   ADMIN_MOBILE_ALLOWLIST: z.string().default(''),
   SUPPORT_MOBILE_ALLOWLIST: z.string().default(''),
@@ -119,3 +127,5 @@ if (isProduction && corsOrigins.length === 0) {
   );
   process.exit(1);
 }
+
+validateSmsConfigAtStartup();

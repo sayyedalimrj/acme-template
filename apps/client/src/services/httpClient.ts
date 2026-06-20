@@ -5,7 +5,7 @@
  * and transparently refreshes the access token once on a 401 before retrying. No secrets are ever
  * stored here — only the short-lived session token issued by OUR backend.
  */
-import { API_BASE_URL } from '@/config/api.config';
+import { getApiBaseUrl } from '@/config/api.config';
 
 import { getAuthToken, refreshSession } from './authApi';
 
@@ -34,7 +34,7 @@ async function request<T>(method: Method, path: string, body?: unknown, retry = 
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetch(`${getApiBaseUrl()}${path}`, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,

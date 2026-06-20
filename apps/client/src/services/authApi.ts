@@ -8,7 +8,7 @@
  * Security: no secrets live in the frontend. The token is a short-lived session reference issued
  * by our backend, never a store/provider credential.
  */
-import { API_BASE_URL } from '@/config/api.config';
+import { getApiBaseUrl } from '@/config/api.config';
 import { ACTIVE_PORTAL } from '@/config/portal.config';
 import type { AppPortal } from '@/domain/types';
 
@@ -49,7 +49,7 @@ interface ApiErrorShape {
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetch(`${getApiBaseUrl()}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -59,7 +59,13 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   }
   const data = (await res.json().catch(() => ({}))) as ApiErrorShape & Record<string, unknown>;
   if (!res.ok) {
-    throw new Error(data.error?.message ?? 'خطایی رخ داد. دوباره تلاش کنید.');
+    const code = data.error?.code;
+    const byCode: Record<string, string> = {
+      sms_delivery_failed: 'ارسال پیامک ناموفق بود. لطفاً دوباره تلاش کنید.',
+      sms_provider_misconfigured: 'سرویس پیامک پیکربندی نشده است. با پشتیبانی تماس بگیرید.',
+      otp_rate_limited: data.error?.message ?? 'تعداد درخواست‌ها زیاد است. کمی بعد تلاش کنید.',
+    };
+    throw new Error(byCode[code ?? ''] ?? data.error?.message ?? 'خطایی رخ داد. دوباره تلاش کنید.');
   }
   return data as T;
 }

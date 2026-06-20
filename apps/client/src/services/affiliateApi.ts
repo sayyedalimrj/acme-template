@@ -115,7 +115,7 @@ export function useAffiliatePayouts(): LiveData<AffiliatePayout[]> {
  * The amount is resolved server-side-safely from the marketer's current available balance.
  */
 export async function requestFullPayout(method: PayoutMethod = 'bank_card'): Promise<void> {
-  if (!isApiConfigured) return;
+  if (!isApiConfigured()) return;
   const overview = await http.get<OverviewResponse>('/affiliate/overview');
   const amount = Number(overview.availableBalanceMinor) || 0;
   if (amount <= 0) throw new Error('موجودی قابل برداشت ندارید.');

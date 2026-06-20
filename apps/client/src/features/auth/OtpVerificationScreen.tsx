@@ -18,6 +18,7 @@ import { Text } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
 import { useT } from '@/i18n/I18nProvider';
 import { requestOtp, verifyOtp } from '@/services/authApi';
+import { usePublicAuthConfig } from './usePublicAuthConfig';
 import { useSession } from '@/session/SessionProvider';
 import { useTheme } from '@/theme';
 
@@ -54,6 +55,7 @@ type Mode = 'otp' | 'password';
 export function OtpVerificationScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
+  const authConfig = usePublicAuthConfig();
   const { rowDirection } = useTheme();
   const { signIn, signInWithSession } = useSession();
   const params = useLocalSearchParams<{ identifier?: string; channel?: string; portal?: string }>();
@@ -91,7 +93,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
     submittedRef.current = true;
     setError(undefined);
 
-    if (isApiConfigured) {
+    if (isApiConfigured()) {
       // Real OTP: verify with the backend; on success it returns a user + JWT session.
       void (async () => {
         try {
@@ -133,7 +135,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
   // user clears/edits so a corrected code can submit again.
   const complete = isOtpComplete(digits);
   useEffect(() => {
-    if (mode !== 'otp') {
+    if (mode !== 'otp' || !identifier) {
       return;
     }
     if (complete) {
@@ -144,19 +146,47 @@ export function OtpVerificationScreen(): React.JSX.Element {
     // We intentionally key only on completion so the auto-submit fires once when the code
     // becomes complete; `submit` reads the latest identifier/channel each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [complete, mode]);
+  }, [complete, mode, identifier]);
 
   const onResend = (): void => {
-    if (isApiConfigured) {
-      void requestOtp(identifier, portal).catch(() => {});
+    if (isApiConfigured()) {
+      void requestOtp(identifier, portal)
+        .then(() => {
+          setResent(true);
+          setError(undefined);
+        })
+        .catch((e: unknown) => {
+          setError(e instanceof Error ? e.message : t('common.error'));
+        });
     } else {
-      // Mock only — regenerates the deterministic demo code; nothing is delivered.
       sendOtpMock(identifier, channel);
+      setResent(true);
     }
     setDigits(Array(OTP_LENGTH).fill(''));
-    setResent(true);
     submittedRef.current = false;
   };
+
+  if (!identifier) {
+    return (
+      <AuthFrame
+        testID="otp-screen"
+        iconName="shield-checkmark-outline"
+        title={t('otp.title')}
+        subtitle={t('otp.subtitle')}
+        showBack
+        onBack={goBack}
+        backAccessibilityLabel={t('otp.back')}
+      >
+        <Text style={{ fontSize: authType.helperSize, color: authColors.danger, textAlign: 'center' }}>
+          {t('otp.missingIdentifier')}
+        </Text>
+        <AuthPrimaryButton label={t('otp.back')} onPress={goBack} />
+      </AuthFrame>
+    );
+  }
+
+  const footerHint = authConfig.smsDryRun ? t('otp.devHint') : t('otp.liveHint');
+  const resentMessage = authConfig.smsDryRun ? t('otp.resent') : t('otp.resentLive');
 
   const onPasswordSignIn = (): void => {
     if (password.length === 0) {
@@ -190,7 +220,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
             textAlign: 'center',
           }}
         >
-          {mode === 'password' ? t('auth.password.devHint') : t('otp.devHint')}
+          {mode === 'password' ? t('auth.password.devHint') : footerHint}
         </Text>
       }
     >
@@ -252,7 +282,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
                 textAlign: 'center',
               }}
             >
-              {t('otp.resent')}
+              {resentMessage}
             </Text>
           ) : null}
 

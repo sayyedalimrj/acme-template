@@ -14,6 +14,10 @@ const mockReplace = jest.fn();
 const mockBack = jest.fn();
 let mockParams: Record<string, string> = {};
 
+jest.mock('@/features/auth/usePublicAuthConfig', () => ({
+  usePublicAuthConfig: () => ({ smsDryRun: true, otpLength: 4, otpResendCooldownSeconds: 60 }),
+}));
+
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     navigate: mockNavigate,
