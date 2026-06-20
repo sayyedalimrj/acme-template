@@ -347,6 +347,15 @@ Swap this file on the server to point at your API **without rebuilding**:
 
 Templates: `config.local-preview.json` (HTTP internal IP), `config.production.json` (HTTPS subdomains).
 
+**Build defaults (important for cloud hosts like Vercel):** the build only bakes a preset
+`config.json` when you opt in with `RUNTIME_CONFIG_ENV=local-preview|production` (used by
+`install_portal.sh`). A plain `expo export -p web && node scripts/pwa-postbuild.mjs` build
+instead writes `config.json` from `EXPO_PUBLIC_API_BASE_URL`; when that env var is empty the app
+runs on self-contained **mock data** so the public preview (login + dashboard) works with no
+backend. Set `EXPO_PUBLIC_API_BASE_URL` (or swap `config.json` at runtime) to point at a
+**publicly reachable** API — the self-hosted `api.jet-web.ir` / internal IP is not reachable from
+a cloud host.
+
 ### B5. Automated install (Ubuntu 24.04)
 
 ```bash

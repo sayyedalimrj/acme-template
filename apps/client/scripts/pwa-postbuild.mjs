@@ -98,19 +98,41 @@ html = html.replace('</head>', `${HEAD}</head>`);
 writeFileSync(indexPath, html, 'utf8');
 console.log(`[pwa-postbuild] patched ${outDir}/index.html for PWA install (portal: ${PORTAL}).`);
 
-// 4) Copy portal-specific runtime config (never a shared merchant config for all builds).
-const configEnv = process.env.RUNTIME_CONFIG_ENV === 'local-preview' ? 'local-preview' : 'production';
-const configSrc = resolve(here, '..', 'config', `${PORTAL}.${configEnv}.json`);
+// 4) Emit the portal-specific runtime config (`/config.json`).
+//
+// IMPORTANT: a preset template (e.g. config/<portal>.production.json) is used ONLY when the
+// deployer OPTS IN via `RUNTIME_CONFIG_ENV=local-preview|production` — those templates point at
+// a self-hosted backend (api.jet-web.ir / an internal IP) that is unreachable from a public
+// cloud host like Vercel. The default build (no RUNTIME_CONFIG_ENV) instead derives the API URL
+// from `EXPO_PUBLIC_API_BASE_URL`. When that is also empty the app stays on self-contained mock
+// data, so the public Vercel demo (login + dashboard) works without any backend.
 const configDest = resolve(here, '..', outDir, 'config.json');
-if (existsSync(configSrc)) {
-  copyFileSync(configSrc, configDest);
-  console.log(`[pwa-postbuild] copied config/${PORTAL}.${configEnv}.json → ${outDir}/config.json`);
-} else {
+const presetEnv =
+  process.env.RUNTIME_CONFIG_ENV === 'local-preview' ||
+  process.env.RUNTIME_CONFIG_ENV === 'production'
+    ? process.env.RUNTIME_CONFIG_ENV
+    : null;
+
+let wrotePreset = false;
+if (presetEnv) {
+  const configSrc = resolve(here, '..', 'config', `${PORTAL}.${presetEnv}.json`);
+  if (existsSync(configSrc)) {
+    copyFileSync(configSrc, configDest);
+    wrotePreset = true;
+    console.log(`[pwa-postbuild] copied config/${PORTAL}.${presetEnv}.json → ${outDir}/config.json`);
+  } else {
+    console.warn(`[pwa-postbuild] RUNTIME_CONFIG_ENV=${presetEnv} but config/${PORTAL}.${presetEnv}.json is missing.`);
+  }
+}
+
+if (!wrotePreset) {
   const apiBase = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
   writeFileSync(
     configDest,
     `${JSON.stringify({ portal: PORTAL, apiBaseUrl: apiBase }, null, 2)}\n`,
     'utf8',
   );
-  console.warn(`[pwa-postbuild] config template missing — wrote build-time fallback for ${PORTAL}.`);
+  console.log(
+    `[pwa-postbuild] wrote ${outDir}/config.json (portal: ${PORTAL}, apiBaseUrl: ${apiBase || '(empty → mock data)'}).`,
+  );
 }

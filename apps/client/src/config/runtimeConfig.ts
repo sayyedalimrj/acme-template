@@ -47,9 +47,9 @@ function normalizeConfig(raw: Partial<RuntimeConfig> | null | undefined): Runtim
     }
   }
 
-  if (!apiBaseUrl && !configWarning) {
-    configWarning = 'آدرس API در config.json تنظیم نشده؛ حالت آزمایشی (mock) فعال است.';
-  }
+  // An empty apiBaseUrl is a fully supported mode (self-contained mock data, e.g. the public
+  // demo build). It is intentional — not a misconfiguration — so we do NOT surface a warning
+  // banner for it. Warnings are reserved for an invalid or mismatched config.json portal above.
 
   return { apiBaseUrl, portal, configWarning };
 }
