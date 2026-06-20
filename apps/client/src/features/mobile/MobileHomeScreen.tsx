@@ -10,17 +10,20 @@
  * overview numbers here and the products/orders/customers screens — updates to that store.
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 
-import { LoadingState, Text } from '@/components/ui';
+import { EmptyState, LoadingState, Text } from '@/components/ui';
+import { isApiConfigured } from '@/config/api.config';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useActiveSite, useSites } from '@/features/site/useSites';
 import { useSetActiveSite } from '@/features/site/useSiteMutations';
+import { dashboardService } from '@/services';
 import { useTheme } from '@/theme';
-import type { SiteConnection } from '@/domain/types';
+import type { DashboardOverview, SiteConnection } from '@/domain/types';
 
 import {
   AnimatedSection,
@@ -152,9 +155,15 @@ function MoreEntryCard({ onPress }: { onPress: () => void }): React.JSX.Element 
 function OverviewSection({
   currency,
   siteId,
+  showcase,
+  overview,
 }: {
   currency: string;
   siteId?: string;
+  /** Showcase (mock) build renders illustrative trends; production never shows fake data. */
+  showcase: boolean;
+  /** Real, synced overview for production (when available). */
+  overview?: DashboardOverview;
 }): React.JSX.Element {
   const colors = useMobileColors();
   const shadow = useMobileShadow();
@@ -164,6 +173,50 @@ function OverviewSection({
   const { rowDirection, isRTL } = useTheme();
   const [metric, setMetric] = useState<OverviewMetric>('sales');
   const [range, setRange] = useState<OverviewRange>('week');
+
+  // Production (real backend): show real headline totals, and a clean empty state for the trend
+  // chart until a real time-series is synced. Never render mock bars/trend in production.
+  if (!showcase) {
+    const realTotal =
+      metric === 'sales'
+        ? fmt.money(overview?.salesTotal ?? '0', overview?.currency ?? currency)
+        : metric === 'orders'
+          ? fmt.num(overview?.ordersCount ?? 0)
+          : fmt.num(overview?.customersCount ?? 0);
+    return (
+      <View
+        style={[
+          { borderRadius: mobileMetrics.cardRadius, backgroundColor: colors.card, padding: 16, gap: 14 },
+          shadow,
+        ]}
+      >
+        <FilterChipRow
+          options={OVERVIEW_METRICS.map((m) => ({ value: m.value, label: t(m.labelKey) }))}
+          value={metric}
+          onChange={setMetric}
+        />
+        <Text
+          style={{
+            fontSize: Math.round(type.titleSize * 0.95),
+            fontWeight: '700',
+            color: colors.text,
+            textAlign: isRTL ? 'right' : 'left',
+          }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {realTotal}
+        </Text>
+        <EmptyState
+          testID="home-overview-empty"
+          icon="bar-chart-outline"
+          title={t('home.overview.empty')}
+          fill={false}
+        />
+      </View>
+    );
+  }
 
   // Seeded by the selected store so the numbers switch when the store switches.
   const series = buildOverviewSeries(metric, range, siteId);
@@ -290,6 +343,10 @@ export function MobileHomeScreen(): React.JSX.Element {
   // The store being VIEWED in the carousel (drives the overview instantly); defaults to active.
   const [viewSiteId, setViewSiteId] = useState<string | undefined>(undefined);
 
+  // Showcase (mock) build keeps illustrative counters/trends; production (real backend) must
+  // never show fake data — real numbers only, or a clean empty state.
+  const showcase = !isApiConfigured();
+
   const siteList = sites ?? [];
   const hasSites = siteList.length > 0;
 
@@ -297,6 +354,13 @@ export function MobileHomeScreen(): React.JSX.Element {
   const selectedSite = hasSites
     ? (siteList.find((s) => s.id === currentSiteId) ?? activeSite ?? siteList[0])
     : undefined;
+
+  // Real, synced overview (production only). Drives real counts + headline totals; never faked.
+  const { data: overview } = useQuery({
+    queryKey: ['dashboard', 'overview', selectedSite?.id ?? 'none'],
+    queryFn: () => dashboardService.getOverview(),
+    enabled: !showcase && hasSites,
+  });
 
   const renewalFor = (site: SiteConnection): string | undefined => {
     const key = SITE_RENEWAL_KEYS[site.id];
@@ -328,7 +392,9 @@ export function MobileHomeScreen(): React.JSX.Element {
     );
   }
 
-  const orderCount = quickActionCountsForSite(selectedSite?.id).orders;
+  const orderCount = showcase
+    ? quickActionCountsForSite(selectedSite?.id).orders
+    : (overview?.ordersCount || undefined);
 
   return (
     <MobilePage testID="mobile-home-screen">
@@ -363,7 +429,17 @@ export function MobileHomeScreen(): React.JSX.Element {
                 <QuickActionCard
                   icon={action.icon}
                   label={t(action.labelKey)}
-                  count={action.key === 'orders' ? orderCount : action.count}
+                  // Counts are real-data only. In production show the real orders count (if any);
+                  // showcase keeps illustrative counters. Never render a fake/demo badge in prod.
+                  count={
+                    showcase
+                      ? action.key === 'orders'
+                        ? orderCount
+                        : action.count
+                      : action.key === 'orders'
+                        ? orderCount
+                        : undefined
+                  }
                   onPress={() => go(action.href)}
                   testID={`quick-${action.key}`}
                 />
@@ -380,7 +456,12 @@ export function MobileHomeScreen(): React.JSX.Element {
         {/* At-a-glance overview chart (metric + range options) */}
         <AnimatedSection index={3}>
           <SectionTitle title={t('home.overview.title')} />
-          <OverviewSection currency={selectedSite?.currency ?? 'IRR'} siteId={selectedSite?.id} />
+          <OverviewSection
+            currency={selectedSite?.currency ?? 'IRR'}
+            siteId={selectedSite?.id}
+            showcase={showcase}
+            overview={overview}
+          />
         </AnimatedSection>
 
         {/* Short recent activity */}
@@ -392,25 +473,35 @@ export function MobileHomeScreen(): React.JSX.Element {
                 borderRadius: mobileMetrics.cardRadius,
                 backgroundColor: colors.card,
                 paddingHorizontal: 16,
-                paddingVertical: 4,
+                paddingVertical: showcase ? 4 : 16,
               },
               shadow,
             ]}
           >
-            {RECENT_ACTIVITY.map((item, index) => (
-              <View key={item.id}>
-                {index > 0 ? (
-                  <View style={{ height: 1, backgroundColor: colors.separator }} />
-                ) : null}
-                <MiniActivityRow
-                  icon={item.icon}
-                  tint={item.tint}
-                  title={t(item.titleKey)}
-                  caption={t(item.captionKey)}
-                  onPress={() => go('/notifications')}
-                />
-              </View>
-            ))}
+            {showcase ? (
+              RECENT_ACTIVITY.map((item, index) => (
+                <View key={item.id}>
+                  {index > 0 ? (
+                    <View style={{ height: 1, backgroundColor: colors.separator }} />
+                  ) : null}
+                  <MiniActivityRow
+                    icon={item.icon}
+                    tint={item.tint}
+                    title={t(item.titleKey)}
+                    caption={t(item.captionKey)}
+                    onPress={() => go('/notifications')}
+                  />
+                </View>
+              ))
+            ) : (
+              // No real activity feed yet — clean empty state, never mock activity in production.
+              <EmptyState
+                testID="home-activity-empty"
+                icon="time-outline"
+                title={t('home.activity.empty')}
+                fill={false}
+              />
+            )}
           </View>
         </AnimatedSection>
       </View>

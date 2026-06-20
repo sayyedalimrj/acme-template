@@ -12,10 +12,11 @@ import React from 'react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppShell } from '@/components/layout';
 import { LoadingState, Screen } from '@/components/ui';
+import { ProfileCompletionScreen } from '@/features/auth/ProfileCompletionScreen';
 import { useSession } from '@/session/SessionProvider';
 
 export default function AppGroupLayout(): React.JSX.Element {
-  const { status, portal } = useSession();
+  const { status, portal, profileComplete } = useSession();
 
   if (status === 'loading') {
     return (
@@ -40,6 +41,11 @@ export default function AppGroupLayout(): React.JSX.Element {
   }
   if (portal === 'affiliate') {
     return <Redirect href={'/affiliate' as Href} />;
+  }
+
+  // First-login profile completion: incomplete users must finish name + email before the app.
+  if (!profileComplete) {
+    return <ProfileCompletionScreen />;
   }
 
   return (

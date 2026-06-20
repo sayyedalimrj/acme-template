@@ -531,8 +531,63 @@ export async function updateProduct(
   return normalizeProduct(json as Record<string, unknown>);
 }
 
+export interface ProductCreateInput {
+  name: string;
+  sku?: string;
+  /** Major-unit price string (e.g. "120000"). */
+  regularPrice?: string;
+  /** WooCommerce publication status. The created product is REALLY in this status. */
+  status?: string;
+  manageStock?: boolean;
+  stockQuantity?: number;
+  description?: string;
+}
+
+/**
+ * Create a WooCommerce product and return its REAL resulting state (status, id, …). The caller
+ * reports the truthful status — "publish" really publishes; "draft" really stays a draft. No
+ * binary image upload is performed (images are added in WordPress), so no fake media is attached.
+ */
+export async function createProduct(
+  creds: WooCredentials,
+  input: ProductCreateInput,
+): Promise<NormalizedProduct> {
+  const body: Record<string, unknown> = { name: input.name, type: 'simple' };
+  if (input.sku !== undefined && input.sku !== '') body.sku = input.sku;
+  if (input.regularPrice !== undefined && input.regularPrice !== '') {
+    body.regular_price = input.regularPrice;
+  }
+  if (input.status !== undefined) body.status = input.status;
+  if (input.description !== undefined && input.description !== '') {
+    body.description = input.description;
+  }
+  if (input.stockQuantity !== undefined) {
+    body.manage_stock = input.manageStock ?? true;
+    body.stock_quantity = input.stockQuantity;
+  }
+  const { json } = await wooPost(creds, `/products`, body);
+  return normalizeProduct(json as Record<string, unknown>);
+}
+
 async function wooPut(
   creds: WooCredentials,
+  path: string,
+  body: Record<string, unknown>,
+): Promise<{ json: unknown }> {
+  return wooWrite(creds, 'PUT', path, body);
+}
+
+async function wooPost(
+  creds: WooCredentials,
+  path: string,
+  body: Record<string, unknown>,
+): Promise<{ json: unknown }> {
+  return wooWrite(creds, 'POST', path, body);
+}
+
+async function wooWrite(
+  creds: WooCredentials,
+  method: 'PUT' | 'POST',
   path: string,
   body: Record<string, unknown>,
 ): Promise<{ json: unknown }> {
@@ -540,7 +595,7 @@ async function wooPut(
   await assertSafeOutboundUrl(url);
   try {
     const res = await safeFetch(url, {
-      method: 'PUT',
+      method,
       headers: {
         Authorization: authHeader(creds),
         'Content-Type': 'application/json',

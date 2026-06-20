@@ -72,6 +72,7 @@ import type {
   ProductInterestSignal,
   ProductListQuery,
   ProductPerformanceReport,
+  ProductCreateInput,
   ProductUpdateInput,
   RecordEventInput,
   ReportInsight,
@@ -128,6 +129,12 @@ export interface ProductAdapter {
    * the in-memory catalog. Returns the updated product.
    */
   updateProduct(id: string, input: ProductUpdateInput): Promise<Product>;
+  /**
+   * Create a simple product. In live mode this creates it in WooCommerce and returns its REAL
+   * resulting status (publish/draft) so the UI never claims a fake "submitted for review"; in mock
+   * mode it adds to the in-memory catalog. Returns the created product.
+   */
+  createProduct(input: ProductCreateInput): Promise<Product>;
 }
 
 export interface OrderAdapter {

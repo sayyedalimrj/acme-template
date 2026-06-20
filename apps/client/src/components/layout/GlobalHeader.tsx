@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui';
 import { ThemeToggleButton } from '@/components/ui/ThemeToggleButton';
+import { isApiConfigured } from '@/config/api.config';
 import { PressableScale, siteInitials } from '@/features/mobile/components';
 import { UNREAD } from '@/features/mobile/mobileMockData';
 import {
@@ -91,6 +92,11 @@ export function GlobalHeader(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { rowDirection, isRTL } = useTheme();
   const { user } = useSession();
+
+  // Notification/support badges are showcase-only counters (mock). With a real backend configured
+  // (production) there is no real unread source yet, so never show a fake count — hide the badge
+  // until it is backed by real data.
+  const showcaseBadges = !isApiConfigured();
 
   const go = (href: string): void => router.navigate(href as never);
 
@@ -182,14 +188,14 @@ export function GlobalHeader(): React.JSX.Element {
           <ThemeToggleButton />
           <IconButton
             icon="notifications-outline"
-            badge={UNREAD.notifications}
+            badge={showcaseBadges ? UNREAD.notifications : 0}
             onPress={() => go('/notifications')}
             label={t('notif.title')}
             colors={colors}
           />
           <IconButton
             icon="chatbubble-ellipses-outline"
-            badge={UNREAD.support}
+            badge={showcaseBadges ? UNREAD.support : 0}
             onPress={() => go('/support')}
             label={t('csupport.title')}
             colors={colors}

@@ -1,10 +1,11 @@
 /**
- * ProductCreateScreen — mock "new product" form.
+ * ProductCreateScreen — "new product" form (simple, P2-friendly).
  *
- * Gives merchants a real structure to define a new product (name, SKU, price, stock, status,
- * description). MOCK-ONLY and FRONTEND-SAFE: saving is intentionally disabled — nothing is
- * written to a real store and no backend is called. On "save" we only show an in-memory demo
- * confirmation. Matches the mobile design language (MobilePage + mobile tokens). RTL-safe.
+ * Collects the simple fields a merchant needs (name, SKU, price, stock, status, description) and
+ * creates the product through the active data source: in production it creates a REAL WooCommerce
+ * product via the backend and reports its TRUTHFUL resulting status (published vs draft) — never a
+ * fake "submitted for review". In the mock build it adds to the in-memory catalog. Images are
+ * added later in WordPress (no binary upload here). RTL-safe; mobile design language.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -25,6 +26,9 @@ import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 
 import { ProductImagePicker } from './components/ProductImagePicker';
+import { useCreateProduct } from './useProducts';
+
+import type { ProductStatus } from '@/domain/types';
 
 type ProductDraftStatus = 'publish' | 'draft';
 
@@ -133,8 +137,10 @@ export function ProductCreateScreen(): React.JSX.Element {
   const [status, setStatus] = useState<ProductDraftStatus>('publish');
   const [description, setDescription] = useState('');
   const [imageId, setImageId] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [savedStatus, setSavedStatus] = useState<ProductStatus | null>(null);
+  const [submitError, setSubmitError] = useState<string | undefined>();
   const [error, setError] = useState(false);
+  const create = useCreateProduct();
 
   const onBack = (): void => {
     if (router.canGoBack()) {
@@ -144,15 +150,32 @@ export function ProductCreateScreen(): React.JSX.Element {
     }
   };
 
-  // Mock-only: validate locally and show a demo confirmation. Nothing is sent anywhere.
+  // Creates the product through the active data source and reports the TRUTHFUL resulting status.
   const onSave = (): void => {
     if (name.trim().length === 0) {
       setError(true);
-      setSaved(false);
+      setSavedStatus(null);
       return;
     }
     setError(false);
-    setSaved(true);
+    setSubmitError(undefined);
+    const priceNum = Number(price.replace(/[^\d.]/g, ''));
+    const stockNum = Number(stock.replace(/[^\d-]/g, ''));
+    create.mutate(
+      {
+        name: name.trim(),
+        sku: sku.trim() || undefined,
+        regularPrice: price.trim() && Number.isFinite(priceNum) ? priceNum : undefined,
+        status,
+        stockQuantity: stock.trim() && Number.isFinite(stockNum) ? stockNum : undefined,
+        description: description.trim() || undefined,
+      },
+      {
+        onSuccess: (created) => setSavedStatus(created.status),
+        onError: (e: unknown) =>
+          setSubmitError(e instanceof Error ? e.message : t('product.new.saveError')),
+      },
+    );
   };
 
   return (
@@ -269,10 +292,12 @@ export function ProductCreateScreen(): React.JSX.Element {
             onPress={onSave}
             accessibilityLabel={t('product.new.save')}
             testID="product-save"
+            disabled={create.isPending}
             style={{
               height: mobileMetrics.buttonHeight,
               borderRadius: mobileMetrics.buttonRadius,
               backgroundColor: colors.primary,
+              opacity: create.isPending ? 0.7 : 1,
               alignItems: 'center',
               justifyContent: 'center',
               flexDirection: 'row',
@@ -285,30 +310,60 @@ export function ProductCreateScreen(): React.JSX.Element {
             </Text>
           </PressableScale>
 
-          {saved ? (
+          {submitError ? (
+            <Text
+              testID="product-save-error"
+              style={{
+                marginTop: 12,
+                fontSize: mobileType.captionSize,
+                color: colors.statusDanger,
+                textAlign: isRTL ? 'right' : 'left',
+              }}
+            >
+              {submitError}
+            </Text>
+          ) : null}
+
+          {savedStatus ? (
             <View
               testID="product-saved-note"
               style={{
                 marginTop: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
+                gap: 10,
                 padding: 12,
                 borderRadius: 12,
                 backgroundColor: colors.statusActiveSoft,
               }}
             >
-              <Ionicons name="information-circle" size={18} color={colors.statusActive} />
-              <Text
-                style={{
-                  flex: 1,
-                  fontSize: mobileType.captionSize,
-                  color: colors.statusActive,
-                  textAlign: isRTL ? 'right' : 'left',
-                }}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons
+                  name={savedStatus === 'publish' ? 'checkmark-circle' : 'document-text-outline'}
+                  size={18}
+                  color={colors.statusActive}
+                />
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: mobileType.captionSize,
+                    color: colors.statusActive,
+                    textAlign: isRTL ? 'right' : 'left',
+                  }}
+                >
+                  {savedStatus === 'publish'
+                    ? `${t('product.new.savedPublished')} · ${t('product.new.savedPublishedNote')}`
+                    : `${t('product.new.savedDraft')} · ${t('product.new.savedDraftNote')}`}
+                </Text>
+              </View>
+              <PressableScale
+                onPress={() => router.navigate('/products' as never)}
+                accessibilityLabel={t('product.new.viewProducts')}
+                testID="product-view-products"
+                style={{ alignSelf: isRTL ? 'flex-start' : 'flex-end' }}
               >
-                {t('product.new.saved')} · {t('product.new.savedNote')}
-              </Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
+                  {t('product.new.viewProducts')}
+                </Text>
+              </PressableScale>
             </View>
           ) : null}
 

@@ -415,6 +415,16 @@ export interface ProductUpdateInput {
   categoryIds?: string[];
 }
 
+/** Minimal, simple product creation (P2: no Woo complexity exposed). Status is REAL on save. */
+export interface ProductCreateInput {
+  name: string;
+  sku?: string;
+  regularPrice?: number;
+  status?: ProductStatus;
+  stockQuantity?: number;
+  description?: string;
+}
+
 export interface OrderListQuery {
   search?: string;
   status?: OrderStatus;

@@ -5,7 +5,13 @@ import { useMutation, useQuery, useQueryClient, type UseMutationResult, type Use
 
 import { useActiveSiteId } from '@/features/site/useSites';
 import { productService, queryKeys } from '@/services';
-import type { Paged, Product, ProductListQuery, ProductUpdateInput } from '@/domain/types';
+import type {
+  Paged,
+  Product,
+  ProductCreateInput,
+  ProductListQuery,
+  ProductUpdateInput,
+} from '@/domain/types';
 
 export function useProducts(query?: ProductListQuery): UseQueryResult<Paged<Product>, Error> {
   const siteId = useActiveSiteId();
@@ -38,6 +44,21 @@ export function useUpdateProduct(
     mutationFn: (input: ProductUpdateInput) => productService.updateProduct(productId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.product(siteId ?? 'none', productId) });
+      queryClient.invalidateQueries({ queryKey: ['site', siteId ?? 'none', 'products'] });
+    },
+  });
+}
+
+/**
+ * Create a simple product. On success it invalidates the active site's product list so the new
+ * product appears immediately. Returns the created product with its REAL status (publish/draft).
+ */
+export function useCreateProduct(): UseMutationResult<Product, Error, ProductCreateInput> {
+  const siteId = useActiveSiteId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ProductCreateInput) => productService.createProduct(input),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['site', siteId ?? 'none', 'products'] });
     },
   });

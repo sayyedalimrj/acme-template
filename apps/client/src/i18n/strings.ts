@@ -1153,7 +1153,13 @@ export const en = {
   'register.errorFirstName': 'Please enter your first name.',
   'register.errorLastName': 'Please enter your last name.',
   'register.errorMobile': 'Enter a valid mobile number.',
-  // --- Mobile dashboard (home / more / support / notifications) ---
+  // --- First-login profile completion (real backend) ---
+  'profile.complete.title': 'Complete your profile',
+  'profile.complete.subtitle': 'Add your name and email to continue to your dashboard.',
+  'profile.complete.email': 'Email',
+  'profile.complete.errorEmail': 'Please enter a valid email address.',
+  'profile.complete.submit': 'Save and continue',
+  'profile.complete.errorSave': 'Could not save your profile. Please try again.',
   'mobile.back': 'Back',
   'nav.mobile.home': 'Home',
   'nav.mobile.orders': 'Orders',
@@ -1238,6 +1244,8 @@ export const en = {
   'home.activity.lowStock': 'Low stock',
   'home.activity.lowStockCaption': 'A product is running low',
   'home.activity.supportMessage': 'Support message',
+  'home.overview.empty': 'No trend data yet. Charts appear once your store has synced sales.',
+  'home.activity.empty': 'No recent activity yet.',
   'more.title': 'Features',
   'more.section.manage': 'Manage',
   'more.section.growth': 'Grow sales',
@@ -1319,6 +1327,12 @@ export const en = {
   'product.new.required': 'Enter a product name',
   'product.new.saved': 'Draft ready',
   'product.new.savedNote': 'Your product draft is ready for review.',
+  'product.new.savedPublished': 'Product published',
+  'product.new.savedPublishedNote': 'It is now live in your store.',
+  'product.new.savedDraft': 'Saved as draft',
+  'product.new.savedDraftNote': 'Saved as a draft — not public yet. Publish it when ready.',
+  'product.new.saveError': 'Could not save the product. Please try again.',
+  'product.new.viewProducts': 'View products',
   'product.new.mockNote':
     'Review the details and save your product.',
   // Support chat (messenger)
@@ -2432,6 +2446,13 @@ export const fa: Record<StringKey, string> = {
   'register.errorFirstName': 'لطفاً نام خود را وارد کنید.',
   'register.errorLastName': 'لطفاً نام خانوادگی خود را وارد کنید.',
   'register.errorMobile': 'یک شماره موبایل معتبر وارد کنید.',
+  // --- First-login profile completion (real backend) ---
+  'profile.complete.title': 'تکمیل پروفایل',
+  'profile.complete.subtitle': 'برای ورود به داشبورد، نام و ایمیل خود را وارد کنید.',
+  'profile.complete.email': 'ایمیل',
+  'profile.complete.errorEmail': 'لطفاً یک ایمیل معتبر وارد کنید.',
+  'profile.complete.submit': 'ذخیره و ادامه',
+  'profile.complete.errorSave': 'ذخیره پروفایل ممکن نشد. لطفاً دوباره تلاش کنید.',
   // --- Mobile dashboard (home / more / support / notifications) ---
   'mobile.back': 'بازگشت',
   'nav.mobile.home': 'خانه',
@@ -2517,6 +2538,8 @@ export const fa: Record<StringKey, string> = {
   'home.activity.lowStock': 'محصول کم‌موجود',
   'home.activity.lowStockCaption': 'موجودی یک محصول رو به اتمام است',
   'home.activity.supportMessage': 'پیام پشتیبانی',
+  'home.overview.empty': 'هنوز داده‌ای برای نمودار نیست. پس از همگام‌سازی فروش فروشگاه، نمودار نمایش داده می‌شود.',
+  'home.activity.empty': 'هنوز فعالیتی ثبت نشده است.',
   'more.title': 'امکانات',
   'more.section.manage': 'مدیریت',
   'more.section.growth': 'رشد فروش',
@@ -2598,6 +2621,12 @@ export const fa: Record<StringKey, string> = {
   'product.new.required': 'نام محصول را وارد کنید',
   'product.new.saved': 'پیش‌نویس آماده شد',
   'product.new.savedNote': 'پیش‌نویس محصول شما برای بازبینی آماده است.',
+  'product.new.savedPublished': 'محصول منتشر شد',
+  'product.new.savedPublishedNote': 'اکنون در فروشگاه شما منتشر شده است.',
+  'product.new.savedDraft': 'به‌عنوان پیش‌نویس ذخیره شد',
+  'product.new.savedDraftNote': 'به‌صورت پیش‌نویس ذخیره شد — هنوز عمومی نیست. هر زمان آماده بودید منتشرش کنید.',
+  'product.new.saveError': 'ذخیره محصول ممکن نشد. لطفاً دوباره تلاش کنید.',
+  'product.new.viewProducts': 'مشاهده محصولات',
   'product.new.mockNote':
     'جزئیات را بررسی کرده و محصول خود را ذخیره کنید.',
   // Support chat (messenger)

@@ -10,10 +10,11 @@ import React from 'react';
 import { LoadingState, Screen } from '@/components/ui';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AffiliateShell } from '@/features/affiliate/AffiliateShell';
+import { ProfileCompletionScreen } from '@/features/auth/ProfileCompletionScreen';
 import { useSession } from '@/session/SessionProvider';
 
 export default function AffiliateGroupLayout(): React.JSX.Element {
-  const { status, portal } = useSession();
+  const { status, portal, profileComplete } = useSession();
 
   if (status === 'loading') {
     return (
@@ -29,6 +30,10 @@ export default function AffiliateGroupLayout(): React.JSX.Element {
 
   if (status === 'access_denied' || portal !== 'affiliate') {
     return <Redirect href={'/access-denied' as Href} />;
+  }
+
+  if (!profileComplete) {
+    return <ProfileCompletionScreen />;
   }
 
   return (

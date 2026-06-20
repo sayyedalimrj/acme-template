@@ -2,7 +2,13 @@
  * Mock Product adapter — list (with simple filters + pagination) and get-by-id.
  */
 import { products } from '@/mock/data/catalog';
-import type { Paged, Product, ProductListQuery, ProductUpdateInput } from '@/domain/types';
+import type {
+  Paged,
+  Product,
+  ProductCreateInput,
+  ProductListQuery,
+  ProductUpdateInput,
+} from '@/domain/types';
 
 import type { ProductAdapter } from '../types';
 import { siteScopedView } from './mockActiveSite';
@@ -74,6 +80,32 @@ export function createMockProductAdapter(): ProductAdapter {
       }
       found.dateModified = new Date().toISOString();
       return clone(found);
+    },
+    async createProduct(input: ProductCreateInput): Promise<Product> {
+      await delay();
+      const now = new Date().toISOString();
+      const money = input.regularPrice !== undefined ? String(input.regularPrice) : '0';
+      // Truthful mock: the product is created in exactly the chosen status (no fake "review").
+      const created: Product = {
+        id: `mock-${Date.now()}`,
+        name: input.name,
+        slug: input.sku || `mock-${Date.now()}`,
+        sku: input.sku ?? '',
+        type: 'simple',
+        status: input.status ?? 'draft',
+        price: money,
+        regularPrice: money,
+        currency: 'IRT',
+        stockStatus: 'instock',
+        stockQuantity: input.stockQuantity,
+        manageStock: input.stockQuantity !== undefined,
+        categories: [],
+        images: [],
+        dateCreated: now,
+        dateModified: now,
+      };
+      products.unshift(created);
+      return clone(created);
     },
   };
 }

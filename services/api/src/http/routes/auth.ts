@@ -16,7 +16,12 @@ import {
 } from '../../services/tokenService';
 import { primaryTenantId } from '../../services/accessControl';
 import { requestOtp, verifyOtp } from '../../services/otpService';
-import { findOrCreateUser, getUserById } from '../../services/userService';
+import {
+  findOrCreateUser,
+  getUserById,
+  isProfileComplete,
+  updateUserProfile,
+} from '../../services/userService';
 import { badRequest, unauthorized } from '../../util/errors';
 import { normalizeMobile } from '../../util/mobile';
 import { authenticate, type AuthedRequest } from '../middleware/auth';
@@ -105,7 +110,8 @@ authRouter.post(
       token: session.accessToken,
       accessToken: session.accessToken,
       refreshToken: session.refreshToken,
-      user: { id: user.id, name: user.name, mobile: user.mobile, role: user.role },
+      user: { id: user.id, name: user.name, mobile: user.mobile, email: user.email, role: user.role },
+      profileComplete: isProfileComplete(user),
       roles: [user.role],
       portal,
       allowedPortals: allowedPortalsForRole(user.role),
@@ -133,7 +139,8 @@ authRouter.post(
       token: rotated.accessToken,
       accessToken: rotated.accessToken,
       refreshToken: rotated.refreshToken,
-      user: { id: user.id, name: user.name, mobile: user.mobile, role: user.role },
+      user: { id: user.id, name: user.name, mobile: user.mobile, email: user.email, role: user.role },
+      profileComplete: isProfileComplete(user),
       roles: [user.role],
       portal: live.portal,
       allowedPortals: allowedPortalsForRole(user.role),
@@ -159,9 +166,38 @@ authRouter.get(
     const user = req.auth ? await getUserById(req.auth.sub) : null;
     if (!user) throw badRequest('کاربر یافت نشد.', 'not_found');
     res.json({
-      user: { id: user.id, name: user.name, mobile: user.mobile, role: user.role },
+      user: { id: user.id, name: user.name, mobile: user.mobile, email: user.email, role: user.role },
+      profileComplete: isProfileComplete(user),
       portal: req.auth?.portal,
       tenantId: req.auth?.tenantId ?? null,
+    });
+  }),
+);
+
+const profileSchema = z.object({
+  firstName: z.string().trim().min(1).max(120),
+  lastName: z.string().trim().min(1).max(120),
+  email: z.string().trim().email().max(254),
+});
+
+authRouter.patch(
+  '/profile',
+  authenticate,
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    if (!req.auth) throw unauthorized();
+    const parsed = profileSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('نام، نام خانوادگی و ایمیل را درست وارد کنید.');
+    const user = await updateUserProfile(req.auth.sub, parsed.data);
+    await audit({
+      actorUserId: user.id,
+      action: 'auth.profile_completed',
+      targetType: 'user',
+      targetId: user.id,
+      requestIp: req.ip,
+    });
+    res.json({
+      user: { id: user.id, name: user.name, mobile: user.mobile, email: user.email, role: user.role },
+      profileComplete: isProfileComplete(user),
     });
   }),
 );

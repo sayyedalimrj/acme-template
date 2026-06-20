@@ -100,10 +100,25 @@ export const corsOrigins: string[] = env.CORS_ORIGINS.split(',')
   .map((s) => s.trim())
   .filter(Boolean);
 
-/** Parsed allow-list of admin mobiles (normalized to digits only). */
-export const adminAllowlist: string[] = env.ADMIN_MOBILE_ALLOWLIST.split(',')
-  .map((s) => s.replace(/\D/g, ''))
-  .filter(Boolean);
+/**
+ * Built-in platform-admin mobiles.
+ *
+ * These are NOT secrets — they identify the platform owner account(s) that must always retain
+ * admin access regardless of `.env` drift on any given server (normal updates preserve the
+ * existing `.env`, so a number added only to the installer default would never reach an
+ * already-provisioned box). Admin access is still enforced entirely server-side via this
+ * allow-list + the role mechanism; nothing about admin access is hardcoded in the frontend.
+ */
+const BUILTIN_ADMIN_MOBILES = ['09186441801'];
+
+/** Parsed allow-list of admin mobiles (normalized to digits only), merged with the built-ins. */
+export const adminAllowlist: string[] = Array.from(
+  new Set(
+    [...BUILTIN_ADMIN_MOBILES, ...env.ADMIN_MOBILE_ALLOWLIST.split(',')]
+      .map((s) => s.replace(/\D/g, ''))
+      .filter(Boolean),
+  ),
+);
 
 /** Parsed allow-list of support-admin mobiles (read-only admin). */
 export const supportAllowlist: string[] = env.SUPPORT_MOBILE_ALLOWLIST.split(',')

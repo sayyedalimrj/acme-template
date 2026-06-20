@@ -226,6 +226,48 @@ export async function getWooWebhookSecret(siteId: string): Promise<string | null
   return openSecret<{ secret: string }>(row).secret;
 }
 
+/**
+ * Safe edit of a connected store's settings. Display name can always change. The URL may change
+ * but is re-validated (SSRF-guarded) and, if the host actually changes, the site is set back to
+ * `pending` so the merchant must re-verify the connection (existing credentials are host-bound).
+ * Secrets are never touched here and never returned to the client.
+ */
+export async function updateSiteSettings(
+  siteId: string,
+  tenantId: string,
+  input: { name?: string; url?: string },
+): Promise<SiteRow> {
+  const site = await getSite(siteId);
+  if (!site || site.tenant_id !== tenantId) throw notFound('فروشگاه یافت نشد.');
+
+  let nextUrl = site.url;
+  let requireReverify = false;
+  if (input.url !== undefined) {
+    nextUrl = await normalizeAndValidateStoreUrl(input.url);
+    const prevHost = safeHost(site.url);
+    const nextHost = safeHost(nextUrl);
+    requireReverify = prevHost !== nextHost;
+  }
+  const nextName = input.name?.trim() || site.name;
+  const nextStatus = requireReverify ? 'pending' : site.status;
+
+  await query(
+    `UPDATE site SET name = $2, url = $3, status = $4,
+            last_error = CASE WHEN $5 THEN NULL ELSE last_error END, updated_at = now()
+       WHERE id = $1`,
+    [siteId, nextName, nextUrl, nextStatus, requireReverify],
+  );
+  return (await getSite(siteId))!;
+}
+
+function safeHost(url: string): string {
+  try {
+    return new URL(url).host.toLowerCase();
+  } catch {
+    return url.toLowerCase();
+  }
+}
+
 /** Disconnect a site: revoke credentials + connections; keep read-models for history. */
 export async function disconnectSite(siteId: string): Promise<void> {
   const client = await pool.connect();

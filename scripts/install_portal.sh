@@ -26,6 +26,9 @@ SMS_PROVIDER="ippanel-edge"
 DRY_RUN_SMS="true"
 FORCE_ENV="false"
 RESUME="false"
+SERVICE_USER="${SERVICE_USER:-deploy}"
+# Internal API port. Kept in sync with the .env PORT and the systemd unit.
+API_PORT="${API_PORT:-8080}"
 
 log() { echo "[install] $*"; }
 die() { echo "[install] ERROR: $*" >&2; exit 1; }
@@ -48,6 +51,18 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$(id -u)" -eq 0 ]] || die "Run as root (sudo)."
+
+if [[ "$FORCE_ENV" == "true" ]]; then
+  echo "" >&2
+  echo "============================================================" >&2
+  echo "  ⚠  --force-env: services/api/.env will be REGENERATED." >&2
+  echo "     Existing secrets are PRESERVED where present (JWT, DB" >&2
+  echo "     password, IPPanel API key + PATTERN code), but review" >&2
+  echo "     the result before enabling live SMS. Ctrl-C to abort." >&2
+  echo "============================================================" >&2
+  echo "" >&2
+  sleep 5
+fi
 
 if [[ "$RESUME" == "false" && "$FORCE_ENV" == "true" ]]; then
   : > "$STATE_FILE" 2>/dev/null || true
@@ -74,16 +89,69 @@ if ! step_done sync; then
 fi
 
 ENV_FILE="${INSTALL_ROOT}/services/api/.env"
+
+# Capture existing secrets/settings so a --force-env regeneration PRESERVES them rather than
+# silently resetting the SMS pattern code, IPPanel API key, JWT, or the DB password — every one
+# of which has caused a real production incident on this stack.
+read_env_var() { grep -E "^[[:space:]]*$1=" "$ENV_FILE" 2>/dev/null | tail -1 | sed -E "s/^[[:space:]]*$1=//"; }
+PREV_DB_URL=""; PREV_JWT=""; PREV_OTP_HASH=""; PREV_VAULT=""
+PREV_IPPANEL_API_KEY=""; PREV_IPPANEL_PATTERN=""; PREV_IPPANEL_ORIGINATOR=""
+PREV_IPPANEL_OTP_VAR=""; PREV_IPPANEL_BASE=""; PREV_IPPANEL_PROVIDER=""
+PREV_SMS_DRY_RUN=""; PREV_ADMIN_ALLOWLIST=""
+if [[ -f "$ENV_FILE" ]]; then
+  PREV_DB_URL="$(read_env_var DATABASE_URL)"
+  PREV_JWT="$(read_env_var JWT_SECRET)"
+  PREV_OTP_HASH="$(read_env_var OTP_HASH_SECRET)"
+  PREV_VAULT="$(read_env_var CREDENTIAL_ENCRYPTION_KEY)"
+  PREV_IPPANEL_API_KEY="$(read_env_var IPPANEL_API_KEY)"
+  PREV_IPPANEL_PATTERN="$(read_env_var IPPANEL_PATTERN_CODE)"
+  PREV_IPPANEL_ORIGINATOR="$(read_env_var IPPANEL_ORIGINATOR)"
+  PREV_IPPANEL_OTP_VAR="$(read_env_var IPPANEL_OTP_VARIABLE)"
+  PREV_IPPANEL_BASE="$(read_env_var IPPANEL_BASE_URL)"
+  PREV_IPPANEL_PROVIDER="$(read_env_var IPPANEL_PROVIDER)"
+  PREV_SMS_DRY_RUN="$(read_env_var SMS_DRY_RUN)"
+  PREV_ADMIN_ALLOWLIST="$(read_env_var ADMIN_MOBILE_ALLOWLIST)"
+fi
+
 if [[ ! -f "$ENV_FILE" || "$FORCE_ENV" == "true" ]]; then
   log "Writing ${ENV_FILE}…"
-  JWT_SECRET="$(openssl rand -hex 32)"
-  OTP_HASH_SECRET="$(openssl rand -hex 32)"
-  VAULT_KEY="$(openssl rand -hex 32)"
-  DB_PASS="$(openssl rand -hex 16)"
-  sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='portal'" | grep -q 1 || \
-    sudo -u postgres psql -c "CREATE USER portal WITH PASSWORD '${DB_PASS}';"
+  # Reuse existing secrets when present (updates never rotate them); generate only what's missing.
+  JWT_SECRET="${PREV_JWT:-$(openssl rand -hex 32)}"
+  OTP_HASH_SECRET="${PREV_OTP_HASH:-$(openssl rand -hex 32)}"
+  VAULT_KEY="${PREV_VAULT:-$(openssl rand -hex 32)}"
+
+  # DB: reuse the role/password from a prior DATABASE_URL to avoid password drift (a regenerated
+  # password that no longer matches the live Postgres role is a known boot failure).
+  if [[ -n "$PREV_DB_URL" ]]; then
+    DATABASE_URL="$PREV_DB_URL"
+    DB_PASS="$(printf '%s' "$PREV_DB_URL" | sed -E 's#^postgres://[^:]+:([^@]+)@.*#\1#')"
+    log "  reusing existing DATABASE_URL (no DB password drift)"
+    sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='portal'" | grep -q 1 || \
+      sudo -u postgres psql -c "CREATE USER portal WITH PASSWORD '${DB_PASS}';"
+  else
+    DB_PASS="$(openssl rand -hex 16)"
+    DATABASE_URL="postgres://portal:${DB_PASS}@localhost:5432/portal"
+    if sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='portal'" | grep -q 1; then
+      # Role exists but no prior URL was found: align the password so the two can't drift apart.
+      sudo -u postgres psql -c "ALTER USER portal WITH PASSWORD '${DB_PASS}';"
+    else
+      sudo -u postgres psql -c "CREATE USER portal WITH PASSWORD '${DB_PASS}';"
+    fi
+  fi
   sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='portal'" | grep -q 1 || \
     sudo -u postgres psql -c "CREATE DATABASE portal OWNER portal;"
+
+  # SMS / IPPanel: preserve the provider key + PATTERN code from the previous .env. Defaults are
+  # used ONLY on a first install; an update must never reset a working pattern code.
+  IPPANEL_API_KEY_VAL="${PREV_IPPANEL_API_KEY:-}"
+  IPPANEL_PATTERN_VAL="${PREV_IPPANEL_PATTERN:-jcxqs3bwxo3rfkk}"
+  IPPANEL_ORIGINATOR_VAL="${PREV_IPPANEL_ORIGINATOR:-+983000505}"
+  IPPANEL_OTP_VAR_VAL="${PREV_IPPANEL_OTP_VAR:-verification-code}"
+  IPPANEL_BASE_VAL="${PREV_IPPANEL_BASE:-https://edge.ippanel.com/v1}"
+  IPPANEL_PROVIDER_VAL="${PREV_IPPANEL_PROVIDER:-edge}"
+  SMS_DRY_RUN_VAL="${PREV_SMS_DRY_RUN:-$DRY_RUN_SMS}"
+  # Admin allow-list is preserved if set; first install seeds the platform owner numbers.
+  ADMIN_ALLOWLIST_VAL="${PREV_ADMIN_ALLOWLIST:-09186441801,09125233608}"
 
   if [[ "$MODE" == "local-preview" ]]; then
     CORS="http://${SERVER_IP},http://app.${DOMAIN},http://admin.${DOMAIN},http://partner.${DOMAIN}"
@@ -95,22 +163,22 @@ if [[ ! -f "$ENV_FILE" || "$FORCE_ENV" == "true" ]]; then
 
   cat > "$ENV_FILE" <<EOF
 NODE_ENV=production
-PORT=8080
-DATABASE_URL=postgres://portal:${DB_PASS}@localhost:5432/portal
+PORT=${API_PORT}
+DATABASE_URL=${DATABASE_URL}
 JWT_SECRET=${JWT_SECRET}
 OTP_HASH_SECRET=${OTP_HASH_SECRET}
 CREDENTIAL_ENCRYPTION_KEY=${VAULT_KEY}
 CORS_ORIGINS=${CORS}
 PUBLIC_API_BASE_URL=${PUBLIC_API}
-SMS_DRY_RUN=${DRY_RUN_SMS}
-IPPANEL_PROVIDER=edge
-IPPANEL_BASE_URL=https://edge.ippanel.com/v1
-IPPANEL_PATTERN_CODE=jcxqs3bwxo3rfkk
-IPPANEL_ORIGINATOR=+983000505
-IPPANEL_OTP_VARIABLE=verification-code
-IPPANEL_API_KEY=
+SMS_DRY_RUN=${SMS_DRY_RUN_VAL}
+IPPANEL_PROVIDER=${IPPANEL_PROVIDER_VAL}
+IPPANEL_BASE_URL=${IPPANEL_BASE_VAL}
+IPPANEL_PATTERN_CODE=${IPPANEL_PATTERN_VAL}
+IPPANEL_ORIGINATOR=${IPPANEL_ORIGINATOR_VAL}
+IPPANEL_OTP_VARIABLE=${IPPANEL_OTP_VAR_VAL}
+IPPANEL_API_KEY=${IPPANEL_API_KEY_VAL}
 TRUST_PROXY=true
-  ADMIN_MOBILE_ALLOWLIST=09125233608
+ADMIN_MOBILE_ALLOWLIST=${ADMIN_ALLOWLIST_VAL}
 EOF
   chmod 600 "$ENV_FILE"
   mark_step env
@@ -129,13 +197,17 @@ if ! step_done backend; then
 fi
 
 if ! step_done frontend; then
-  log "Building frontends…"
+  log "Building frontends (clean, isolated per-portal Metro cache)…"
   cd "${INSTALL_ROOT}/apps/client"
   npm ci
+  # Own-server builds are PRODUCTION runtime: the app must never silently fall back to mock data
+  # and must show a visible error (not a blank screen) if config.json is missing/invalid. The
+  # *:production:clean scripts clear the bundler cache and stamp a unique BUILD_ID per portal so
+  # admin/affiliate can never inherit the merchant bundle (the cached-bundle mismatch incident).
+  if [[ "$MODE" == "local-preview" ]]; then RT_ENV="local-preview"; else RT_ENV="production"; fi
   for portal in merchant admin affiliate; do
-    # Own-server builds are PRODUCTION runtime: the app must never silently fall back to mock
-    # data and must show a visible error (not a blank screen) if config.json is missing/invalid.
-    EXPO_PUBLIC_PORTAL="$portal" EXPO_PUBLIC_RUNTIME_ENV=production npm run "export:web:${portal}"
+    RUNTIME_CONFIG_ENV="$RT_ENV" BUILD_ID="${portal}-$(date +%s)-$$" \
+      npm run "export:web:${portal}:production:clean"
   done
   mark_step frontend
 fi
@@ -158,10 +230,47 @@ if ! step_done config; then
   mark_step config
 fi
 
+if ! step_done service_user; then
+  log "Ensuring service user '${SERVICE_USER}' exists (prevents systemd status=217/USER)…"
+  if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
+    useradd --system --create-home --shell /usr/sbin/nologin "$SERVICE_USER" 2>/dev/null \
+      || useradd --system --shell /bin/false "$SERVICE_USER" \
+      || die "Could not create service user '${SERVICE_USER}'."
+    log "  created system user ${SERVICE_USER}"
+  else
+    log "  ${SERVICE_USER} already exists — left untouched"
+  fi
+  # The unit runs as ${SERVICE_USER}; give it ownership of the app tree (read + run only).
+  chown -R "${SERVICE_USER}:${SERVICE_USER}" "$INSTALL_ROOT"
+  if [[ -f "$ENV_FILE" ]]; then
+    chown "${SERVICE_USER}:${SERVICE_USER}" "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+  fi
+  mark_step service_user
+fi
+
+if ! step_done port_check; then
+  log "Preflight: API port ${API_PORT} availability…"
+  if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -qE "[:.]${API_PORT}[[:space:]]"; then
+    if systemctl is-active --quiet portal-api 2>/dev/null; then
+      log "  port ${API_PORT} held by the running portal-api — OK (it will be restarted)"
+    else
+      holder="$(ss -ltnp 2>/dev/null | grep -E "[:.]${API_PORT}[[:space:]]" | grep -oE 'users:\(\("[^"]+' | head -1 | sed -E 's/.*"//')"
+      die "API port ${API_PORT} is already in use by '${holder:-another process}'. NOT killing it automatically (it may be the old Nginx preview/NPM listener — the known 8080 conflict). Free the port or re-run with API_PORT=<free port>. See docs/DEPLOYMENT.md."
+    fi
+  else
+    log "  port ${API_PORT} is free"
+  fi
+  mark_step port_check
+fi
+
 if ! step_done systemd; then
   log "Installing systemd unit…"
   cp "${INSTALL_ROOT}/services/api/deploy/portal-api.service" /etc/systemd/system/
   sed -i "s|/var/www/portal|${INSTALL_ROOT}|g" /etc/systemd/system/portal-api.service
+  # Keep the unit's run-as user in sync with the user we actually created above.
+  sed -i "s|^User=.*|User=${SERVICE_USER}|" /etc/systemd/system/portal-api.service
+  sed -i "s|^Group=.*|Group=${SERVICE_USER}|" /etc/systemd/system/portal-api.service
   systemctl daemon-reload
   systemctl enable portal-api
   systemctl restart portal-api
