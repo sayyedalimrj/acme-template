@@ -321,7 +321,8 @@ See `services/api/.env.example` and `services/api/README.md`. Production **must*
 | `CREDENTIAL_ENCRYPTION_KEY` | AES-256-GCM vault key (32 bytes hex/base64) — **required in production** |
 | `CORS_ORIGINS` | Comma-separated portal origins — **required in production** (empty → process exit) |
 | `ADMIN_MOBILE_ALLOWLIST` | Mobiles allowed into admin portal |
-| `IPPANEL_*` + `SMS_DRY_RUN=false` | Real OTP SMS |
+| `IPPANEL_PROVIDER=edge` + `IPPANEL_BASE_URL=https://edge.ippanel.com/v1` | ippanel Edge API (recommended) |
+| `TRUST_PROXY=true` | Honor `X-Forwarded-Proto` behind Nginx Proxy Manager |
 
 Optional but recommended: `PUBLIC_API_BASE_URL`, portal URLs, `BILLING_PROVIDER`, payment webhook
 secret, ippanel pattern/originator.
@@ -358,7 +359,7 @@ Nginx examples: `services/api/deploy/nginx/jet-web.local-preview.conf`, `jet-web
 
 Backend smoke test (same entry as systemd): `cd services/api && npm run smoke:start`.
 
-### B4. CI / verification
+### B6. CI / verification
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR:
 
