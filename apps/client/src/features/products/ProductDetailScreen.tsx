@@ -12,7 +12,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { type ReactNode } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Linking, View } from 'react-native';
 
 import {
   Badge,
@@ -138,6 +138,22 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
         <Badge tone={stock.tone} label={t(stock.labelKey)} />
         <Badge tone={status.tone} label={t(status.labelKey)} />
       </View>
+
+      {product.adminEditUrl || product.permalink ? (
+        <View style={{ alignItems: 'flex-start', marginTop: tokens.spacing.xs }}>
+          <Button
+            testID="product-open-wordpress"
+            label={t('product.action.openInWordPress')}
+            variant="secondary"
+            size="sm"
+            onPress={() => {
+              const url = product.adminEditUrl ?? product.permalink;
+              if (url) void Linking.openURL(url).catch(() => undefined);
+            }}
+            leading={<Ionicons name="open-outline" size={16} color={tokens.color.text} />}
+          />
+        </View>
+      ) : null}
 
       <Card title={t('product.section.pricing')}>
         <DetailRow

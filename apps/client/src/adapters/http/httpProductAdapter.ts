@@ -44,6 +44,8 @@ interface BackendProduct {
   image_src?: string | null;
   images?: BackendImage[];
   categories?: BackendCategory[];
+  permalink?: string | null;
+  admin_edit_url?: string | null;
 }
 
 function toCategories(rows: BackendCategory[] | undefined): ProductCategory[] {
@@ -97,6 +99,8 @@ function toProduct(p: BackendProduct): Product {
     manageStock: p.stock_qty !== null && p.stock_qty !== undefined,
     categories: toCategories(p.categories),
     images: toImages(p),
+    permalink: p.permalink ?? undefined,
+    adminEditUrl: p.admin_edit_url ?? undefined,
     dateCreated: now,
     dateModified: now,
   };

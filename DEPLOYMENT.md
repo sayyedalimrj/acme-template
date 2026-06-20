@@ -238,14 +238,43 @@ tenants + members, sites + connections + **encrypted credentials**, sync read-mo
 plugin events, replay nonces, plans/subscriptions/billing, marketers/referrals/commissions/
 payouts, audit log). Migration `003_product_catalog.sql` adds the full product catalog read-models
 (categories, product↔category links, variations, product images, and a `raw` payload column on
-`synced_product`) that back the real WooCommerce product sync. Apply with `npm run migrate`
-(idempotent; re-runnable) **before starting the API** — it applies all pending migrations,
-including `003`, in order. Money is stored as integer minor units; **no card data and no raw
-secrets** are ever stored. Rollback guidance: `services/api/db/migrations/ROLLBACK.md`.
+`synced_product`) that back the real WooCommerce product sync. Migration `004_product_taxonomy_meta.sql`
+completes deep preservation: tags, brands (optional `product_brand` taxonomy), global attributes +
+terms, the product↔tag/brand/attribute links, and lossless `meta` JSONB on product + variant (full
+`meta_data`/postmeta) plus a `permalink` column for the "Open in WordPress" link. Apply with
+`npm run migrate` (idempotent; re-runnable) **before starting the API** — it applies all pending
+migrations, including `003` and `004`, in order. Money is stored as integer minor units; **no card
+data and no raw secrets** are ever stored. Rollback guidance: `services/api/db/migrations/ROLLBACK.md`.
 
-After migrating and connecting a WooCommerce site (REST key/secret), the catalog is populated by
-`POST /merchant/sites/:siteId/sync` (manual/initial pull, paginated) or the signed plugin/webhook
-push; product list/detail then serve real synced data (image, categories, price, stock, status).
+After migrating and connecting a WooCommerce site (plugin pairing — see below — or a REST
+key/secret), the catalog is populated by `POST /merchant/sites/:siteId/sync` (manual/initial pull,
+paginated: site settings → categories → tags → brands → attributes+terms → products → images →
+variations, with full `raw`/`meta` preserved) or the signed plugin/webhook push. Product list/detail
+then serve real synced data (image, categories, price, stock, status); the merchant UI shows only a
+minimal subset while everything else stays preserved in `raw`/`meta` and editable in WordPress.
+
+### WordPress connection: plugin pairing vs REST-key fallback
+
+Two ways to connect a store; **WooCommerce credentials never reach the frontend** either way:
+
+1. **JetWeb Connector plugin (preferred — no manual keys).** The `wordpress-plugin/` companion plugin
+   pairs the site to `api.jet-web.ir` and then talks to the backend's signed transport
+   (`POST /plugin/handshake|sync|events|health`). Every request is **HMAC-SHA256 signed over the raw
+   body + timestamp + nonce**, with timestamp-skew and replay protection; the per-site signing secret
+   lives in the server credential vault. The plugin runs the initial full sync in background batches,
+   retries failures, pushes product/order/customer/stock change events, and shows connection status /
+   last sync / last error / a manual re-sync button in WP-admin. Its signed sync envelope is ingested
+   through the **same deep-preservation path** as the REST sync, so raw/meta/categories/tags/brands/
+   attributes/images/variations are all preserved.
+2. **REST key/secret fallback (server-side).** A merchant (or installer) provides a WooCommerce
+   consumer key/secret via the Connect-Site flow; the key/secret are encrypted in the credential
+   vault and used only server-side for `POST /merchant/sites/:siteId/sync` and controlled writes.
+
+**Deployment note for large syncs:** the initial catalog pull / plugin sync envelopes can be large.
+Set Nginx `client_max_body_size` on `api.jet-web.ir` to at least `25m` (image/media **metadata** only —
+no binary image upload is performed, so no large multipart upload limits are required yet). The API
+already streams/paginates list endpoints (100/page). Binary product-image upload is deferred to the
+WordPress/plugin media bridge.
 
 ---
 

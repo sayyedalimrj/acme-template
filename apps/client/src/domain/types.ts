@@ -84,6 +84,10 @@ export interface Product {
   categories: ProductCategory[];
   brand?: ProductBrand;
   images: ProductImage[];
+  /** Storefront URL (WooCommerce permalink), when synced. */
+  permalink?: string;
+  /** wp-admin product edit URL, for the "Open in WordPress" advanced-edit action. */
+  adminEditUrl?: string;
   /** Lifetime units sold — useful for catalog insights and top-product widgets. */
   totalSales?: number;
   /** Future: tiered/bulk pricing. */

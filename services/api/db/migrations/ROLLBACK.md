@@ -11,6 +11,19 @@ reviewed operation.
 - Always take a backup first: `pg_dump <db> | gzip > backup.sql.gz`.
 - Prefer a forward fix-migration over a rollback in production.
 
+## Roll back migration 004 (taxonomy + meta — additive)
+
+```sql
+BEGIN;
+DROP TABLE IF EXISTS synced_product_attribute, synced_product_brand, synced_product_tag,
+  synced_attribute_term, synced_attribute, synced_brand, synced_tag CASCADE;
+ALTER TABLE synced_product DROP COLUMN IF EXISTS meta;
+ALTER TABLE synced_product DROP COLUMN IF EXISTS permalink;
+ALTER TABLE synced_product_variant DROP COLUMN IF EXISTS meta;
+DELETE FROM schema_migrations WHERE version = '004_product_taxonomy_meta.sql';
+COMMIT;
+```
+
 ## Roll back migration 003 (product catalog — additive)
 
 ```sql

@@ -284,6 +284,7 @@ merchantRouter.get(
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const site = await siteFor(req, req.params.siteId);
     const creds = await getWooCredentials(site.id);
+    const adminEditUrl = `${site.url.replace(/\/+$/, '')}/wp-admin/post.php?post=${encodeURIComponent(req.params.productId)}&action=edit`;
     if (creds) {
       const p = await getProduct(creds, req.params.productId);
       res.json({
@@ -293,18 +294,23 @@ merchantRouter.get(
           sku: p.sku,
           status: p.status,
           type: p.type,
+          permalink: p.permalink,
+          admin_edit_url: adminEditUrl,
           price_minor: p.priceMinor,
+          regular_price_minor: p.regularPriceMinor,
+          sale_price_minor: p.salePriceMinor,
           currency: p.currency,
           stock_status: p.stockStatus,
           stock_qty: p.stockQty,
           categories: p.categories.map((c) => ({ external_id: c.externalId, name: c.name })),
+          tags: p.tags.map((tg) => ({ external_id: tg.externalId, name: tg.name })),
           images: p.images.map((i) => ({ src: i.src, alt: i.alt, position: i.position })),
         },
       });
       return;
     }
     const product = await queryOne<{ id: string }>(
-      `SELECT id, external_id, name, sku, status, type, price_minor, currency, stock_status, stock_qty
+      `SELECT id, external_id, name, sku, status, type, permalink, price_minor, currency, stock_status, stock_qty
          FROM synced_product WHERE site_id = $1 AND external_id = $2`,
       [site.id, req.params.productId],
     );
@@ -320,6 +326,12 @@ merchantRouter.get(
         WHERE pc.product_id = $1`,
       [(product as { id: string }).id],
     );
+    const tags = await query(
+      `SELECT t.external_id, t.name FROM synced_product_tag pt
+         JOIN synced_tag t ON t.id = pt.tag_id
+        WHERE pt.product_id = $1`,
+      [(product as { id: string }).id],
+    );
     const variants = await query(
       `SELECT external_id, sku, price_minor, currency, stock_status, stock_qty, attributes
          FROM synced_product_variant WHERE product_id = $1 ORDER BY updated_at DESC`,
@@ -327,7 +339,7 @@ merchantRouter.get(
     );
     const { id: _id, ...productPublic } = product as { id: string } & Record<string, unknown>;
     void _id;
-    res.json({ product: { ...productPublic, images, categories, variants } });
+    res.json({ product: { ...productPublic, admin_edit_url: adminEditUrl, images, categories, tags, variants } });
   }),
 );
 
@@ -497,6 +509,7 @@ const productUpdateSchema = z
   .object({
     name: z.string().trim().min(1).max(300).optional(),
     regularPrice: z.string().trim().regex(/^\d+(\.\d{1,4})?$/).max(20).optional(),
+    salePrice: z.string().trim().regex(/^(\d+(\.\d{1,4})?)?$/).max(20).optional(),
     status: z.enum(['publish', 'draft', 'pending', 'private']).optional(),
     stockQuantity: z.number().int().optional(),
     stockStatus: z.enum(['instock', 'outofstock', 'onbackorder']).optional(),
@@ -522,6 +535,7 @@ merchantRouter.patch(
     const product = await updateProduct(creds, req.params.productId, {
       name: parsed.data.name,
       regularPrice: parsed.data.regularPrice,
+      salePrice: parsed.data.salePrice,
       status: parsed.data.status,
       stockQuantity: parsed.data.stockQuantity,
       manageStock: parsed.data.stockQuantity !== undefined ? true : undefined,

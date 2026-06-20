@@ -68,6 +68,8 @@ describe('http product adapter mapping', () => {
         price_minor: 1850000, currency: 'IRT', stock_status: 'instock', stock_qty: 24,
         images: [{ src: 'https://s/a.jpg', alt: 'a', position: 0 }],
         categories: [{ external_id: '7', name: 'پوشاک' }],
+        permalink: 'https://shop/p/101',
+        admin_edit_url: 'https://shop/wp-admin/post.php?post=101&action=edit',
       },
     } as never);
     const adapter = createHttpProductAdapter();
@@ -76,6 +78,8 @@ describe('http product adapter mapping', () => {
     expect(p.images).toHaveLength(1);
     expect(p.images[0].src).toBe('https://s/a.jpg');
     expect(p.categories).toEqual([{ id: '7', name: 'پوشاک', slug: '7' }]);
+    expect(p.permalink).toBe('https://shop/p/101');
+    expect(p.adminEditUrl).toBe('https://shop/wp-admin/post.php?post=101&action=edit');
   });
 
   it('updateProduct PATCHes the controlled fields and maps the result', async () => {

@@ -17,14 +17,19 @@ import { normalizeAndValidateStoreUrl } from '../util/ssrf';
 import { openSecret, sealSecret, type SealedSecret } from './security/credentialVault';
 import {
   getProduct,
+  listAttributeTerms,
+  listAttributes,
+  listBrands,
   listCategories,
   listCoupons,
   listCustomers,
   listOrders,
   listProductVariations,
   listProducts,
+  listTags,
   verifyWooCredentials,
   type NormalizedProduct,
+  type NormalizedVariation,
   type WooCredentials,
   type WooPage,
 } from './woocommerce/wooClient';
@@ -248,6 +253,9 @@ export async function disconnectSite(siteId: string): Promise<void> {
 export interface SyncStats {
   products: number;
   categories: number;
+  tags: number;
+  brands: number;
+  attributes: number;
   variants: number;
   images: number;
   orders: number;
@@ -256,90 +264,145 @@ export interface SyncStats {
 }
 
 /**
- * Upsert a single product and its related rows (images, category links, variations) idempotently.
+ * Upsert a single product and ALL its related rows idempotently: category/tag/brand links,
+ * per-product attributes, images, and variations. The full WooCommerce payload + meta_data are
+ * preserved on `synced_product.raw` / `.meta` (and per variation), so nothing is ever lost even
+ * though the UI shows only a minimal subset.
  *
- * Product/variation rows upsert on (site_id, external_id). Images and category links are REPLACED
- * per product (delete-then-insert) so repeated syncs never accumulate duplicates. Category links
- * resolve to already-synced `synced_category` rows, so categories must be synced first.
- * Returns the variant + image counts written for this product.
+ * Variations are passed in (not fetched here) so this works for BOTH transports: the REST sync
+ * fetches them via the API, while the plugin transport supplies them from its signed envelope.
+ * Product/variation rows upsert on (site_id, external_id); per-product links/images/attributes are
+ * replaced (delete-then-insert), so repeated syncs never duplicate. Taxonomy links resolve to
+ * already-synced `synced_category/tag/brand` rows, so sync those first.
  */
 export async function upsertProductFull(
   siteId: string,
   tenantId: string,
-  creds: WooCredentials,
   p: NormalizedProduct,
+  variations: ReadonlyArray<NormalizedVariation> = [],
 ): Promise<{ variants: number; images: number }> {
   const productRow = (
     await query<{ id: string }>(
-      `INSERT INTO synced_product (site_id, tenant_id, external_id, name, sku, status, type, price_minor, currency, stock_status, stock_qty, raw, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now())
+      `INSERT INTO synced_product (site_id, tenant_id, external_id, name, sku, status, type, permalink, price_minor, currency, stock_status, stock_qty, meta, raw, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, now())
        ON CONFLICT (site_id, external_id) DO UPDATE SET
          name = EXCLUDED.name, sku = EXCLUDED.sku, status = EXCLUDED.status, type = EXCLUDED.type,
-         price_minor = EXCLUDED.price_minor, stock_status = EXCLUDED.stock_status,
-         stock_qty = EXCLUDED.stock_qty, raw = EXCLUDED.raw, updated_at = now()
+         permalink = EXCLUDED.permalink, price_minor = EXCLUDED.price_minor,
+         stock_status = EXCLUDED.stock_status, stock_qty = EXCLUDED.stock_qty,
+         meta = EXCLUDED.meta, raw = EXCLUDED.raw, updated_at = now()
        RETURNING id`,
       [
-        siteId, tenantId, p.externalId, p.name, p.sku, p.status, p.type, p.priceMinor,
-        p.currency, p.stockStatus, p.stockQty, JSON.stringify(p.raw),
+        siteId, tenantId, p.externalId, p.name, p.sku, p.status, p.type, p.permalink, p.priceMinor,
+        p.currency, p.stockStatus, p.stockQty, JSON.stringify(p.meta ?? null), JSON.stringify(p.raw),
       ],
     )
   )[0];
+  const productId = productRow.id;
 
-  // Replace category links (idempotent): drop existing, re-link to synced categories.
-  await query(`DELETE FROM synced_product_category WHERE product_id = $1`, [productRow.id]);
+  // Category links (replace).
+  await query(`DELETE FROM synced_product_category WHERE product_id = $1`, [productId]);
   for (const cat of p.categories) {
     await query(
       `INSERT INTO synced_product_category (product_id, category_id, tenant_id, site_id)
          SELECT $1, sc.id, $2, $3 FROM synced_category sc
           WHERE sc.site_id = $3 AND sc.external_id = $4
        ON CONFLICT (product_id, category_id) DO NOTHING`,
-      [productRow.id, tenantId, siteId, cat.externalId],
+      [productId, tenantId, siteId, cat.externalId],
     );
   }
 
-  // Replace images (idempotent): drop existing, re-insert position-ordered.
-  await query(`DELETE FROM synced_product_image WHERE product_id = $1`, [productRow.id]);
+  // Tag links (replace).
+  await query(`DELETE FROM synced_product_tag WHERE product_id = $1`, [productId]);
+  for (const tag of p.tags) {
+    await query(
+      `INSERT INTO synced_product_tag (product_id, tag_id, tenant_id, site_id)
+         SELECT $1, st.id, $2, $3 FROM synced_tag st
+          WHERE st.site_id = $3 AND st.external_id = $4
+       ON CONFLICT (product_id, tag_id) DO NOTHING`,
+      [productId, tenantId, siteId, tag.externalId],
+    );
+  }
+
+  // Brand links (replace). Brands are best-effort (taxonomy may be absent).
+  await query(`DELETE FROM synced_product_brand WHERE product_id = $1`, [productId]);
+  for (const brand of p.brands) {
+    await query(
+      `INSERT INTO synced_product_brand (product_id, brand_id, tenant_id, site_id)
+         SELECT $1, sb.id, $2, $3 FROM synced_brand sb
+          WHERE sb.site_id = $3 AND sb.external_id = $4
+       ON CONFLICT (product_id, brand_id) DO NOTHING`,
+      [productId, tenantId, siteId, brand.externalId],
+    );
+  }
+
+  // Per-product attributes (replace) — captures pa_size etc. with options + variation flag.
+  await query(`DELETE FROM synced_product_attribute WHERE product_id = $1`, [productId]);
+  for (const attr of p.productAttributes) {
+    await query(
+      `INSERT INTO synced_product_attribute (tenant_id, site_id, product_id, external_id, name, slug, options, is_variation, is_visible, position, raw)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+      [
+        tenantId, siteId, productId, attr.externalId, attr.name, attr.slug,
+        JSON.stringify(attr.options), attr.isVariation, attr.isVisible, attr.position,
+        JSON.stringify(attr.raw),
+      ],
+    );
+  }
+
+  // Images (replace, position-ordered).
+  await query(`DELETE FROM synced_product_image WHERE product_id = $1`, [productId]);
   for (const img of p.images) {
     await query(
       `INSERT INTO synced_product_image (tenant_id, site_id, product_id, external_id, src, alt, position, raw)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [tenantId, siteId, productRow.id, img.externalId, img.src, img.alt, img.position, null],
+      [tenantId, siteId, productId, img.externalId, img.src, img.alt, img.position, null],
     );
   }
 
-  // Variations for variable products (upsert by site+external_id).
-  let variants = 0;
-  if (p.type === 'variable') {
-    variants = await syncAllWooPages(
-      (page) => listProductVariations(creds, p.externalId, { page, pageSize: 100 }),
-      async (v) => {
-        await query(
-          `INSERT INTO synced_product_variant (tenant_id, site_id, product_id, external_id, sku, price_minor, currency, stock_status, stock_qty, attributes, raw, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, now())
-           ON CONFLICT (site_id, external_id) DO UPDATE SET
-             product_id = EXCLUDED.product_id, sku = EXCLUDED.sku, price_minor = EXCLUDED.price_minor,
-             stock_status = EXCLUDED.stock_status, stock_qty = EXCLUDED.stock_qty,
-             attributes = EXCLUDED.attributes, raw = EXCLUDED.raw, updated_at = now()`,
-          [
-            tenantId, siteId, productRow.id, v.externalId, v.sku, v.priceMinor, v.currency,
-            v.stockStatus, v.stockQty, JSON.stringify(v.attributes ?? null), JSON.stringify(v.raw),
-          ],
-        );
-      },
+  // Variations (upsert; full variation meta preserved).
+  for (const v of variations) {
+    await query(
+      `INSERT INTO synced_product_variant (tenant_id, site_id, product_id, external_id, sku, price_minor, currency, stock_status, stock_qty, attributes, meta, raw, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now())
+       ON CONFLICT (site_id, external_id) DO UPDATE SET
+         product_id = EXCLUDED.product_id, sku = EXCLUDED.sku, price_minor = EXCLUDED.price_minor,
+         stock_status = EXCLUDED.stock_status, stock_qty = EXCLUDED.stock_qty,
+         attributes = EXCLUDED.attributes, meta = EXCLUDED.meta, raw = EXCLUDED.raw, updated_at = now()`,
+      [
+        tenantId, siteId, productId, v.externalId, v.sku, v.priceMinor, v.currency,
+        v.stockStatus, v.stockQty, JSON.stringify(v.attributes ?? null),
+        JSON.stringify(v.meta ?? null), JSON.stringify(v.raw),
+      ],
     );
   }
 
-  return { variants, images: p.images.length };
+  return { variants: variations.length, images: p.images.length };
 }
 
-/** Re-pull one product (and its images/categories/variations) into the read-model after a write. */
+/** Fetch all variations of a variable product via REST (paginated). */
+async function fetchAllVariations(
+  creds: WooCredentials,
+  productExternalId: string,
+): Promise<NormalizedVariation[]> {
+  const all: NormalizedVariation[] = [];
+  await syncAllWooPages(
+    (page) => listProductVariations(creds, productExternalId, { page, pageSize: 100 }),
+    async (v) => {
+      all.push(v);
+    },
+  );
+  return all;
+}
+
+/** Re-pull one product (+ images/categories/tags/brands/attributes/variations) after a write. */
 export async function resyncProduct(siteId: string, productExternalId: string): Promise<void> {
   const site = await getSite(siteId);
   if (!site) throw notFound('فروشگاه یافت نشد.');
   const creds = await getWooCredentials(siteId);
   if (!creds) return;
   const product = await getProduct(creds, productExternalId);
-  await upsertProductFull(siteId, site.tenant_id, creds, product);
+  const variations = product.type === 'variable' ? await fetchAllVariations(creds, productExternalId) : [];
+  await upsertProductFull(siteId, site.tenant_id, product, variations);
 }
 
 /** Pull a normalized read-model from WooCommerce into the DB (idempotent upserts). */
@@ -357,7 +420,8 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
   )[0];
 
   const stats: SyncStats = {
-    products: 0, categories: 0, variants: 0, images: 0, orders: 0, customers: 0, coupons: 0,
+    products: 0, categories: 0, tags: 0, brands: 0, attributes: 0, variants: 0, images: 0,
+    orders: 0, customers: 0, coupons: 0,
   };
   const pageSize = 100;
   try {
@@ -376,10 +440,72 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
       },
     );
 
+    // Tags.
+    stats.tags = await syncAllWooPages(
+      (page) => listTags(creds, { page, pageSize }),
+      async (t) => {
+        await query(
+          `INSERT INTO synced_tag (site_id, tenant_id, external_id, name, slug, raw, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6, now())
+           ON CONFLICT (site_id, external_id) DO UPDATE SET
+             name = EXCLUDED.name, slug = EXCLUDED.slug, raw = EXCLUDED.raw, updated_at = now()`,
+          [siteId, site.tenant_id, t.externalId, t.name, t.slug, JSON.stringify(t.raw)],
+        );
+      },
+    );
+
+    // Brands — best-effort: the product_brand taxonomy/endpoint may not exist on a store.
+    try {
+      stats.brands = await syncAllWooPages(
+        (page) => listBrands(creds, { page, pageSize }),
+        async (b) => {
+          await query(
+            `INSERT INTO synced_brand (site_id, tenant_id, external_id, name, slug, raw, updated_at)
+               VALUES ($1,$2,$3,$4,$5,$6, now())
+             ON CONFLICT (site_id, external_id) DO UPDATE SET
+               name = EXCLUDED.name, slug = EXCLUDED.slug, raw = EXCLUDED.raw, updated_at = now()`,
+            [siteId, site.tenant_id, b.externalId, b.name, b.slug, JSON.stringify(b.raw)],
+          );
+        },
+      );
+    } catch {
+      stats.brands = 0; // taxonomy absent → not an error
+    }
+
+    // Global attributes + their terms (e.g. pa_size → 1/2/3).
+    try {
+      const attributes = await listAttributes(creds);
+      stats.attributes = attributes.length;
+      for (const a of attributes) {
+        await query(
+          `INSERT INTO synced_attribute (site_id, tenant_id, external_id, name, slug, type, raw, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7, now())
+           ON CONFLICT (site_id, external_id) DO UPDATE SET
+             name = EXCLUDED.name, slug = EXCLUDED.slug, type = EXCLUDED.type, raw = EXCLUDED.raw, updated_at = now()`,
+          [siteId, site.tenant_id, a.externalId, a.name, a.slug, a.type, JSON.stringify(a.raw)],
+        );
+        await syncAllWooPages(
+          (page) => listAttributeTerms(creds, a.externalId, { page, pageSize }),
+          async (term) => {
+            await query(
+              `INSERT INTO synced_attribute_term (site_id, tenant_id, attribute_external_id, external_id, name, slug, raw, updated_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7, now())
+               ON CONFLICT (site_id, attribute_external_id, external_id) DO UPDATE SET
+                 name = EXCLUDED.name, slug = EXCLUDED.slug, raw = EXCLUDED.raw, updated_at = now()`,
+              [siteId, site.tenant_id, term.attributeExternalId, term.externalId, term.name, term.slug, JSON.stringify(term.raw)],
+            );
+          },
+        );
+      }
+    } catch {
+      stats.attributes = 0; // attribute endpoint restricted → leave product-level attributes intact
+    }
+
     stats.products = await syncAllWooPages(
       (page) => listProducts(creds, { page, pageSize }),
       async (p) => {
-        const counts = await upsertProductFull(siteId, site.tenant_id, creds, p);
+        const variations = p.type === 'variable' ? await fetchAllVariations(creds, p.externalId) : [];
+        const counts = await upsertProductFull(siteId, site.tenant_id, p, variations);
         stats.variants += counts.variants;
         stats.images += counts.images;
       },
