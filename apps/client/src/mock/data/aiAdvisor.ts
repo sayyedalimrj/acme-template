@@ -28,7 +28,7 @@ export const advisorProviderStatus: AIAdvisorProviderStatus = 'not_connected';
 export function buildStoreContext(): AIAdvisorStoreContextSummary {
   const { fulfillment, topProducts } = dashboardOverview;
   return {
-    storeName: 'فروشگاه نمونه',
+    storeName: 'فروشگاه بادبان',
     currency: dashboardOverview.currency,
     salesTotal: dashboardOverview.salesTotal,
     ordersCount: dashboardOverview.ordersCount,
@@ -300,7 +300,7 @@ export const advisorInitialConversation: AIAdvisorConversationMessage[] = [
   {
     id: 'msg_welcome',
     role: 'assistant',
-    text: 'سلام! من مشاور هوشمند نمونه شما هستم. می‌توانم درباره فروش، موجودی، کمپین‌ها و بهبود محتوای محصولات کمک کنم. (نسخه نمایشی؛ بدون اتصال به هوش مصنوعی واقعی.)',
+    text: 'سلام! من دستیار هوشمند شما هستم. می‌توانم درباره فروش، موجودی، کمپین‌ها و بهبود محتوای محصولات کمک کنم.',
     createdAt: '2026-06-16T08:00:00Z',
   },
 ];

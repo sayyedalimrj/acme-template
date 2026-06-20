@@ -5,7 +5,8 @@
  * upsert the read-models idempotently and record plugin_event rows (deduped on idempotency_key).
  */
 import { query } from '../../db';
-import { getSite } from '../sites';
+import { getSite, upsertProductFull } from '../sites';
+import type { NormalizedProduct, NormalizedVariation } from '../woocommerce/wooClient';
 
 export interface SyncEnvelope {
   schemaVersion: string;
@@ -17,6 +18,9 @@ export interface SyncEnvelope {
     currency?: string;
   };
   data?: {
+    categories?: ReadonlyArray<Record<string, unknown>>;
+    tags?: ReadonlyArray<Record<string, unknown>>;
+    brands?: ReadonlyArray<Record<string, unknown>>;
     products?: ReadonlyArray<Record<string, unknown>>;
     orders?: ReadonlyArray<Record<string, unknown>>;
     customers?: ReadonlyArray<Record<string, unknown>>;
@@ -36,6 +40,84 @@ const n = (v: unknown, d = 0): number => {
   return Number.isFinite(x) ? x : d;
 };
 const s = (v: unknown): string | null => (v === undefined || v === null ? null : String(v));
+const nq = (v: unknown): number | null => (v === undefined || v === null ? null : Number(v));
+
+/**
+ * Map a plugin-envelope product item to a NormalizedProduct so the SAME persistence path
+ * (`upsertProductFull`) preserves the full structure — categories, tags, brands, attributes,
+ * images, variations, meta_data, and the raw payload — exactly like the REST sync. Missing
+ * sections default to empty/null, so a minimal (flat) envelope still upserts the core fields and
+ * loses nothing it didn't send.
+ */
+function envelopeProductToNormalized(
+  p: Record<string, unknown>,
+  defaultCurrency: string,
+): { product: NormalizedProduct; variations: NormalizedVariation[] } {
+  const arr = (v: unknown): Record<string, unknown>[] =>
+    Array.isArray(v) ? (v as Record<string, unknown>[]) : [];
+  const ref = (c: Record<string, unknown>) => ({
+    externalId: String(c.externalId ?? c.external_id ?? c.id ?? ''),
+    name: s(c.name),
+    slug: s(c.slug),
+  });
+  const currency = s(p.currency) ?? defaultCurrency;
+
+  const product: NormalizedProduct = {
+    externalId: String(p.externalId ?? p.external_id ?? p.id ?? ''),
+    name: s(p.name) ?? '',
+    sku: s(p.sku),
+    status: s(p.status),
+    type: s(p.type),
+    permalink: s(p.permalink),
+    priceMinor: n(p.priceMinor ?? p.price_minor),
+    regularPriceMinor: n(p.regularPriceMinor ?? p.regular_price_minor ?? p.priceMinor ?? p.price_minor),
+    salePriceMinor: nq(p.salePriceMinor ?? p.sale_price_minor),
+    currency,
+    stockStatus: s(p.stockStatus ?? p.stock_status),
+    stockQty: nq(p.stockQty ?? p.stock_qty),
+    categories: arr(p.categories).map((c) => ({ externalId: ref(c).externalId, name: ref(c).name })),
+    tags: arr(p.tags).map(ref),
+    brands: arr(p.brands).map(ref),
+    productAttributes: arr(p.attributes ?? p.productAttributes).map((a, i) => ({
+      externalId:
+        a.externalId ?? a.external_id ?? a.id
+          ? String(a.externalId ?? a.external_id ?? a.id)
+          : null,
+      name: String(a.name ?? ''),
+      slug: s(a.slug),
+      options: Array.isArray(a.options) ? (a.options as unknown[]).map((o) => String(o)) : [],
+      isVariation: Boolean(a.isVariation ?? a.variation),
+      isVisible: a.isVisible === undefined && a.visible === undefined ? true : Boolean(a.isVisible ?? a.visible),
+      position: typeof a.position === 'number' ? (a.position as number) : i,
+      raw: a,
+    })),
+    images: arr(p.images)
+      .map((img, i) => ({
+        externalId: img.externalId ?? img.id ? String(img.externalId ?? img.id) : null,
+        src: String(img.src ?? ''),
+        alt: s(img.alt),
+        position: typeof img.position === 'number' ? (img.position as number) : i,
+      }))
+      .filter((img) => img.src.length > 0),
+    attributes: p.attributes ?? null,
+    meta: p.meta ?? p.meta_data ?? null,
+    raw: (p.raw as Record<string, unknown>) ?? p,
+  };
+
+  const variations: NormalizedVariation[] = arr(p.variations).map((v) => ({
+    externalId: String(v.externalId ?? v.external_id ?? v.id ?? ''),
+    sku: s(v.sku),
+    priceMinor: n(v.priceMinor ?? v.price_minor),
+    currency,
+    stockStatus: s(v.stockStatus ?? v.stock_status),
+    stockQty: nq(v.stockQty ?? v.stock_qty),
+    attributes: v.attributes ?? null,
+    meta: v.meta ?? v.meta_data ?? null,
+    raw: (v.raw as Record<string, unknown>) ?? v,
+  }));
+
+  return { product, variations };
+}
 
 export async function ingestSyncEnvelope(
   siteId: string,
@@ -54,22 +136,49 @@ export async function ingestSyncEnvelope(
 
   const stats: IngestStats = { products: 0, orders: 0, customers: 0, coupons: 0 };
   try {
+    // Taxonomies first (if the envelope includes them) so product links can resolve. Optional —
+    // a minimal envelope omits these and product taxonomy data still survives in `raw`.
+    for (const c of envelope.data?.categories ?? []) {
+      const ext = s(c.externalId ?? c.external_id ?? c.id);
+      if (!ext) continue;
+      await query(
+        `INSERT INTO synced_category (site_id, tenant_id, external_id, parent_external_id, name, slug, raw, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7, now())
+         ON CONFLICT (site_id, external_id) DO UPDATE SET
+           parent_external_id=EXCLUDED.parent_external_id, name=EXCLUDED.name, slug=EXCLUDED.slug,
+           raw=EXCLUDED.raw, updated_at=now()`,
+        [siteId, tenantId, ext, s(c.parentExternalId ?? c.parent_external_id ?? c.parent), s(c.name) ?? '', s(c.slug), JSON.stringify(c)],
+      );
+    }
+    for (const t of envelope.data?.tags ?? []) {
+      const ext = s(t.externalId ?? t.external_id ?? t.id);
+      if (!ext) continue;
+      await query(
+        `INSERT INTO synced_tag (site_id, tenant_id, external_id, name, slug, raw, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6, now())
+         ON CONFLICT (site_id, external_id) DO UPDATE SET name=EXCLUDED.name, slug=EXCLUDED.slug, raw=EXCLUDED.raw, updated_at=now()`,
+        [siteId, tenantId, ext, s(t.name) ?? '', s(t.slug), JSON.stringify(t)],
+      );
+    }
+    for (const b of envelope.data?.brands ?? []) {
+      const ext = s(b.externalId ?? b.external_id ?? b.id);
+      if (!ext) continue;
+      await query(
+        `INSERT INTO synced_brand (site_id, tenant_id, external_id, name, slug, raw, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6, now())
+         ON CONFLICT (site_id, external_id) DO UPDATE SET name=EXCLUDED.name, slug=EXCLUDED.slug, raw=EXCLUDED.raw, updated_at=now()`,
+        [siteId, tenantId, ext, s(b.name) ?? '', s(b.slug), JSON.stringify(b)],
+      );
+    }
+
     for (const p of envelope.data?.products ?? []) {
       const ext = s(p.externalId ?? p.external_id ?? p.id);
       if (!ext) continue;
-      await query(
-        `INSERT INTO synced_product (site_id, tenant_id, external_id, name, sku, status, price_minor, currency, stock_status, stock_qty, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now())
-         ON CONFLICT (site_id, external_id) DO UPDATE SET
-           name=EXCLUDED.name, sku=EXCLUDED.sku, status=EXCLUDED.status, price_minor=EXCLUDED.price_minor,
-           stock_status=EXCLUDED.stock_status, stock_qty=EXCLUDED.stock_qty, updated_at=now()`,
-        [
-          siteId, tenantId, ext, s(p.name) ?? '', s(p.sku), s(p.status),
-          n(p.priceMinor ?? p.price_minor), s(p.currency) ?? defaultCurrency,
-          s(p.stockStatus ?? p.stock_status),
-          p.stockQty ?? p.stock_qty ?? null,
-        ],
-      );
+      // Route through the shared deep-preservation path: raw/meta/categories/tags/brands/
+      // attributes/images/variations are all persisted when present (lossless), with safe
+      // defaults when the envelope is minimal.
+      const { product, variations } = envelopeProductToNormalized(p, defaultCurrency);
+      await upsertProductFull(siteId, tenantId, product, variations);
       stats.products += 1;
     }
 

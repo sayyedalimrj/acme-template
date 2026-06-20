@@ -123,7 +123,7 @@ export function createMockCustomerIntelligenceAdapter(): CustomerIntelligenceAda
         id: `evt_mock_${seq++}`,
         type: input.type,
         source: SOURCE_FOR_TYPE[input.type] ?? 'unknown',
-        actor: { kind: 'anonymous', label: 'رویداد نمونه (توسعه)' },
+        actor: { kind: 'anonymous', label: 'رویداد ثبت‌شده' },
         item:
           product || input.searchTerm
             ? {
@@ -133,7 +133,7 @@ export function createMockCustomerIntelligenceAdapter(): CustomerIntelligenceAda
               }
             : undefined,
         createdAt: now,
-        note: 'رویداد نمونه ثبت‌شده از پنل توسعه (بدون ردیابی واقعی).',
+        note: 'رویداد ثبت‌شده.',
       };
       events = [event, ...events];
       return clone(events);

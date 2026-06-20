@@ -84,6 +84,10 @@ export interface Product {
   categories: ProductCategory[];
   brand?: ProductBrand;
   images: ProductImage[];
+  /** Storefront URL (WooCommerce permalink), when synced. */
+  permalink?: string;
+  /** wp-admin product edit URL, for the "Open in WordPress" advanced-edit action. */
+  adminEditUrl?: string;
   /** Lifetime units sold — useful for catalog insights and top-product widgets. */
   totalSales?: number;
   /** Future: tiered/bulk pricing. */
@@ -250,6 +254,8 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  /** Mobile number (frontend-safe identifier; used as a display-name fallback). */
+  mobile?: string;
   /** Optional profile photo (URL or data URI). Frontend-safe; never a credential. */
   avatarUrl?: string;
   /** Placeholder for future roles/permissions; not enforced yet. */
@@ -392,6 +398,21 @@ export interface ProductListQuery {
   status?: ProductStatus;
   page?: number;
   pageSize?: number;
+}
+
+/**
+ * Controlled product-update input (merchant edit). Only fields the backend can safely write to
+ * WooCommerce are included. `regularPrice` is a major-unit number (e.g. 120000 Toman). Images are
+ * intentionally NOT editable here yet (no binary upload path); category assignment uses synced
+ * category ids.
+ */
+export interface ProductUpdateInput {
+  name?: string;
+  regularPrice?: number;
+  status?: ProductStatus;
+  stockQuantity?: number;
+  stockStatus?: StockStatus;
+  categoryIds?: string[];
 }
 
 export interface OrderListQuery {

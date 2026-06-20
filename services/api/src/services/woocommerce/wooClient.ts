@@ -24,15 +24,103 @@ export interface WooPage<T> {
   total: number;
 }
 
+export interface NormalizedProductImage {
+  externalId: string | null;
+  src: string;
+  alt: string | null;
+  position: number;
+}
+
+export interface NormalizedProductCategoryRef {
+  externalId: string;
+  name: string | null;
+}
+
+export interface NormalizedProductRef {
+  externalId: string;
+  name: string | null;
+  slug?: string | null;
+}
+
+export interface NormalizedProductAttribute {
+  externalId: string | null;
+  name: string;
+  slug: string | null;
+  options: string[];
+  isVariation: boolean;
+  isVisible: boolean;
+  position: number;
+  raw: Record<string, unknown>;
+}
+
 export interface NormalizedProduct {
   externalId: string;
   name: string;
   sku: string | null;
   status: string | null;
+  type: string | null;
+  permalink: string | null;
+  priceMinor: number;
+  regularPriceMinor: number;
+  salePriceMinor: number | null;
+  currency: string;
+  stockStatus: string | null;
+  stockQty: number | null;
+  categories: NormalizedProductCategoryRef[];
+  tags: NormalizedProductRef[];
+  brands: NormalizedProductRef[];
+  productAttributes: NormalizedProductAttribute[];
+  images: NormalizedProductImage[];
+  attributes: unknown;
+  /** Full `meta_data`/postmeta — preserved losslessly (queryable JSONB), never shown raw in UI. */
+  meta: unknown;
+  /** Raw WooCommerce payload, preserved server-side for forward compatibility (never sent to UI). */
+  raw: Record<string, unknown>;
+}
+
+export interface NormalizedCategory {
+  externalId: string;
+  parentExternalId: string | null;
+  name: string;
+  slug: string | null;
+  raw: Record<string, unknown>;
+}
+
+/** Tag / brand taxonomy term (same shape). brands come from the optional product_brand taxonomy. */
+export interface NormalizedTaxonomyTerm {
+  externalId: string;
+  name: string;
+  slug: string | null;
+  raw: Record<string, unknown>;
+}
+
+export interface NormalizedAttribute {
+  externalId: string;
+  name: string;
+  slug: string | null;
+  type: string | null;
+  raw: Record<string, unknown>;
+}
+
+export interface NormalizedAttributeTerm {
+  attributeExternalId: string;
+  externalId: string;
+  name: string;
+  slug: string | null;
+  raw: Record<string, unknown>;
+}
+
+export interface NormalizedVariation {
+  externalId: string;
+  sku: string | null;
   priceMinor: number;
   currency: string;
   stockStatus: string | null;
   stockQty: number | null;
+  attributes: unknown;
+  /** Full variation `meta_data` — preserved losslessly. */
+  meta: unknown;
+  raw: Record<string, unknown>;
 }
 
 export interface NormalizedOrder {
@@ -191,6 +279,109 @@ export async function getProduct(
   return normalizeProduct(json as Record<string, unknown>);
 }
 
+export async function listCategories(
+  creds: WooCredentials,
+  q: ListQuery = {},
+): Promise<WooPage<NormalizedCategory>> {
+  const { page, per_page } = pageParams(q);
+  const { json, total } = await wooFetch(creds, '/products/categories', { page, per_page });
+  const rows = Array.isArray(json) ? json : [];
+  return {
+    page,
+    pageSize: per_page,
+    total,
+    items: rows.map((c) => normalizeCategory(c as Record<string, unknown>)),
+  };
+}
+
+export async function listProductVariations(
+  creds: WooCredentials,
+  productId: string,
+  q: ListQuery = {},
+): Promise<WooPage<NormalizedVariation>> {
+  const { page, per_page } = pageParams(q);
+  const { json, total } = await wooFetch(
+    creds,
+    `/products/${encodeURIComponent(productId)}/variations`,
+    { page, per_page },
+  );
+  const rows = Array.isArray(json) ? json : [];
+  return {
+    page,
+    pageSize: per_page,
+    total,
+    items: rows.map((v) => normalizeVariation(v as Record<string, unknown>)),
+  };
+}
+
+export async function listTags(
+  creds: WooCredentials,
+  q: ListQuery = {},
+): Promise<WooPage<NormalizedTaxonomyTerm>> {
+  const { page, per_page } = pageParams(q);
+  const { json, total } = await wooFetch(creds, '/products/tags', { page, per_page });
+  const rows = Array.isArray(json) ? json : [];
+  return { page, pageSize: per_page, total, items: rows.map((t) => normalizeTaxonomyTerm(t as Record<string, unknown>)) };
+}
+
+/**
+ * Brands come from the optional `product_brand` taxonomy (WooCommerce Brands / Woodmart / Perfect
+ * Brands). The endpoint may not exist on a given store — callers treat a failure as "no brands".
+ */
+export async function listBrands(
+  creds: WooCredentials,
+  q: ListQuery = {},
+): Promise<WooPage<NormalizedTaxonomyTerm>> {
+  const { page, per_page } = pageParams(q);
+  const { json, total } = await wooFetch(creds, '/products/brands', { page, per_page });
+  const rows = Array.isArray(json) ? json : [];
+  return { page, pageSize: per_page, total, items: rows.map((b) => normalizeTaxonomyTerm(b as Record<string, unknown>)) };
+}
+
+export async function listAttributes(creds: WooCredentials): Promise<NormalizedAttribute[]> {
+  const { json } = await wooFetch(creds, '/products/attributes', { per_page: 100 });
+  const rows = Array.isArray(json) ? json : [];
+  return rows.map((a) => {
+    const r = a as Record<string, unknown>;
+    return {
+      externalId: String(r.id ?? ''),
+      name: String(r.name ?? ''),
+      slug: (r.slug as string) || null,
+      type: (r.type as string) || null,
+      raw: r,
+    };
+  });
+}
+
+export async function listAttributeTerms(
+  creds: WooCredentials,
+  attributeExternalId: string,
+  q: ListQuery = {},
+): Promise<WooPage<NormalizedAttributeTerm>> {
+  const { page, per_page } = pageParams(q);
+  const { json, total } = await wooFetch(
+    creds,
+    `/products/attributes/${encodeURIComponent(attributeExternalId)}/terms`,
+    { page, per_page },
+  );
+  const rows = Array.isArray(json) ? json : [];
+  return {
+    page,
+    pageSize: per_page,
+    total,
+    items: rows.map((t) => {
+      const r = t as Record<string, unknown>;
+      return {
+        attributeExternalId,
+        externalId: String(r.id ?? ''),
+        name: String(r.name ?? ''),
+        slug: (r.slug as string) || null,
+        raw: r,
+      };
+    }),
+  };
+}
+
 export async function listOrders(
   creds: WooCredentials,
   q: ListQuery = {},
@@ -295,6 +486,51 @@ export async function updateOrderStatus(
   return normalizeOrder(json as Record<string, unknown>);
 }
 
+export interface ProductUpdateInput {
+  name?: string;
+  /** Major-unit price string (e.g. "120000"); WooCommerce stores prices as strings. */
+  regularPrice?: string;
+  /** Major-unit sale price string. Empty string clears the sale. */
+  salePrice?: string;
+  status?: string;
+  manageStock?: boolean;
+  stockQuantity?: number;
+  stockStatus?: string;
+  /** WooCommerce category external ids to assign. */
+  categoryExternalIds?: ReadonlyArray<string>;
+  /**
+   * Images by EXISTING WooCommerce media id or already-hosted URL. No binary upload is performed
+   * here — that is the only safe write path until a media-upload backend exists.
+   */
+  images?: ReadonlyArray<{ id?: string; src?: string }>;
+}
+
+/** Update a WooCommerce product (controlled fields only; requires manage permission upstream). */
+export async function updateProduct(
+  creds: WooCredentials,
+  productId: string,
+  input: ProductUpdateInput,
+): Promise<NormalizedProduct> {
+  const body: Record<string, unknown> = {};
+  if (input.name !== undefined) body.name = input.name;
+  if (input.regularPrice !== undefined) body.regular_price = input.regularPrice;
+  if (input.salePrice !== undefined) body.sale_price = input.salePrice;
+  if (input.status !== undefined) body.status = input.status;
+  if (input.manageStock !== undefined) body.manage_stock = input.manageStock;
+  if (input.stockQuantity !== undefined) body.stock_quantity = input.stockQuantity;
+  if (input.stockStatus !== undefined) body.stock_status = input.stockStatus;
+  if (input.categoryExternalIds !== undefined) {
+    body.categories = input.categoryExternalIds.map((id) => ({ id: Number(id) || id }));
+  }
+  if (input.images !== undefined) {
+    body.images = input.images.map((img) =>
+      img.id !== undefined ? { id: Number(img.id) || img.id } : { src: img.src },
+    );
+  }
+  const { json } = await wooPut(creds, `/products/${encodeURIComponent(productId)}`, body);
+  return normalizeProduct(json as Record<string, unknown>);
+}
+
 async function wooPut(
   creds: WooCredentials,
   path: string,
@@ -330,15 +566,89 @@ async function wooPut(
 
 function normalizeProduct(p: Record<string, unknown>): NormalizedProduct {
   const currency = 'IRT';
+  const rawCategories = Array.isArray(p.categories) ? (p.categories as Record<string, unknown>[]) : [];
+  const rawTags = Array.isArray(p.tags) ? (p.tags as Record<string, unknown>[]) : [];
+  const rawBrands = Array.isArray(p.brands) ? (p.brands as Record<string, unknown>[]) : [];
+  const rawImages = Array.isArray(p.images) ? (p.images as Record<string, unknown>[]) : [];
+  const rawAttributes = Array.isArray(p.attributes) ? (p.attributes as Record<string, unknown>[]) : [];
+  const ref = (c: Record<string, unknown>): NormalizedProductRef => ({
+    externalId: String(c.id ?? ''),
+    name: (c.name as string) || null,
+    slug: (c.slug as string) || null,
+  });
+  const sale = String(p.sale_price ?? '');
   return {
     externalId: String(p.id ?? ''),
     name: String(p.name ?? ''),
     sku: (p.sku as string) || null,
     status: (p.status as string) || null,
+    type: (p.type as string) || null,
+    permalink: (p.permalink as string) || null,
     priceMinor: toMinorUnits(String(p.price ?? '0'), currency),
+    regularPriceMinor: toMinorUnits(String(p.regular_price ?? p.price ?? '0'), currency),
+    salePriceMinor: sale ? toMinorUnits(sale, currency) : null,
     currency,
     stockStatus: (p.stock_status as string) || null,
     stockQty: p.stock_quantity === null || p.stock_quantity === undefined ? null : Number(p.stock_quantity),
+    categories: rawCategories.map((c) => ({ externalId: String(c.id ?? ''), name: (c.name as string) || null })),
+    tags: rawTags.map(ref),
+    brands: rawBrands.map(ref),
+    productAttributes: rawAttributes.map((a, i) => ({
+      externalId: a.id === undefined || a.id === null || Number(a.id) === 0 ? null : String(a.id),
+      name: String(a.name ?? ''),
+      slug: (a.slug as string) || null,
+      options: Array.isArray(a.options) ? (a.options as unknown[]).map((o) => String(o)) : [],
+      isVariation: Boolean(a.variation),
+      isVisible: a.visible === undefined ? true : Boolean(a.visible),
+      position: typeof a.position === 'number' ? (a.position as number) : i,
+      raw: a,
+    })),
+    images: rawImages.map((img, i) => ({
+      externalId: img.id === undefined || img.id === null ? null : String(img.id),
+      src: String(img.src ?? ''),
+      alt: (img.alt as string) || null,
+      position: typeof img.position === 'number' ? (img.position as number) : i,
+    })).filter((img) => img.src.length > 0),
+    attributes: p.attributes ?? null,
+    meta: p.meta_data ?? null,
+    raw: p,
+  };
+}
+
+function normalizeCategory(c: Record<string, unknown>): NormalizedCategory {
+  const parent = c.parent === undefined || c.parent === null || Number(c.parent) === 0
+    ? null
+    : String(c.parent);
+  return {
+    externalId: String(c.id ?? ''),
+    parentExternalId: parent,
+    name: String(c.name ?? ''),
+    slug: (c.slug as string) || null,
+    raw: c,
+  };
+}
+
+function normalizeTaxonomyTerm(c: Record<string, unknown>): NormalizedTaxonomyTerm {
+  return {
+    externalId: String(c.id ?? ''),
+    name: String(c.name ?? ''),
+    slug: (c.slug as string) || null,
+    raw: c,
+  };
+}
+
+function normalizeVariation(v: Record<string, unknown>): NormalizedVariation {
+  const currency = 'IRT';
+  return {
+    externalId: String(v.id ?? ''),
+    sku: (v.sku as string) || null,
+    priceMinor: toMinorUnits(String(v.price ?? '0'), currency),
+    currency,
+    stockStatus: (v.stock_status as string) || null,
+    stockQty: v.stock_quantity === null || v.stock_quantity === undefined ? null : Number(v.stock_quantity),
+    attributes: v.attributes ?? null,
+    meta: v.meta_data ?? null,
+    raw: v,
   };
 }
 

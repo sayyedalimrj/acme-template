@@ -5,8 +5,8 @@
  * (~100×122). No long explanations.
  */
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { View } from 'react-native';
+import React, { useState } from 'react';
+import { View, type LayoutChangeEvent } from 'react-native';
 
 import { Text } from '@/components/ui';
 
@@ -31,6 +31,22 @@ export function QuickActionCard({
   const colors = useMobileColors();
   const shadow = useMobileShadow();
   const type = useMobileType();
+
+  // Adaptive ONE-LINE label. `adjustsFontSizeToFit` is a no-op on react-native-web, so we shrink
+  // the font ourselves to fit the measured label width on narrow phones — the label never wraps
+  // to a second line. If even the minimum size cannot fit, numberOfLines={1} ellipsizes (last
+  // resort). Purely local: no change to card size, colors, spacing, icon, or layout.
+  const baseFont = Math.round(type.captionSize * 0.92);
+  const minFont = Math.max(10, Math.round(baseFont * 0.7));
+  const [labelWidth, setLabelWidth] = useState(0);
+  const fittedFont =
+    labelWidth > 0
+      ? Math.max(minFont, Math.min(baseFont, Math.floor(labelWidth / Math.max(1, label.length * 0.62))))
+      : baseFont;
+  const onLabelLayout = (e: LayoutChangeEvent): void => {
+    const w = e.nativeEvent.layout.width;
+    if (w > 0 && Math.abs(w - labelWidth) > 1) setLabelWidth(w);
+  };
 
   return (
     <PressableScale
@@ -86,19 +102,20 @@ export function QuickActionCard({
           </View>
         ) : null}
       </View>
-      <Text
-        style={{
-          fontSize: Math.round(type.captionSize * 0.92),
-          fontWeight: '600',
-          color: colors.text,
-          textAlign: 'center',
-        }}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.75}
-      >
-        {label}
-      </Text>
+      <View onLayout={onLabelLayout} style={{ alignSelf: 'stretch' }}>
+        <Text
+          style={{
+            fontSize: fittedFont,
+            fontWeight: '600',
+            color: colors.text,
+            textAlign: 'center',
+          }}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {label}
+        </Text>
+      </View>
     </PressableScale>
   );
 }

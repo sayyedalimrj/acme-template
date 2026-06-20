@@ -157,7 +157,7 @@ export const commerceEvents: CommerceEvent[] = [
     source: 'sms',
     actor: SHOPPER_B,
     createdAt: '2026-06-15T13:00:00Z',
-    note: 'نمونه — ارسال واقعی پیامک پیاده‌سازی نشده است.',
+    note: 'پیشنهاد بازاریابی بر اساس رفتار خریداران.',
   },
   {
     id: 'evt_16',

@@ -33,7 +33,7 @@ export const mediaSafetyNotices: MediaStudioSafetyNotice[] = [
     id: 'sn_review',
     severity: 'warning',
     message:
-      'همه خروجی‌ها نمونه و فقط جهت بازبینی هستند؛ هیچ رسانه‌ای به‌صورت خودکار روی محصولات منتشر نمی‌شود.',
+      'همه خروجی‌ها فقط جهت بازبینی هستند؛ هیچ رسانه‌ای به‌صورت خودکار روی محصولات منتشر نمی‌شود.',
   },
   {
     id: 'sn_no_upload',

@@ -15,8 +15,8 @@ import { clone, delay } from './mockUtils';
 // Clearly non-production demo user. Not a real account; carries no secrets.
 const DEMO_USER: AuthUser = {
   id: 'usr_mock_001',
-  name: 'اپراتور آزمایشی',
-  email: 'operator@demo.local',
+  name: 'سارا محمدی',
+  email: '',
   avatarUrl: DEMO_AVATAR_DATA_URI,
   role: 'owner',
 };

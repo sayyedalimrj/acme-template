@@ -24,7 +24,7 @@ describe('advisor helpers', () => {
     const a = advisorReply('افزایش فروش');
     const b = advisorReply('افزایش فروش');
     expect(a).toBe(b);
-    expect(a).toContain('پیشنهاد نمونه');
+    expect(a).toContain('بازبینی شما نیاز دارد');
   });
 
   it('maps priority and status to tones', () => {

@@ -11,14 +11,40 @@ export type RuntimePortal = 'merchant' | 'admin' | 'affiliate';
 export interface RuntimeConfig {
   apiBaseUrl: string;
   portal: RuntimePortal;
-  /** Set when config.json is missing, invalid, or portal mismatches the build. */
+  /** Non-blocking notice (non-production): config.json missing/invalid/portal-mismatch. */
   configWarning?: string;
+  /** Blocking error (production): missing/invalid API URL or wrong-portal config.json. */
+  configError?: string;
 }
 
 const BUILD_API = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/$/, '');
 const BUILD_PORTAL_RAW = process.env.EXPO_PUBLIC_PORTAL;
 export const BUILD_PORTAL: RuntimePortal =
   BUILD_PORTAL_RAW === 'admin' || BUILD_PORTAL_RAW === 'affiliate' ? BUILD_PORTAL_RAW : 'merchant';
+
+/**
+ * Whether this is a PRODUCTION runtime build (own-server / production deploy). Set at build time
+ * via `EXPO_PUBLIC_RUNTIME_ENV=production`. In production the app must NEVER silently fall back to
+ * mock data and must NEVER show the wrong portal: a missing/invalid API URL or a portal-mismatched
+ * config.json becomes a blocking, visible Persian error instead. Non-production (Vercel preview /
+ * local) keeps the self-contained mock behavior.
+ */
+let productionRuntime =
+  (process.env.EXPO_PUBLIC_RUNTIME_ENV ?? '').trim().toLowerCase() === 'production';
+
+export function isProductionRuntime(): boolean {
+  return productionRuntime;
+}
+
+/** Test-only: toggle production-runtime gating. */
+export function setProductionRuntimeForTests(value: boolean): void {
+  productionRuntime = value;
+}
+
+/** A non-empty http(s) URL with a host. Dependency-free (no URL polyfill needed on native). */
+function isValidHttpUrl(value: string): boolean {
+  return /^https?:\/\/[^\s/]+/i.test(value);
+}
 
 /** Alias for documentation/tests. */
 export const getBuildTimePortal = (): RuntimePortal => BUILD_PORTAL;
@@ -35,23 +61,44 @@ function normalizeConfig(raw: Partial<RuntimeConfig> | null | undefined): Runtim
   const apiBaseUrl = (raw?.apiBaseUrl ?? BUILD_API).replace(/\/$/, '');
   let portal: RuntimePortal = BUILD_PORTAL;
   let configWarning: string | undefined;
+  let configError: string | undefined;
 
+  // Classify any config.json portal problem (without ever applying a wrong portal).
+  let portalProblem: 'invalid' | 'mismatch' | null = null;
+  let declaredPortal: RuntimePortal | null = null;
   if (raw?.portal !== undefined && raw?.portal !== null && String(raw.portal).trim() !== '') {
     const parsed = canonicalizePortal(String(raw.portal));
     if (!parsed) {
-      configWarning = 'فایل config.json نامعتبر است؛ از پورتال این بیلد استفاده می‌شود.';
+      portalProblem = 'invalid';
     } else if (parsed !== BUILD_PORTAL) {
-      configWarning = `config.json پورتال «${parsed}» را اعلام کرد اما این بیلد «${BUILD_PORTAL}» است؛ پورتال بیلد اعمال شد.`;
+      portalProblem = 'mismatch';
+      declaredPortal = parsed;
     } else {
       portal = parsed;
     }
   }
 
-  // An empty apiBaseUrl is a fully supported mode (self-contained mock data, e.g. the public
-  // demo build). It is intentional — not a misconfiguration — so we do NOT surface a warning
-  // banner for it. Warnings are reserved for an invalid or mismatched config.json portal above.
+  if (productionRuntime) {
+    // Production: fail visibly. Never mock, never wrong portal, never blank.
+    if (!apiBaseUrl || !isValidHttpUrl(apiBaseUrl)) {
+      configError =
+        'پیکربندی سرور (config.json) یافت نشد یا نامعتبر است. لطفاً با پشتیبانی تماس بگیرید.';
+    } else if (portalProblem === 'invalid') {
+      configError = 'فایل config.json نامعتبر است؛ پیکربندی سرور را بررسی کنید.';
+    } else if (portalProblem === 'mismatch') {
+      configError = `این میزبان پیکربندی پورتال نادرستی دارد (انتظار «${BUILD_PORTAL}»). پیکربندی سرور را بررسی کنید.`;
+    }
+  } else {
+    // Non-production: mock is a supported mode; portal problems are non-blocking warnings.
+    // An empty apiBaseUrl is intentional (self-contained mock demo) — no warning for it.
+    if (portalProblem === 'invalid') {
+      configWarning = 'فایل config.json نامعتبر است؛ از پورتال این بیلد استفاده می‌شود.';
+    } else if (portalProblem === 'mismatch') {
+      configWarning = `config.json پورتال «${declaredPortal}» را اعلام کرد اما این بیلد «${BUILD_PORTAL}» است؛ پورتال بیلد اعمال شد.`;
+    }
+  }
 
-  return { apiBaseUrl, portal, configWarning };
+  return { apiBaseUrl, portal, configWarning, configError };
 }
 
 // Synchronous defaults so first paint uses the correct build portal immediately.
@@ -82,12 +129,22 @@ export function loadRuntimeConfig(): Promise<RuntimeConfig> {
   return loadPromise;
 }
 
+/** Reload `/config.json` from scratch (used by the production error screen's retry). */
+export function reloadRuntimeConfig(): Promise<RuntimeConfig> {
+  loadPromise = null;
+  return loadRuntimeConfig();
+}
+
 export function getRuntimeConfig(): RuntimeConfig {
   return loaded;
 }
 
 export function getConfigWarning(): string | undefined {
   return loaded.configWarning;
+}
+
+export function getConfigError(): string | undefined {
+  return loaded.configError;
 }
 
 export function getApiBaseUrl(): string {
@@ -115,6 +172,7 @@ export function setRuntimeConfigForTests(cfg: Partial<RuntimeConfig>): void {
     apiBaseUrl: (cfg.apiBaseUrl ?? base.apiBaseUrl).replace(/\/$/, ''),
     portal: cfg.portal ?? base.portal,
     configWarning: cfg.configWarning ?? base.configWarning,
+    configError: cfg.configError ?? base.configError,
   };
   loadPromise = Promise.resolve(loaded);
 }

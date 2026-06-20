@@ -28,7 +28,7 @@ export interface AuthMockUser {
 export const AUTH_MOCK_USERS: readonly AuthMockUser[] = [
   {
     id: 'usr_mock_operator',
-    name: 'اپراتور آزمایشی',
+    name: 'سارا محمدی',
     email: 'operator@demo.local',
     mobile: '09123456789',
     password: MOCK_PASSWORD,

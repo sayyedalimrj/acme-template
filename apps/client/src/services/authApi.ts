@@ -91,6 +91,11 @@ export interface VerifyOtpUser {
   name: string | null;
   mobile: string;
   role: string;
+  /**
+   * Optional profile photo URL. Frontend-safe (never a credential). Wired through to the
+   * session avatar when present; backend upload/storage is a PR #58 item.
+   */
+  avatarUrl?: string | null;
 }
 
 export interface VerifyOtpResponse {

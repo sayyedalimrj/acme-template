@@ -60,6 +60,62 @@ describe('http product adapter mapping', () => {
     expect(p.manageStock).toBe(true);
   });
 
+  it('maps synced images and categories (detail) and primary image (list)', async () => {
+    setActiveHttpSiteId('site-1');
+    mockedGet.mockResolvedValueOnce({
+      product: {
+        external_id: '101', name: 'کفش', sku: 'SH-101', status: 'publish', type: 'variable',
+        price_minor: 1850000, currency: 'IRT', stock_status: 'instock', stock_qty: 24,
+        images: [{ src: 'https://s/a.jpg', alt: 'a', position: 0 }],
+        categories: [{ external_id: '7', name: 'پوشاک' }],
+        permalink: 'https://shop/p/101',
+        admin_edit_url: 'https://shop/wp-admin/post.php?post=101&action=edit',
+      },
+    } as never);
+    const adapter = createHttpProductAdapter();
+    const p = await adapter.getProduct('101');
+    expect(p.type).toBe('variable');
+    expect(p.images).toHaveLength(1);
+    expect(p.images[0].src).toBe('https://s/a.jpg');
+    expect(p.categories).toEqual([{ id: '7', name: 'پوشاک', slug: '7' }]);
+    expect(p.permalink).toBe('https://shop/p/101');
+    expect(p.adminEditUrl).toBe('https://shop/wp-admin/post.php?post=101&action=edit');
+  });
+
+  it('updateProduct PATCHes the controlled fields and maps the result', async () => {
+    setActiveHttpSiteId('site-1');
+    const mockedPatch = http.patch as jest.MockedFunction<typeof http.patch>;
+    mockedPatch.mockResolvedValueOnce({
+      product: {
+        external_id: '101', name: 'کفش جدید', sku: 'SH-101', status: 'draft', type: 'simple',
+        price_minor: 990000, currency: 'IRT', stock_status: 'outofstock', stock_qty: 0,
+        images: [], categories: [],
+      },
+    } as never);
+    const adapter = createHttpProductAdapter();
+    const updated = await adapter.updateProduct('101', {
+      name: 'کفش جدید',
+      regularPrice: 99000,
+      status: 'draft',
+      stockQuantity: 0,
+      stockStatus: 'outofstock',
+      categoryIds: ['7'],
+    });
+    expect(mockedPatch).toHaveBeenCalledWith(
+      '/merchant/sites/site-1/products/101',
+      expect.objectContaining({
+        name: 'کفش جدید',
+        regularPrice: '99000', // major-unit string for WooCommerce
+        status: 'draft',
+        stockQuantity: 0,
+        stockStatus: 'outofstock',
+        categoryExternalIds: ['7'],
+      }),
+    );
+    expect(updated.name).toBe('کفش جدید');
+    expect(updated.status).toBe('draft');
+  });
+
   it('throws when no active site is selected', async () => {
     setActiveHttpSiteId(null);
     const adapter = createHttpProductAdapter();

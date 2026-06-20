@@ -2,13 +2,17 @@
  * Product detail screen.
  *
  * Read-only view of a single product organized into commerce-style sections (pricing,
- * inventory, organization, performance) with placeholders for variants and media. No
- * create/edit/delete in this module. Active-site-aware via `useProduct`.
+ * inventory, organization, performance). The header exposes a working "ویرایش" (edit) action
+ * that opens the edit screen (`/products/edit/[id]`), which writes name/price/stock/status to
+ * WooCommerce (live) or the mock catalog and re-syncs. Active-site-aware via `useProduct`.
+ *
+ * Product image add/upload is intentionally not offered here yet — there is no safe media-upload
+ * backend, so no broken upload control is rendered (image sync from WooCommerce IS shown below).
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { type ReactNode } from 'react';
-import { View } from 'react-native';
+import { Image, Linking, View } from 'react-native';
 
 import {
   Badge,
@@ -16,6 +20,7 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  IconButton,
   LoadingState,
   Screen,
   Text,
@@ -115,11 +120,40 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
   const none = t('product.value.none');
 
   return (
-    <Screen testID="product-detail-screen" title={product.name} subtitle={product.sku}>
+    <Screen
+      testID="product-detail-screen"
+      title={product.name}
+      subtitle={product.sku}
+      headerRight={
+        <View testID="product-edit">
+          <IconButton
+            icon="create-outline"
+            accessibilityLabel={t('product.action.edit')}
+            onPress={() => router.navigate(`/products/edit/${product.id}` as never)}
+          />
+        </View>
+      }
+    >
       <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
         <Badge tone={stock.tone} label={t(stock.labelKey)} />
         <Badge tone={status.tone} label={t(status.labelKey)} />
       </View>
+
+      {product.adminEditUrl || product.permalink ? (
+        <View style={{ alignItems: 'flex-start', marginTop: tokens.spacing.xs }}>
+          <Button
+            testID="product-open-wordpress"
+            label={t('product.action.openInWordPress')}
+            variant="secondary"
+            size="sm"
+            onPress={() => {
+              const url = product.adminEditUrl ?? product.permalink;
+              if (url) void Linking.openURL(url).catch(() => undefined);
+            }}
+            leading={<Ionicons name="open-outline" size={16} color={tokens.color.text} />}
+          />
+        </View>
+      ) : null}
 
       <Card title={t('product.section.pricing')}>
         <DetailRow
@@ -174,7 +208,22 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
       </Card>
 
       <Card title={t('product.section.media')}>
-        <Text tone="muted">{t('product.media.placeholder')}</Text>
+        {product.images.length > 0 ? (
+          <Image
+            testID="product-detail-image"
+            source={{ uri: product.images[0].src }}
+            accessibilityLabel={product.images[0].alt || product.name}
+            resizeMode="cover"
+            style={{
+              width: '100%',
+              height: 180,
+              borderRadius: tokens.radius.md,
+              backgroundColor: tokens.color.surfaceAlt,
+            }}
+          />
+        ) : (
+          <Text tone="muted">{t('product.media.placeholder')}</Text>
+        )}
         <View style={{ marginTop: tokens.spacing.sm, alignItems: 'flex-start' }}>
           <Button
             label={t('product.media.openStudio')}

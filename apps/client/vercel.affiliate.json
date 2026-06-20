@@ -1,5 +1,5 @@
 {
-  "buildCommand": "EXPO_PUBLIC_PORTAL=affiliate RUNTIME_CONFIG_ENV=production expo export -p web --output-dir dist-affiliate && EXPO_PUBLIC_PORTAL=affiliate RUNTIME_CONFIG_ENV=production node scripts/pwa-postbuild.mjs dist-affiliate",
+  "buildCommand": "EXPO_PUBLIC_PORTAL=affiliate EXPO_PUBLIC_RUNTIME_ENV=production RUNTIME_CONFIG_ENV=production expo export -p web --output-dir dist-affiliate && EXPO_PUBLIC_PORTAL=affiliate RUNTIME_CONFIG_ENV=production node scripts/pwa-postbuild.mjs dist-affiliate",
   "outputDirectory": "dist-affiliate",
   "devCommand": "EXPO_PUBLIC_PORTAL=affiliate expo start --web",
   "cleanUrls": true,

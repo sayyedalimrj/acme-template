@@ -26,8 +26,10 @@ import type { AuthedRequest } from '../middleware/auth';
 
 export const pluginRouter = Router();
 
-// Capture the exact raw body (the plugin signs sha256 over these bytes).
-pluginRouter.use(express.text({ type: '*/*', limit: '2mb' }));
+// Capture the exact raw body (the plugin signs sha256 over these bytes). Limit set to 25mb to
+// accommodate large catalog sync envelopes (product + meta + variations) — matches the documented
+// Nginx client_max_body_size. No binary upload passes through here (metadata only).
+pluginRouter.use(express.text({ type: '*/*', limit: '25mb' }));
 
 const pluginLimiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false });
 pluginRouter.use(pluginLimiter);

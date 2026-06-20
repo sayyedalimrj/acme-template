@@ -1,11 +1,11 @@
 /**
  * Product hooks (TanStack Query), site-aware.
  */
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from '@tanstack/react-query';
 
 import { useActiveSiteId } from '@/features/site/useSites';
 import { productService, queryKeys } from '@/services';
-import type { Paged, Product, ProductListQuery } from '@/domain/types';
+import type { Paged, Product, ProductListQuery, ProductUpdateInput } from '@/domain/types';
 
 export function useProducts(query?: ProductListQuery): UseQueryResult<Paged<Product>, Error> {
   const siteId = useActiveSiteId();
@@ -22,5 +22,23 @@ export function useProduct(productId: string): UseQueryResult<Product, Error> {
     queryKey: queryKeys.product(siteId ?? 'none', productId),
     queryFn: () => productService.getProduct(productId),
     enabled: Boolean(siteId) && Boolean(productId),
+  });
+}
+
+/**
+ * Update a product (name/price/stock/status/categories). On success invalidates the active site's
+ * product detail + list so the UI reloads the real (re-synced) data; scoped to the active site.
+ */
+export function useUpdateProduct(
+  productId: string,
+): UseMutationResult<Product, Error, ProductUpdateInput> {
+  const siteId = useActiveSiteId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ProductUpdateInput) => productService.updateProduct(productId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.product(siteId ?? 'none', productId) });
+      queryClient.invalidateQueries({ queryKey: ['site', siteId ?? 'none', 'products'] });
+    },
   });
 }

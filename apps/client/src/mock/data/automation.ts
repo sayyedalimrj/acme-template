@@ -207,7 +207,7 @@ export const automationSafetyNotices: AutomationSafetyNotice[] = [
   {
     id: 'asn_consent',
     severity: 'warning',
-    message: 'هیچ پیامکی ارسال نمی‌شود. ارسال واقعی تنها پس از دریافت رضایت صریح مخاطب مجاز است.',
+    message: 'ارسال پیامک تنها پس از دریافت رضایت صریح مخاطب مجاز است.',
   },
   {
     id: 'asn_optout',

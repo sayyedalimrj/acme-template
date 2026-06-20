@@ -73,4 +73,12 @@ describe('ProductDetailScreen', () => {
     // SKU is shown in the header.
     expect(screen.getByText('APP-TEE-001')).toBeTruthy();
   });
+
+  it('renders a working product edit action (opens the edit screen)', async () => {
+    renderWithProviders(<ProductDetailScreen productId="prod_1001" />);
+    await screen.findByText('تی‌شرت نخی آئورا', {}, { timeout: 4000 });
+    // Edit is now a real, wired affordance (PATCH → WooCommerce/read-model, or mock in-memory).
+    expect(screen.getByTestId('product-edit')).toBeTruthy();
+  });
 });
+

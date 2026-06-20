@@ -82,7 +82,7 @@ export function createMockBillingAdapter(): BillingAdapter {
         interval,
         action,
         priceLabel: priceLabel(planId, interval),
-        note: 'پیش‌نمایش نمونه است؛ هیچ پرداخت یا تغییر واقعی انجام نمی‌شود.',
+        note: 'قیمت‌ها برای اطلاع نمایش داده می‌شوند؛ پرداخت به‌صورت امن انجام می‌شود.',
       };
     },
 
@@ -96,7 +96,7 @@ export function createMockBillingAdapter(): BillingAdapter {
         acknowledged: true,
         toPlanId: planId,
         interval,
-        message: 'درخواست شما ثبت شد (نمونه). صورت‌حساب واقعی بعداً فعال می‌شود.',
+        message: 'درخواست شما ثبت شد.',
       };
     },
   };

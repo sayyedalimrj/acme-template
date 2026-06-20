@@ -72,6 +72,7 @@ import type {
   ProductInterestSignal,
   ProductListQuery,
   ProductPerformanceReport,
+  ProductUpdateInput,
   RecordEventInput,
   ReportInsight,
   ReportPeriod,
@@ -121,6 +122,12 @@ export interface DashboardAdapter {
 export interface ProductAdapter {
   listProducts(query?: ProductListQuery): Promise<Paged<Product>>;
   getProduct(id: string): Promise<Product>;
+  /**
+   * Update controlled product fields (name/price/stock/status/categories). In live mode this
+   * writes to WooCommerce via the backend and re-syncs the read-model; in mock mode it updates
+   * the in-memory catalog. Returns the updated product.
+   */
+  updateProduct(id: string, input: ProductUpdateInput): Promise<Product>;
 }
 
 export interface OrderAdapter {
