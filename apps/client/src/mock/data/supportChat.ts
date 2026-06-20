@@ -9,5 +9,5 @@ export const supportChatStrings = {
   subject: 'گفتگو با پشتیبانی',
   agentLabel: 'تیم پشتیبانی',
   greeting: 'سلام! چطور می‌تونیم کمکت کنیم؟',
-  autoReply: 'ممنون از پیامت — همکاران ما به‌زودی پاسخ می‌دهند.',
+  autoReply: 'پیام شما ثبت شد.',
 } as const;

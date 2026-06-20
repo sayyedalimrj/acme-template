@@ -1328,7 +1328,7 @@ export const en = {
   'csupport.chat.inputPlaceholder': 'Write a message…',
   'csupport.chat.send': 'Send',
   'csupport.chat.seed': 'Hi! How can we help you today?',
-  'csupport.chat.autoReply': 'Thanks for your message — a teammate will reply shortly.',
+  'csupport.chat.autoReply': 'Your message has been recorded.',
   'csupport.chat.mockNote': 'Start a conversation with our support team.',
   'csupport.chat.open': 'Open chat',
 } as const;
@@ -2607,7 +2607,7 @@ export const fa: Record<StringKey, string> = {
   'csupport.chat.inputPlaceholder': 'پیام خود را بنویسید…',
   'csupport.chat.send': 'ارسال',
   'csupport.chat.seed': 'سلام! چطور می‌تونیم کمکت کنیم؟',
-  'csupport.chat.autoReply': 'از پیام شما متشکریم — همکار ما به‌زودی پاسخ می‌دهد.',
+  'csupport.chat.autoReply': 'پیام شما ثبت شد.',
   'csupport.chat.mockNote': 'گفتگو با تیم پشتیبانی را شروع کنید.',
   'csupport.chat.open': 'باز کردن گفتگو',
 };
