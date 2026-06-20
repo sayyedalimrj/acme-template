@@ -31,6 +31,20 @@ const PORTAL_BRANDING = {
 };
 const branding = PORTAL_BRANDING[PORTAL];
 
+// A unique build stamp so every deploy ships a byte-changed index.html + sw.js. This is what
+// lets the browser notice a NEW service worker (a fixed-content sw.js is never re-installed, so
+// a stale worker could otherwise keep serving an old app shell whose hashed JS bundle no longer
+// exists — a classic blank-screen-after-redeploy bug).
+const BUILD_ID = (
+  process.env.BUILD_ID ||
+  process.env.VERCEL_GIT_COMMIT_SHA ||
+  process.env.GITHUB_SHA ||
+  String(Date.now())
+)
+  .toString()
+  .slice(0, 12)
+  .replace(/[^A-Za-z0-9_-]/g, '');
+
 if (!existsSync(indexPath)) {
   console.warn(`[pwa-postbuild] ${indexPath} not found — skipping.`);
   process.exit(0);
@@ -66,7 +80,15 @@ const HEAD = `
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js').catch(function () {});
+          // updateViaCache:'none' ensures the browser re-fetches sw.js on every load so a new
+          // deploy's worker (its bytes change via BUILD_ID) is picked up immediately; update()
+          // nudges it, and skipWaiting()/clients.claim() in sw.js make it take over at once.
+          navigator.serviceWorker
+            .register('/sw.js', { updateViaCache: 'none' })
+            .then(function (reg) {
+              try { reg.update(); } catch (e) {}
+            })
+            .catch(function () {});
         });
       }
     </script>
@@ -95,8 +117,90 @@ html = html.replace(
 // 3) Inject the PWA head tags just before </head>.
 html = html.replace('</head>', `${HEAD}</head>`);
 
+// 3b) No-blank-screen safety net.
+//
+// The exported SPA renders into <div id="root">. If the JS bundle never mounts — a hashed
+// bundle 404 after a redeploy, a poisoned service-worker cache, a parse/eval error, or a stale
+// deploy — the user is left staring at a pure-white empty page with no message and no way out
+// (the in-app ErrorBoundary/ConfigBootstrap can't help because React never started). This
+// converts that failure into something visible and recoverable:
+//   • an instant Persian "loading" splash painted inside #root (no white flash on first paint),
+//   • a watchdog that, if the app has NOT mounted after a grace period, replaces the splash with
+//     a Persian recovery screen whose button clears caches + unregisters service workers and
+//     reloads — which heals exactly the stale-cache / dead-bundle case.
+// React's createRoot replaces #root's children on its first render, so the splash disappears the
+// instant the real app mounts and the watchdog then becomes a no-op.
+const BOOT_MARKER = '__boot_fallback';
+const BOOT_SPLASH = `<div id="${BOOT_MARKER}" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background-color:#EEF1F6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"><div style="color:#5B6577;font-size:15px;text-align:center">در حال بارگذاری…</div></div>`;
+html = html.replace('<div id="root"></div>', `<div id="root">${BOOT_SPLASH}</div>`);
+
+const BOOT_WATCHDOG = `
+    <script>
+      (function () {
+        var TIMEOUT_MS = 12000;
+        function appMounted() {
+          // createRoot() removes our splash node on first render; its absence == app booted.
+          return !document.getElementById('${BOOT_MARKER}');
+        }
+        function recover() {
+          try {
+            if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+              navigator.serviceWorker.getRegistrations().then(function (rs) {
+                rs.forEach(function (r) { r.unregister(); });
+              });
+            }
+            if (window.caches && caches.keys) {
+              caches.keys().then(function (ks) {
+                return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+              }).finally(function () { location.reload(); });
+              return;
+            }
+          } catch (e) {}
+          location.reload();
+        }
+        function showRecovery() {
+          if (appMounted()) return;
+          var root = document.getElementById('root');
+          if (!root) return;
+          root.innerHTML =
+            '<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;background-color:#EEF1F6;font-family:-apple-system,BlinkMacSystemFont,\\'Segoe UI\\',Roboto,sans-serif">' +
+              '<div style="font-size:20px;font-weight:700;color:#1F2A44;text-align:center">بارگذاری برنامه ناموفق بود</div>' +
+              '<div style="font-size:15px;color:#5B6577;text-align:center;line-height:22px;max-width:340px">نسخه‌ی ذخیره‌شده‌ی برنامه قدیمی است یا ارتباط برقرار نشد. لطفاً دوباره بارگذاری کنید.</div>' +
+              '<button id="${BOOT_MARKER}_reload" style="background-color:#456EFE;color:#fff;font-size:15px;font-weight:700;border:none;border-radius:12px;padding:12px 24px;cursor:pointer">بارگذاری مجدد</button>' +
+            '</div>';
+          var btn = document.getElementById('${BOOT_MARKER}_reload');
+          if (btn) btn.addEventListener('click', recover);
+        }
+        setTimeout(showRecovery, TIMEOUT_MS);
+      })();
+    </script>
+  `;
+html = html.replace('</body>', `${BOOT_WATCHDOG}</body>`);
+
 writeFileSync(indexPath, html, 'utf8');
 console.log(`[pwa-postbuild] patched ${outDir}/index.html for PWA install (portal: ${PORTAL}).`);
+
+// 3c) Stamp the service worker with this deploy's BUILD_ID.
+//
+// `expo export` copies public/sw.js verbatim into the output. Its cache name carries a
+// `__BUILD_ID__` placeholder; substituting a per-deploy value (a) changes sw.js's bytes so the
+// browser installs the new worker instead of clinging to an old one, and (b) bumps the cache
+// name so the worker's `activate` step deletes the previous deploy's cache — preventing a stale
+// app shell that points at hashed bundles which no longer exist.
+const swPath = resolve(here, '..', outDir, 'sw.js');
+if (existsSync(swPath)) {
+  const swSrc = readFileSync(swPath, 'utf8');
+  if (swSrc.includes('__BUILD_ID__')) {
+    writeFileSync(
+      swPath,
+      `// build:${BUILD_ID}\n${swSrc.replace(/__BUILD_ID__/g, BUILD_ID)}`,
+      'utf8',
+    );
+    console.log(`[pwa-postbuild] stamped ${outDir}/sw.js cache version (build: ${BUILD_ID}).`);
+  }
+} else {
+  console.warn(`[pwa-postbuild] ${outDir}/sw.js not found — skipping SW version stamp.`);
+}
 
 // 4) Emit the portal-specific runtime config (`/config.json`).
 //

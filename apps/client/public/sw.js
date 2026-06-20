@@ -6,7 +6,7 @@
  * static assets. It never caches API responses (there is no backend yet) and never stores
  * any user data.
  */
-const CACHE = 'acme-client-v2';
+const CACHE = 'acme-client-__BUILD_ID__';
 const APP_SHELL = ['/', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
