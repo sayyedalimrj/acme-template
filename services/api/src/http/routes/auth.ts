@@ -177,7 +177,11 @@ authRouter.get(
 const profileSchema = z.object({
   firstName: z.string().trim().min(1).max(120),
   lastName: z.string().trim().min(1).max(120),
-  email: z.string().trim().email().max(254),
+  // Email is OPTIONAL. Accept empty/omitted; when provided it must be a valid email. The empty
+  // string is normalized to undefined so a blank field never fails validation.
+  email: z
+    .union([z.string().trim().email().max(254), z.literal(''), z.undefined()])
+    .transform((v) => (v ? v : undefined)),
 });
 
 authRouter.patch(
@@ -186,7 +190,7 @@ authRouter.patch(
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     if (!req.auth) throw unauthorized();
     const parsed = profileSchema.safeParse(req.body);
-    if (!parsed.success) throw badRequest('نام، نام خانوادگی و ایمیل را درست وارد کنید.');
+    if (!parsed.success) throw badRequest('نام و نام خانوادگی را وارد کنید. ایمیل اختیاری است؛ اگر وارد می‌کنید باید معتبر باشد.');
     const user = await updateUserProfile(req.auth.sub, parsed.data);
     await audit({
       actorUserId: user.id,

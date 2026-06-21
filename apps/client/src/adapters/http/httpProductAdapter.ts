@@ -148,6 +148,12 @@ export function createHttpProductAdapter(): ProductAdapter {
       );
       return toProduct(res.product);
     },
+    async deleteProduct(id: string): Promise<void> {
+      // Default = trash (soft delete in Woo); the backend also drops the local read-model row.
+      await http.del<{ ok: boolean }>(
+        `/merchant/sites/${siteId()}/products/${encodeURIComponent(id)}`,
+      );
+    },
     async createProduct(input: ProductCreateInput): Promise<Product> {
       const body: Record<string, unknown> = { name: input.name, status: input.status ?? 'draft' };
       if (input.sku !== undefined && input.sku !== '') body.sku = input.sku;

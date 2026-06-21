@@ -172,7 +172,7 @@ function redactWooSecrets(text: string, creds: WooCredentials): string {
   return out;
 }
 
-type WooMethod = 'GET' | 'POST' | 'PUT';
+type WooMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 type WooAuthStrategy = 'query' | 'basic';
 
 interface WooHttpOptions {
@@ -658,6 +658,24 @@ export async function createProduct(
   }
   const { json } = await wooPost(creds, `/products`, body);
   return normalizeProduct(json as Record<string, unknown>);
+}
+
+/**
+ * Delete a WooCommerce product. Defaults to TRASH (soft delete) so it can be restored from
+ * WordPress; pass `force=true` only on an explicit, confirmed hard delete. Returns the deleted
+ * product's external id. Goes through the central request builder (auth fallback + error mapping).
+ */
+export async function deleteProduct(
+  creds: WooCredentials,
+  productExternalId: string,
+  force = false,
+): Promise<{ externalId: string }> {
+  const { json } = await wooHttp(creds, `/products/${encodeURIComponent(productExternalId)}`, {
+    method: 'DELETE',
+    query: { force: force ? 'true' : 'false' },
+  });
+  const id = (json as { id?: number | string })?.id;
+  return { externalId: id !== undefined ? String(id) : productExternalId };
 }
 
 async function wooPut(

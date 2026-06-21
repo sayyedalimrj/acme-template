@@ -81,6 +81,14 @@ export function createMockProductAdapter(): ProductAdapter {
       found.dateModified = new Date().toISOString();
       return clone(found);
     },
+    async deleteProduct(id: string): Promise<void> {
+      await delay();
+      const idx = products.findIndex((p) => p.id === id);
+      if (idx === -1) {
+        throw new Error(`Product not found: ${id}`);
+      }
+      products.splice(idx, 1);
+    },
     async createProduct(input: ProductCreateInput): Promise<Product> {
       await delay();
       const now = new Date().toISOString();

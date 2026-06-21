@@ -130,3 +130,37 @@ export function triggerSiteSync(siteId: string): Promise<{ ok: boolean; status: 
 export function deleteSite(siteId: string): Promise<{ ok: boolean }> {
   return http.del<{ ok: boolean }>(`/merchant/sites/${encodeURIComponent(siteId)}`);
 }
+
+/** Live sync progress for a site (polled by the dashboard + store settings while a sync runs). */
+export interface SyncRunStatus {
+  id: string;
+  status: 'queued' | 'running' | 'success' | 'failed' | 'cancelled';
+  phase: string | null;
+  message: string | null;
+  progress_percent: number;
+  last_error: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  products_total: number;
+  products_done: number;
+  orders_total: number;
+  orders_done: number;
+  customers_total: number;
+  customers_done: number;
+  coupons_total: number;
+  coupons_done: number;
+  media_total: number;
+  media_done: number;
+}
+
+export interface SyncStatusResult {
+  run: SyncRunStatus | null;
+  lastSuccessAt: string | null;
+  siteStatus: string;
+  lastError: string | null;
+}
+
+/** Read live sync progress (phase, percent, per-entity counters, last error, last success). */
+export function getSyncStatus(siteId: string): Promise<SyncStatusResult> {
+  return http.get<SyncStatusResult>(`/merchant/sites/${encodeURIComponent(siteId)}/sync/status`);
+}
