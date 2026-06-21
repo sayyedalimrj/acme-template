@@ -678,6 +678,96 @@ export async function deleteProduct(
   return { externalId: id !== undefined ? String(id) : productExternalId };
 }
 
+/**
+ * Replace a product's image gallery with the given ordered list (first image = cover/featured).
+ * Each entry is an EXISTING WordPress media id, or a publicly-reachable URL that Woo will sideload.
+ * Used for reorder / set-cover / remove / add-by-existing-media. Returns the updated product.
+ */
+export async function setProductImages(
+  creds: WooCredentials,
+  productId: string,
+  images: ReadonlyArray<{ id?: string; src?: string }>,
+): Promise<NormalizedProduct> {
+  return updateProduct(creds, productId, { images });
+}
+
+export interface UploadedMedia {
+  id: string;
+  src: string;
+  alt: string | null;
+}
+
+/**
+ * Upload an image binary to the store's WordPress media library (`/wp-json/wp/v2/media`) and
+ * return the created attachment. Uses the same Woo credentials (query-auth over HTTPS, Basic
+ * fallback), the SSRF guard, and secret redaction. NOTE: WooCommerce consumer keys authenticate
+ * the `wc/v3` namespace; some stores also accept them (or an Application Password configured as the
+ * key/secret) for WP core REST, some do not. When the store rejects the upload we throw a
+ * TRUTHFUL, actionable `woo_media_unsupported` error (the caller offers the add-by-URL path) —
+ * never a fake success and never a "go to WordPress" instruction.
+ */
+export async function uploadProductMedia(
+  creds: WooCredentials,
+  file: { filename: string; contentType: string; data: Buffer },
+): Promise<UploadedMedia> {
+  const root = baseUrl(creds.storeUrl);
+  await assertSafeOutboundUrl(root);
+  const isHttps = /^https:\/\//i.test(root);
+  const safeName = (file.filename.replace(/[^\w.\-]/g, '_').slice(0, 120) || 'upload') as string;
+  const strategies: WooAuthStrategy[] = isHttps ? ['query', 'basic'] : ['basic'];
+
+  for (const strategy of strategies) {
+    const u = new URL(`${root}/wp-json/wp/v2/media`);
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'Content-Type': file.contentType || 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${safeName}"`,
+    };
+    if (strategy === 'query') {
+      u.searchParams.set('consumer_key', creds.consumerKey);
+      u.searchParams.set('consumer_secret', creds.consumerSecret);
+    } else {
+      headers.Authorization = authHeader(creds);
+    }
+    try {
+      const res = await safeFetch(u.href, {
+        method: 'POST',
+        headers,
+        body: file.data,
+        timeoutMs: env.WOO_HTTP_TIMEOUT_MS,
+      });
+      if (res.status === 401 || res.status === 403) {
+        continue; // try the next auth strategy, else fall through to the truthful error below
+      }
+      if (!res.ok) {
+        throw badGateway('بارگذاری رسانه در فروشگاه ناموفق بود.', 'woo_media_failed');
+      }
+      const json = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+      const id = json?.id;
+      const src = (json?.source_url as string) ?? '';
+      if (id === undefined || id === null || !src) {
+        throw badGateway('پاسخ نامعتبر از کتابخانه رسانه فروشگاه.', 'woo_media_failed');
+      }
+      return { id: String(id), src, alt: (json?.alt_text as string) || null };
+    } catch (err) {
+      if ((err as { name?: string }).name === 'AbortError') {
+        throw badGateway('بارگذاری رسانه بیش از حد طول کشید.', 'woo_timeout');
+      }
+      if (isNetworkError(err)) {
+        throw badGateway('فروشگاه در دسترس نیست یا ارتباط برقرار نشد.', 'woo_network_error');
+      }
+      if (err instanceof Error) err.message = redactWooSecrets(err.message, creds);
+      throw err;
+    }
+  }
+
+  // The WP media endpoint rejected the Woo keys → truthful, actionable error (no WordPress redirect).
+  throw badGateway(
+    'کلیدهای فعلی اجازه بارگذاری رسانه را ندارند. می‌توانید نشانی (URL) تصویر را اضافه کنید یا برای بارگذاری مستقیم، افزونه JetWeb را به فروشگاه متصل کنید.',
+    'woo_media_unsupported',
+  );
+}
+
 async function wooPut(
   creds: WooCredentials,
   path: string,

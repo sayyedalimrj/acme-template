@@ -60,6 +60,18 @@ DELETE FROM schema_migrations WHERE version = '002_platform.sql';
 COMMIT;
 ```
 
+## Roll back migration 006 (support inbox — safe/non-destructive)
+
+Only the support tables are removed (no other data touched):
+
+```sql
+BEGIN;
+DROP TABLE IF EXISTS support_message;
+DROP TABLE IF EXISTS support_ticket;
+DELETE FROM schema_migrations WHERE version = '006_support.sql';
+COMMIT;
+```
+
 ## Roll back migration 005 (sync progress columns — safe/non-destructive)
 
 The progress columns are additive; rolling back just removes them (sync still works, only the

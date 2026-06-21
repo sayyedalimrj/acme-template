@@ -212,22 +212,35 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
 
       <Card title={t('product.section.media')}>
         {product.images.length > 0 ? (
-          <Image
-            testID="product-detail-image"
-            source={{ uri: product.images[0].src }}
-            accessibilityLabel={product.images[0].alt || product.name}
-            resizeMode="cover"
-            style={{
-              width: '100%',
-              height: 180,
-              borderRadius: tokens.radius.md,
-              backgroundColor: tokens.color.surfaceAlt,
-            }}
-          />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm }}>
+            {product.images.map((img, i) => (
+              <Image
+                key={`${img.src}-${i}`}
+                testID={i === 0 ? 'product-detail-image' : undefined}
+                source={{ uri: img.src }}
+                accessibilityLabel={img.alt || product.name}
+                resizeMode="cover"
+                style={{
+                  width: i === 0 ? '100%' : 96,
+                  height: i === 0 ? 180 : 96,
+                  borderRadius: tokens.radius.md,
+                  backgroundColor: tokens.color.surfaceAlt,
+                }}
+              />
+            ))}
+          </View>
         ) : (
-          <Text tone="muted">{t('product.media.placeholder')}</Text>
+          <Text tone="muted">{t('product.media.empty')}</Text>
         )}
-        <View style={{ marginTop: tokens.spacing.sm, alignItems: 'flex-start' }}>
+        <View style={{ marginTop: tokens.spacing.sm, flexDirection: rowDirection, gap: tokens.spacing.sm }}>
+          <Button
+            testID="product-detail-edit-media"
+            label={t('product.media.title')}
+            variant="secondary"
+            size="sm"
+            onPress={() => router.navigate(`/products/edit/${product.id}` as never)}
+            leading={<Ionicons name="images-outline" size={16} color={tokens.color.text} />}
+          />
           <Button
             label={t('product.media.openStudio')}
             variant="secondary"

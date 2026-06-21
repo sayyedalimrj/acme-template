@@ -2,21 +2,40 @@
  * AdminMoreScreen — secondary admin tools, portal switcher, and sign out ("/admin/more").
  */
 import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import React from 'react';
 import { View } from 'react-native';
 
 import { PortalSectionTitle } from '@/components/portal/PortalUI';
 import { Button } from '@/components/ui';
+import { isApiConfigured } from '@/config/api.config';
 import { AnimatedSection, FeatureCard, MobilePage, MobileTabHeader } from '@/features/mobile/components';
 import { mobileMetrics } from '@/features/mobile/mobileTokens';
+import { adminSupportUnread } from '@/services/supportApi';
 import { useSession } from '@/session/SessionProvider';
 
 export function AdminMoreScreen(): React.JSX.Element {
   const router = useRouter();
   const { signOut } = useSession();
   const go = (href: string): void => router.navigate(href as never);
+  const live = isApiConfigured();
 
-  const tools: { key: string; icon: React.ComponentProps<typeof FeatureCard>['icon']; label: string; href: string }[] = [
+  const unreadQuery = useQuery({
+    queryKey: ['admin', 'support', 'unread'],
+    queryFn: adminSupportUnread,
+    enabled: live,
+    refetchInterval: live ? 30000 : false,
+  });
+  const supportUnread = unreadQuery.data?.count ?? 0;
+
+  const tools: {
+    key: string;
+    icon: React.ComponentProps<typeof FeatureCard>['icon'];
+    label: string;
+    href: string;
+    badge?: number;
+  }[] = [
+    { key: 'support', icon: 'chatbubbles-outline', label: 'پشتیبانی', href: '/admin/support', badge: supportUnread },
     { key: 'merchants', icon: 'storefront-outline', label: 'فروشندگان', href: '/admin/merchants' },
     { key: 'marketers', icon: 'megaphone-outline', label: 'بازاریاب‌ها', href: '/admin/marketers' },
     { key: 'payouts', icon: 'cash-outline', label: 'تسویه پورسانت', href: '/admin/payouts' },
@@ -35,6 +54,7 @@ export function AdminMoreScreen(): React.JSX.Element {
                   <FeatureCard
                     icon={tool.icon}
                     label={tool.label}
+                    badge={tool.badge}
                     onPress={() => go(tool.href)}
                     testID={`admin-tool-${tool.key}`}
                   />

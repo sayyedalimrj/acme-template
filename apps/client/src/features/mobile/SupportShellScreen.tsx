@@ -11,6 +11,7 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { isApiConfigured } from '@/config/api.config';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 
@@ -30,6 +31,8 @@ export function SupportShellScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { rowDirection, isRTL } = useTheme();
+  const live = isApiConfigured();
+  const supportHref = live ? '/support/tickets' : '/support/chat';
   const onBack = (): void => {
     if (router.canGoBack()) {
       router.back();
@@ -85,7 +88,7 @@ export function SupportShellScreen(): React.JSX.Element {
             </View>
 
             <PressableScale
-              onPress={() => router.navigate('/support/chat' as never)}
+              onPress={() => router.navigate(supportHref as never)}
               accessibilityLabel={t('csupport.chat')}
               testID="support-chat"
               style={{
@@ -102,7 +105,7 @@ export function SupportShellScreen(): React.JSX.Element {
             </PressableScale>
 
             <PressableScale
-              onPress={() => router.navigate('/support/chat' as never)}
+              onPress={() => router.navigate(supportHref as never)}
               accessibilityLabel={t('csupport.newRequest')}
               testID="support-new-request"
               style={{
@@ -121,50 +124,54 @@ export function SupportShellScreen(): React.JSX.Element {
         </AnimatedSection>
 
         <AnimatedSection index={1}>
-          <Text
-            style={{
-              fontSize: mobileType.sectionSize,
-              fontWeight: '700',
-              color: colors.text,
-              textAlign: isRTL ? 'right' : 'left',
-              marginBottom: 12,
-            }}
-          >
-            {t('csupport.recent')}
-          </Text>
-          <View
-            style={[
-              {
-                borderRadius: mobileMetrics.cardRadius,
-                backgroundColor: colors.card,
-                paddingHorizontal: 16,
-                paddingVertical: 4,
-              },
-              shadow,
-            ]}
-          >
-            {SUPPORT_PREVIEW.map((item) => (
-              <MiniActivityRow
-                key={item.id}
-                icon="chatbubble-ellipses-outline"
-                tint="primary"
-                title={t(item.titleKey)}
-                caption={t(item.captionKey)}
-                onPress={() => router.navigate('/support/chat' as never)}
-                testID={`support-preview-${item.id}`}
-              />
-            ))}
-          </View>
-          <Text
-            style={{
-              fontSize: mobileType.captionSize,
-              color: colors.textSecondary,
-              textAlign: 'center',
-              marginTop: 14,
-            }}
-          >
-            {t('csupport.chat.mockNote')}
-          </Text>
+          {!live ? (
+            <>
+              <Text
+                style={{
+                  fontSize: mobileType.sectionSize,
+                  fontWeight: '700',
+                  color: colors.text,
+                  textAlign: isRTL ? 'right' : 'left',
+                  marginBottom: 12,
+                }}
+              >
+                {t('csupport.recent')}
+              </Text>
+              <View
+                style={[
+                  {
+                    borderRadius: mobileMetrics.cardRadius,
+                    backgroundColor: colors.card,
+                    paddingHorizontal: 16,
+                    paddingVertical: 4,
+                  },
+                  shadow,
+                ]}
+              >
+                {SUPPORT_PREVIEW.map((item) => (
+                  <MiniActivityRow
+                    key={item.id}
+                    icon="chatbubble-ellipses-outline"
+                    tint="primary"
+                    title={t(item.titleKey)}
+                    caption={t(item.captionKey)}
+                    onPress={() => router.navigate('/support/chat' as never)}
+                    testID={`support-preview-${item.id}`}
+                  />
+                ))}
+              </View>
+              <Text
+                style={{
+                  fontSize: mobileType.captionSize,
+                  color: colors.textSecondary,
+                  textAlign: 'center',
+                  marginTop: 14,
+                }}
+              >
+                {t('csupport.chat.mockNote')}
+              </Text>
+            </>
+          ) : null}
         </AnimatedSection>
       </View>
     </MobilePage>

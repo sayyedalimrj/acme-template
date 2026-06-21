@@ -33,12 +33,23 @@ import {
   getSalesReport,
   createProduct,
   deleteProduct,
+  setProductImages,
+  uploadProductMedia,
   updateOrderStatus,
   updateProduct,
   updateProductStock,
 } from '../../services/woocommerce/wooClient';
 import { authenticate, requirePortal, type AuthedRequest } from '../middleware/auth';
 import { asyncHandler } from '../asyncHandler';
+import {
+  addMessage as addSupportMessage,
+  createTicket as createSupportTicket,
+  getMessages as getSupportMessages,
+  getTicket as getSupportTicket,
+  listTickets as listSupportTickets,
+  markRead as markSupportRead,
+  unreadCount as supportUnreadCount,
+} from '../../services/supportService';
 
 export const merchantRouter = Router();
 merchantRouter.use(authenticate, requirePortal('merchant'));
@@ -262,7 +273,14 @@ merchantRouter.post(
     if (site.connection_mode !== 'woo_rest') {
       throw badRequest('همگام‌سازی دستی فقط برای اتصال REST است؛ افزونه خودش داده می‌فرستد.');
     }
-    // Do not start a duplicate parallel sync for the same site — return the in-flight one.
+    // Do not start a duplicate parallel sync for the same site — return the in-flight one. A run
+    // that has not progressed in 30 min is treated as stale (process likely died) so it can never
+    // block syncing forever: it is cancelled and a fresh run starts.
+    await query(
+      `UPDATE sync_run SET status = 'cancelled', message = 'همگام‌سازی متوقف شد (بدون پیشرفت)', finished_at = now()
+         WHERE site_id = $1 AND status IN ('queued', 'running') AND started_at < now() - interval '30 minutes'`,
+      [site.id],
+    );
     const inFlight = await queryOne<{ id: string; status: string }>(
       `SELECT id, status FROM sync_run
          WHERE site_id = $1 AND status IN ('queued', 'running')
@@ -777,6 +795,119 @@ merchantRouter.delete(
   }),
 );
 
+// ---- product media (gallery) management ----
+
+interface MediaImageOut {
+  id: string | null;
+  src: string;
+  alt: string | null;
+  position: number;
+  isCover: boolean;
+}
+function toMediaList(images: { externalId: string | null; src: string; alt: string | null; position: number }[]): MediaImageOut[] {
+  // WooCommerce treats the FIRST image as the product's cover/featured image.
+  return images.map((img, i) => ({
+    id: img.externalId,
+    src: img.src,
+    alt: img.alt,
+    position: i,
+    isCover: i === 0,
+  }));
+}
+
+// All images for a product (not just the cover).
+merchantRouter.get(
+  '/sites/:siteId/products/:productId/media',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    const creds = await getWooCredentials(site.id);
+    if (!creds) throw badRequest('این فروشگاه اتصال REST فعال ندارد.');
+    const product = await getProduct(creds, req.params.productId);
+    res.json({ images: toMediaList(product.images) });
+  }),
+);
+
+// Replace the gallery with an ordered list (reorder / set cover / remove / add-by-id-or-url).
+const mediaPatchSchema = z
+  .object({
+    images: z
+      .array(
+        z.object({
+          id: z.string().trim().max(40).optional(),
+          src: z.string().trim().url().max(2000).optional(),
+        }),
+      )
+      .max(30),
+  })
+  .refine((v) => v.images.every((i) => (i.id && i.id.length > 0) || (i.src && i.src.length > 0)), {
+    message: 'هر تصویر باید شناسه یا نشانی داشته باشد.',
+  });
+
+merchantRouter.patch(
+  '/sites/:siteId/products/:productId/media',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    ensureManage(req);
+    const site = await siteFor(req, req.params.siteId);
+    const parsed = mediaPatchSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('فهرست تصاویر نامعتبر است.');
+    const creds = await getWooCredentials(site.id);
+    if (!creds) throw badRequest('این فروشگاه اتصال REST فعال ندارد.');
+    const product = await setProductImages(creds, req.params.productId, parsed.data.images);
+    // Refresh the read-model so the gallery + cover reflect the real resulting state.
+    try {
+      await resyncProduct(site.id, req.params.productId);
+    } catch {
+      /* read-model refresh is best-effort; the WooCommerce write already succeeded */
+    }
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'product.media.update',
+      targetType: 'product',
+      targetId: req.params.productId,
+      requestIp: req.ip,
+      meta: { siteId: site.id, count: parsed.data.images.length },
+    });
+    res.json({ images: toMediaList(product.images) });
+  }),
+);
+
+// Upload an image binary (base64-in-JSON) to the store's media library; returns its id + URL.
+// The route-level JSON limit is raised in app.ts for POST .../media only.
+const mediaUploadSchema = z.object({
+  filename: z.string().trim().min(1).max(200),
+  contentType: z.string().trim().regex(/^image\/(jpe?g|png|webp|gif)$/i, 'نوع فایل پشتیبانی نمی‌شود.'),
+  // base64 of the image bytes (~11MB max image after the 12mb JSON cap).
+  dataBase64: z.string().min(8).max(15_000_000),
+});
+
+merchantRouter.post(
+  '/sites/:siteId/media',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    ensureManage(req);
+    const site = await siteFor(req, req.params.siteId);
+    const parsed = mediaUploadSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('فایل تصویر نامعتبر است.');
+    const creds = await getWooCredentials(site.id);
+    if (!creds) throw badRequest('این فروشگاه اتصال REST فعال ندارد.');
+    const data = Buffer.from(parsed.data.dataBase64, 'base64');
+    if (data.length === 0) throw badRequest('فایل تصویر خالی است.');
+    const media = await uploadProductMedia(creds, {
+      filename: parsed.data.filename,
+      contentType: parsed.data.contentType,
+      data,
+    });
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'product.media.upload',
+      targetType: 'site',
+      targetId: site.id,
+      requestIp: req.ip,
+      meta: { mediaId: media.id, bytes: data.length },
+    });
+    res.status(201).json({ media });
+  }),
+);
+
 const orderStatusSchema = z.object({
   status: z.enum([
     'pending',
@@ -811,5 +942,85 @@ merchantRouter.patch(
       meta: { siteId: site.id, status: parsed.data.status },
     });
     res.json({ order });
+  }),
+);
+
+
+// ---- support tickets (merchant side; admin side lives in admin.ts) ----
+
+const ticketCreateSchema = z.object({
+  subject: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(5000),
+  category: z.string().trim().max(40).optional(),
+  siteId: z.string().trim().max(64).optional(),
+});
+const ticketReplySchema = z.object({ body: z.string().trim().min(1).max(5000) });
+
+merchantRouter.post(
+  '/support/tickets',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const tenantId = await tenantFor(req);
+    const parsed = ticketCreateSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('موضوع و متن پیام را وارد کنید.');
+    const created = await createSupportTicket({
+      tenantId,
+      siteId: parsed.data.siteId ?? null,
+      userId: req.auth!.sub,
+      subject: parsed.data.subject,
+      category: parsed.data.category,
+      body: parsed.data.body,
+    });
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'support.ticket.create',
+      targetType: 'support_ticket',
+      targetId: created.ticket.id,
+      requestIp: req.ip,
+      meta: {},
+    });
+    res.status(201).json({ ticket: created.ticket, message: created.message });
+  }),
+);
+
+merchantRouter.get(
+  '/support/tickets',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const tenantId = await tenantFor(req);
+    const tickets = await listSupportTickets({ tenantId });
+    res.json({ tickets });
+  }),
+);
+
+merchantRouter.get(
+  '/support/unread-count',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const tenantId = await tenantFor(req);
+    res.json({ count: await supportUnreadCount({ tenantId }) });
+  }),
+);
+
+merchantRouter.get(
+  '/support/tickets/:id',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const tenantId = await tenantFor(req);
+    const ticket = await getSupportTicket(req.params.id, { tenantId });
+    const messages = await getSupportMessages(ticket.id);
+    await markSupportRead(ticket.id, 'merchant', { tenantId }); // opening the thread clears unread
+    res.json({ ticket: { ...ticket, merchant_unread: 0 }, messages });
+  }),
+);
+
+merchantRouter.post(
+  '/support/tickets/:id/messages',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const tenantId = await tenantFor(req);
+    const parsed = ticketReplySchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('متن پیام را وارد کنید.');
+    const message = await addSupportMessage(
+      req.params.id,
+      { senderRole: 'merchant', userId: req.auth!.sub, body: parsed.data.body },
+      { tenantId },
+    );
+    res.status(201).json({ message });
   }),
 );
