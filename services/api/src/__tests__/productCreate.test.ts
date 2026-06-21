@@ -40,11 +40,14 @@ jest.mock('../services/sites', () => {
 import request from 'supertest';
 
 import { queryOne } from '../db';
+import { getWooCredentials } from '../services/sites';
 import { createApp } from '../http/app';
 import { signToken } from '../services/tokenService';
+import { AppError } from '../util/errors';
 
 const app = createApp();
 const mockedQueryOne = queryOne as jest.MockedFunction<typeof queryOne>;
+const mockedGetCreds = getWooCredentials as jest.MockedFunction<typeof getWooCredentials>;
 
 const owner = signToken({ sub: 'u1', role: 'merchant_owner', portal: 'merchant', tenantId: 't1' });
 const viewer = signToken({ sub: 'u2', role: 'merchant_viewer', portal: 'merchant', tenantId: 't1' });
@@ -59,6 +62,12 @@ const ownedSite = {
 beforeEach(() => {
   mockCreateProduct.mockReset();
   mockedQueryOne.mockReset();
+  mockedGetCreds.mockReset();
+  mockedGetCreds.mockResolvedValue({
+    storeUrl: 'https://shop.example',
+    consumerKey: 'ck_x',
+    consumerSecret: 'cs_x',
+  });
 });
 
 describe('POST product — access control + truthful status', () => {
@@ -94,5 +103,46 @@ describe('POST product — access control + truthful status', () => {
     expect(res.status).toBe(201);
     expect(res.body.product.status).toBe('draft');
     expect(res.body.product.external_id).toBe('999');
+  });
+
+  it('publishes truthfully only when WooCommerce returns publish', async () => {
+    mockedQueryOne.mockResolvedValueOnce(ownedSite as never);
+    mockCreateProduct.mockResolvedValueOnce({
+      externalId: '1000', name: 'Live', sku: '', status: 'publish', type: 'simple',
+      permalink: 'https://shop.example/?p=1000', priceMinor: 0, currency: 'IRT',
+      stockStatus: 'instock', stockQty: null,
+    });
+    const res = await request(app)
+      .post(PATH)
+      .set('Authorization', `Bearer ${owner}`)
+      .send({ name: 'Live', status: 'publish' });
+    expect(res.status).toBe(201);
+    expect(res.body.product.status).toBe('publish');
+  });
+
+  it('returns a truthful 400 (not a fake create) when the site has no REST connection', async () => {
+    mockedQueryOne.mockResolvedValueOnce(ownedSite as never); // siteFor → getSite
+    mockedGetCreds.mockResolvedValueOnce(null); // no woo_rest credentials
+    const res = await request(app)
+      .post(PATH)
+      .set('Authorization', `Bearer ${owner}`)
+      .send({ name: 'New', status: 'publish' });
+    expect(res.status).toBe(400);
+    expect(mockCreateProduct).not.toHaveBeenCalled();
+    expect(res.body.product).toBeUndefined();
+  });
+
+  it('surfaces a WooCommerce failure instead of reporting a fake success', async () => {
+    mockedQueryOne.mockResolvedValueOnce(ownedSite as never);
+    mockCreateProduct.mockRejectedValueOnce(
+      new AppError(502, 'woo_request_failed', 'ساخت محصول در ووکامرس ناموفق بود.'),
+    );
+    const res = await request(app)
+      .post(PATH)
+      .set('Authorization', `Bearer ${owner}`)
+      .send({ name: 'New', status: 'publish' });
+    expect(res.status).toBe(502);
+    expect(res.body.product).toBeUndefined();
+    expect(res.body.error ?? res.body.code ?? res.body.message).toBeTruthy();
   });
 });

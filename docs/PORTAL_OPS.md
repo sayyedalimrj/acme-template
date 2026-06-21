@@ -170,6 +170,60 @@ intact.
 - **Secrets never reach the frontend.** Stored secrets are shown as `••••••`; changing them
   requires re-entry, after which the connection is re-tested.
 
+## Store settings: editing a connected store (merchant UI)
+
+Reachable from **Connect store → a connected store → “Store settings”** (the button only shows in
+the live app where the backend is configured; it is hidden in the public mock/demo build so there
+is no dead control). The screen (`apps/client/src/features/site/StoreSettingsScreen.tsx`) lets a
+merchant:
+
+- See the **real** connection state: status, connection type (REST vs plugin), last sync time, and
+  the last sync error (from `GET /merchant/sites/:siteId/status`). A **Refresh** button re-reads it.
+- Edit the **display name** and **store URL** (`PATCH /merchant/sites/:siteId`). The backend
+  re-validates the URL (SSRF-guarded) and, **if the host actually changes, sets the site back to
+  `pending`** so the connection must be re-verified. The UI surfaces that requirement.
+- **Advanced — REST credentials:** the stored key/secret is shown only as a masked `••••••`
+  placeholder (never the real value). To change them, the merchant re-enters the key + secret and
+  presses **Re-test connection** (`POST /merchant/sites/connect/verify`), which re-verifies and
+  re-seals the credentials server-side.
+- **Plugin connection:** when the store is paired via the plugin, the screen shows plugin status,
+  version, and last-seen, plus a note on how to re-pair from the WordPress connector (an in-app
+  re-pair button is intentionally **not** shown — see “Known gaps”).
+
+## Products: truthful create / edit
+
+- **Create** (`POST /merchant/sites/:siteId/products`) writes a **real** WooCommerce product when a
+  REST connection exists and reports the **actual** resulting status returned by WooCommerce
+  (published only if WooCommerce returns `publish`; otherwise “saved as draft”). If the store has no
+  REST connection the merchant gets a truthful error (no fake “submitted for review”). WooCommerce
+  failures surface as a visible error — never a silent fake success.
+- **Edit** (`PATCH /merchant/sites/:siteId/products/:productId`) writes name / regular + sale price
+  / stock / status / categories to WooCommerce and re-syncs the read-model so the UI reflects the
+  real resulting state.
+- **Product photos** are added in WordPress after creation (there is no binary media-upload
+  endpoint). The create form shows an honest note to that effect instead of an image picker that
+  would silently drop the selection. Photos added in WordPress sync back and display in-app.
+
+## WordPress plugin packaging (build artifact — never committed)
+
+Build the installable plugin zip with:
+
+```bash
+./scripts/package-plugin.sh
+# → wordpress-plugin/build/wordpress-commerce-os-companion-<version>.zip
+```
+
+The output directory `wordpress-plugin/build/` and all `*.zip` files are **gitignored**: the zip is
+a build artifact and must never be committed. Only the plugin source is tracked.
+
+### Known gaps (honest)
+
+- The **backend** plugin transport (handshake / signed sync / signed events / health, with HMAC +
+  nonce-replay + idempotency) is implemented and covered by tests. The **WordPress plugin client**
+  is still a read-only foundation (per `wordpress-plugin/README.md`) and does not yet perform live
+  network delivery, so end-to-end plugin pairing has **not** been live-verified. The **REST
+  fallback is the supported, working path** today. Re-pairing is operator-driven from WordPress.
+
 ## Migrations
 
 Run on the new portal server only (the update script does this automatically):

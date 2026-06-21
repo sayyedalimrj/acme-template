@@ -4,8 +4,12 @@
  * Collects the simple fields a merchant needs (name, SKU, price, stock, status, description) and
  * creates the product through the active data source: in production it creates a REAL WooCommerce
  * product via the backend and reports its TRUTHFUL resulting status (published vs draft) — never a
- * fake "submitted for review". In the mock build it adds to the in-memory catalog. Images are
- * added later in WordPress (no binary upload here). RTL-safe; mobile design language.
+ * fake "submitted for review". In the mock build it adds to the in-memory catalog.
+ *
+ * Product photos are NOT uploaded here: there is no binary media-upload endpoint yet, so rather
+ * than show a picker whose selection would be silently dropped, the media section is an honest
+ * note telling the merchant to add the image in WordPress after the product is created (the detail
+ * screen shows the synced image and an "Open in WordPress" action for that). RTL-safe.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -25,7 +29,6 @@ import { mobileMetrics, mobileType, useMobileColors, useMobileShadow } from '@/f
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 
-import { ProductImagePicker } from './components/ProductImagePicker';
 import { useCreateProduct } from './useProducts';
 
 import type { ProductStatus } from '@/domain/types';
@@ -136,7 +139,6 @@ export function ProductCreateScreen(): React.JSX.Element {
   const [stock, setStock] = useState('');
   const [status, setStatus] = useState<ProductDraftStatus>('publish');
   const [description, setDescription] = useState('');
-  const [imageId, setImageId] = useState<string | null>(null);
   const [savedStatus, setSavedStatus] = useState<ProductStatus | null>(null);
   const [submitError, setSubmitError] = useState<string | undefined>();
   const [error, setError] = useState(false);
@@ -257,7 +259,17 @@ export function ProductCreateScreen(): React.JSX.Element {
 
         <AnimatedSection index={2}>
           <FormCard title={t('product.new.media')}>
-            <ProductImagePicker selectedId={imageId} onSelect={setImageId} />
+            <Text
+              testID="product-media-deferred-note"
+              style={{
+                fontSize: mobileType.captionSize,
+                color: colors.textSecondary,
+                textAlign: isRTL ? 'right' : 'left',
+                lineHeight: 20,
+              }}
+            >
+              {t('product.new.mediaDeferredNote')}
+            </Text>
           </FormCard>
         </AnimatedSection>
 
