@@ -129,6 +129,8 @@ export interface ProductAdapter {
    * the in-memory catalog. Returns the updated product.
    */
   updateProduct(id: string, input: ProductUpdateInput): Promise<Product>;
+  /** Delete (trash) a product in the connected store and drop it from the read-model. */
+  deleteProduct(id: string): Promise<void>;
   /**
    * Create a simple product. In live mode this creates it in WooCommerce and returns its REAL
    * resulting status (publish/draft) so the UI never claims a fake "submitted for review"; in mock

@@ -60,6 +60,27 @@ DELETE FROM schema_migrations WHERE version = '002_platform.sql';
 COMMIT;
 ```
 
+## Roll back migration 005 (sync progress columns — safe/non-destructive)
+
+The progress columns are additive; rolling back just removes them (sync still works, only the
+live progress UI loses its data source). Restore the original status constraint too:
+
+```sql
+BEGIN;
+ALTER TABLE sync_run DROP CONSTRAINT IF EXISTS sync_run_status_check;
+ALTER TABLE sync_run ADD CONSTRAINT sync_run_status_check
+  CHECK (status IN ('running', 'success', 'failed'));
+ALTER TABLE sync_run
+  DROP COLUMN IF EXISTS phase, DROP COLUMN IF EXISTS message, DROP COLUMN IF EXISTS progress_percent,
+  DROP COLUMN IF EXISTS products_total, DROP COLUMN IF EXISTS products_done,
+  DROP COLUMN IF EXISTS orders_total, DROP COLUMN IF EXISTS orders_done,
+  DROP COLUMN IF EXISTS customers_total, DROP COLUMN IF EXISTS customers_done,
+  DROP COLUMN IF EXISTS coupons_total, DROP COLUMN IF EXISTS coupons_done,
+  DROP COLUMN IF EXISTS media_total, DROP COLUMN IF EXISTS media_done;
+DELETE FROM schema_migrations WHERE version = '005_sync_progress.sql';
+COMMIT;
+```
+
 ## Roll back migration 001 (baseline — destructive)
 
 Only for a throwaway/dev database:

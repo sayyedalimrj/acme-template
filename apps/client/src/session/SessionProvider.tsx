@@ -69,7 +69,7 @@ export interface SessionContextValue {
   /** Establish a real session from a backend OTP verification (user + JWT + refresh token). */
   signInWithSession: (input: SignInWithSessionInput) => void;
   /** Save the first-login profile (first + last name + email) server-side, then continue. */
-  completeProfile: (input: { firstName: string; lastName: string; email: string }) => Promise<void>;
+  completeProfile: (input: { firstName: string; lastName: string; email?: string }) => Promise<void>;
   /** Clear the session via AuthService. */
   signOut: () => Promise<void>;
   /** Switch the active portal in-app (mock convenience; persisted in memory only). */
@@ -180,7 +180,7 @@ export function SessionProvider({ children }: SessionProviderProps): React.JSX.E
   );
 
   const completeProfile = useCallback(
-    async (input: { firstName: string; lastName: string; email: string }) => {
+    async (input: { firstName: string; lastName: string; email?: string }) => {
       const res = await completeProfileApi(input);
       setUser((prev) =>
         prev

@@ -49,14 +49,16 @@ export function ProfileCompletionScreen(): React.JSX.Element {
   const lastNameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
 
-  const canSubmit =
-    firstName.trim().length > 0 && lastName.trim().length > 0 && EMAIL_RE.test(email.trim());
+  const canSubmit = firstName.trim().length > 0 && lastName.trim().length > 0;
 
   const onSubmit = (): void => {
     const nextErrors: FieldErrors = {};
     if (firstName.trim().length === 0) nextErrors.firstName = t('register.errorFirstName');
     if (lastName.trim().length === 0) nextErrors.lastName = t('register.errorLastName');
-    if (!EMAIL_RE.test(email.trim())) nextErrors.email = t('profile.complete.errorEmail');
+    // Email is OPTIONAL: only validate format when the user actually typed something.
+    if (email.trim().length > 0 && !EMAIL_RE.test(email.trim())) {
+      nextErrors.email = t('profile.complete.errorEmail');
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -65,7 +67,7 @@ export function ProfileCompletionScreen(): React.JSX.Element {
     void completeProfile({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.trim(),
+      email: email.trim() || undefined,
     })
       .catch((e: unknown) => {
         setSaveError(e instanceof Error ? e.message : t('profile.complete.errorSave'));

@@ -60,9 +60,13 @@ function customerLabel(order: Order, fallback: string): string {
 
 const STATUS_FILTERS: readonly { value: OrderStatusFilter; labelKey: StringKey }[] = [
   { value: 'all', labelKey: 'orders.filter.allStatus' },
-  { value: 'processing', labelKey: 'orders.status.processing' },
   { value: 'pending', labelKey: 'orders.status.pending' },
+  { value: 'processing', labelKey: 'orders.status.processing' },
+  { value: 'on-hold', labelKey: 'orders.status.on-hold' },
   { value: 'completed', labelKey: 'orders.status.completed' },
+  { value: 'cancelled', labelKey: 'orders.status.cancelled' },
+  { value: 'refunded', labelKey: 'orders.status.refunded' },
+  { value: 'failed', labelKey: 'orders.status.failed' },
 ];
 
 function ScreenTitle({ title }: { title: string }): React.JSX.Element {

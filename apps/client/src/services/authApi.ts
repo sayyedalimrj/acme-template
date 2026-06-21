@@ -200,7 +200,7 @@ export interface CompleteProfileResponse {
 export async function completeProfile(input: {
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string;
 }): Promise<CompleteProfileResponse> {
   return patchJson<CompleteProfileResponse>('/auth/profile', input);
 }

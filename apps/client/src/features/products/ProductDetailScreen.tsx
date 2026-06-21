@@ -31,7 +31,7 @@ import { useFormatters } from '@/i18n/useFormatters';
 import { useTheme } from '@/theme';
 
 import { statusBadge, stockBadge } from './productHelpers';
-import { useProduct } from './useProducts';
+import { useDeleteProduct, useProduct } from './useProducts';
 
 interface DetailRowProps {
   label: string;
@@ -76,6 +76,9 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
 
   const activeSite = useActiveSite();
   const { data: product, isPending, isError, refetch } = useProduct(productId);
+  const del = useDeleteProduct(productId);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | undefined>();
 
   if (!activeSite.isPending && !activeSite.data) {
     return (
@@ -233,6 +236,59 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
             leading={<Ionicons name="color-palette-outline" size={16} color={tokens.color.text} />}
           />
         </View>
+      </Card>
+
+      <Card title={t('product.delete.heading')}>
+        {!confirmDelete ? (
+          <View style={{ alignItems: 'flex-start' }}>
+            <Button
+              testID="product-delete"
+              label={t('product.delete.button')}
+              variant="ghost"
+              onPress={() => {
+                setDeleteError(undefined);
+                setConfirmDelete(true);
+              }}
+              leading={<Ionicons name="trash-outline" size={16} color={tokens.color.danger} />}
+            />
+          </View>
+        ) : (
+          <View style={{ gap: tokens.spacing.sm }}>
+            <Text testID="product-delete-confirm" variant="caption" tone="danger">
+              {t('product.delete.confirm')}
+            </Text>
+            <View style={{ flexDirection: rowDirection, gap: tokens.spacing.sm }}>
+              <Button
+                label={t('common.cancel')}
+                variant="secondary"
+                size="sm"
+                onPress={() => setConfirmDelete(false)}
+                disabled={del.isPending}
+              />
+              <Button
+                testID="product-delete-confirm-btn"
+                label={t('product.delete.confirmButton')}
+                variant="ghost"
+                size="sm"
+                loading={del.isPending}
+                onPress={() => {
+                  setDeleteError(undefined);
+                  del.mutate(undefined, {
+                    onSuccess: () => router.back(),
+                    // Keep the item + show the exact Woo error if the delete failed.
+                    onError: (e: unknown) =>
+                      setDeleteError(e instanceof Error ? e.message : t('product.delete.error')),
+                  });
+                }}
+              />
+            </View>
+            {deleteError ? (
+              <Text testID="product-delete-error" variant="caption" tone="danger">
+                {deleteError}
+              </Text>
+            ) : null}
+          </View>
+        )}
       </Card>
     </Screen>
   );

@@ -32,6 +32,7 @@ import {
   getProduct,
   getSalesReport,
   createProduct,
+  deleteProduct,
   updateOrderStatus,
   updateProduct,
   updateProductStock,
@@ -261,6 +262,17 @@ merchantRouter.post(
     if (site.connection_mode !== 'woo_rest') {
       throw badRequest('همگام‌سازی دستی فقط برای اتصال REST است؛ افزونه خودش داده می‌فرستد.');
     }
+    // Do not start a duplicate parallel sync for the same site — return the in-flight one.
+    const inFlight = await queryOne<{ id: string; status: string }>(
+      `SELECT id, status FROM sync_run
+         WHERE site_id = $1 AND status IN ('queued', 'running')
+         ORDER BY started_at DESC LIMIT 1`,
+      [site.id],
+    );
+    if (inFlight) {
+      res.status(202).json({ ok: true, status: inFlight.status, syncRunId: inFlight.id, alreadyRunning: true });
+      return;
+    }
     // Start the sync in the background and return immediately — never block the UI on a full pull.
     // Progress/result are recorded on sync_run + the site row and exposed via the status endpoint.
     startSiteSync(site.id);
@@ -273,6 +285,34 @@ merchantRouter.post(
       meta: {},
     });
     res.status(202).json({ ok: true, status: 'running' });
+  }),
+);
+
+merchantRouter.get(
+  '/sites/:siteId/sync/status',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    // Most recent run (any status) with full progress + counters.
+    const run = await queryOne(
+      `SELECT id, status, phase, message, progress_percent, error AS last_error,
+              started_at, finished_at,
+              products_total, products_done, orders_total, orders_done,
+              customers_total, customers_done, coupons_total, coupons_done,
+              media_total, media_done, stats
+         FROM sync_run WHERE site_id = $1 ORDER BY started_at DESC LIMIT 1`,
+      [site.id],
+    );
+    const lastSuccess = await queryOne<{ finished_at: string }>(
+      `SELECT finished_at FROM sync_run
+         WHERE site_id = $1 AND status = 'success' ORDER BY finished_at DESC LIMIT 1`,
+      [site.id],
+    );
+    res.json({
+      run,
+      lastSuccessAt: lastSuccess?.finished_at ?? site.last_synced_at ?? null,
+      siteStatus: site.status,
+      lastError: site.last_error ?? null,
+    });
   }),
 );
 
@@ -705,6 +745,35 @@ merchantRouter.patch(
         images: product.images.map((i) => ({ src: i.src, alt: i.alt, position: i.position })),
       },
     });
+  }),
+);
+
+merchantRouter.delete(
+  '/sites/:siteId/products/:productId',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    ensureManage(req);
+    const site = await siteFor(req, req.params.siteId);
+    const creds = await getWooCredentials(site.id);
+    if (!creds) throw badRequest('این فروشگاه اتصال REST فعال ندارد.');
+    // Default = trash (soft delete, restorable in WordPress); hard delete only when ?force=true.
+    const force = String(req.query.force ?? '') === 'true';
+    const result = await deleteProduct(creds, req.params.productId, force);
+    // Drop the local read-model row so the product disappears from the JetWeb list immediately.
+    await query(`DELETE FROM synced_product WHERE site_id = $1 AND external_id = $2`, [
+      site.id,
+      req.params.productId,
+    ]);
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: force ? 'product.delete' : 'product.trash',
+      targetType: 'product',
+      targetId: req.params.productId,
+      requestIp: req.ip,
+      meta: { siteId: site.id, force },
+    });
+    invalidate(`site:overview:${site.id}`);
+    invalidate(`merchant:overview:${site.tenant_id}`);
+    res.json({ ok: true, external_id: result.externalId, force });
   }),
 );
 

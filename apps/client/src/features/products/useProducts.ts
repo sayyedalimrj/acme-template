@@ -50,6 +50,24 @@ export function useUpdateProduct(
 }
 
 /**
+ * Delete (trash) a product. On success it invalidates the active site's product list so the item
+ * disappears immediately. The Woo write error (if any) is surfaced to the caller.
+ */
+export function useDeleteProduct(
+  productId: string,
+): UseMutationResult<void, Error, void> {
+  const siteId = useActiveSiteId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => productService.deleteProduct(productId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site', siteId ?? 'none', 'products'] });
+      queryClient.removeQueries({ queryKey: queryKeys.product(siteId ?? 'none', productId) });
+    },
+  });
+}
+
+/**
  * Create a simple product. On success it invalidates the active site's product list so the new
  * product appears immediately. Returns the created product with its REAL status (publish/draft).
  */

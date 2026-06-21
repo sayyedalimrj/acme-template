@@ -36,6 +36,7 @@ import { isApiConfigured } from '@/config/api.config';
 import {
   deleteSite,
   getSiteStatus,
+  getSyncStatus,
   triggerSiteSync,
   updateSiteSettings,
   verifyWooConnection,
@@ -193,10 +194,34 @@ function StoreSettingsForm({
     mutationFn: () => triggerSiteSync(siteId),
     onSuccess: async () => {
       setSyncNote(t('storeSettings.sync.started'));
+      await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'syncStatus'] });
       await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'status'] });
     },
     onError: (e: unknown) => setSyncNote(wooConnectErrorMessage(e)),
   });
+
+  // Live sync progress: poll every 2.5s while a run is queued/running; stop when it settles.
+  const syncStatusQuery = useQuery({
+    queryKey: ['site', siteId, 'syncStatus'],
+    queryFn: () => getSyncStatus(siteId),
+    refetchInterval: (query) => {
+      const s = query.state.data?.run?.status;
+      return s === 'running' || s === 'queued' ? 2500 : false;
+    },
+  });
+  const syncRun = syncStatusQuery.data?.run ?? null;
+  const syncing = syncRun?.status === 'running' || syncRun?.status === 'queued';
+  const prevSyncStatus = React.useRef<string | undefined>(undefined);
+  React.useEffect(() => {
+    const s = syncRun?.status;
+    // When a run transitions into a terminal success, refresh the connection status + dashboard
+    // overview so the chart/counters reflect the freshly synced data.
+    if (prevSyncStatus.current && prevSyncStatus.current !== s && s === 'success') {
+      void queryClient.invalidateQueries({ queryKey: ['site', siteId, 'status'] });
+      void queryClient.invalidateQueries({ queryKey: ['site', siteId, 'dashboard'] });
+    }
+    prevSyncStatus.current = s;
+  }, [syncRun?.status, queryClient, siteId]);
 
   const remove = useMutation({
     mutationFn: () => deleteSite(siteId),
@@ -279,18 +304,41 @@ function StoreSettingsForm({
             {isRest ? (
               <Button
                 testID="store-settings-sync"
-                label={t('storeSettings.sync.button')}
+                label={syncing ? t('storeSettings.sync.running') : t('storeSettings.sync.button')}
                 variant="secondary"
                 size="sm"
                 onPress={() => {
                   setSyncNote(undefined);
                   sync.mutate();
                 }}
-                loading={sync.isPending}
+                loading={sync.isPending || syncing}
+                disabled={sync.isPending || syncing}
                 leading={<Ionicons name="sync-outline" size={16} color={tokens.color.text} />}
               />
             ) : null}
           </View>
+          {syncRun && syncing ? (
+            <View style={{ gap: 2, marginTop: tokens.spacing.xs }}>
+              <Text testID="store-settings-sync-progress" variant="caption" tone="muted">
+                {`${syncRun.message ?? t('storeSettings.sync.running')} — ${syncRun.progress_percent}%`}
+              </Text>
+              {syncRun.orders_total > 0 ? (
+                <Text variant="caption" tone="muted">
+                  {`${t('storeSettings.sync.orders')}: ${syncRun.orders_done} ${t('common.of')} ${syncRun.orders_total}`}
+                </Text>
+              ) : null}
+              {syncRun.products_total > 0 ? (
+                <Text variant="caption" tone="muted">
+                  {`${t('storeSettings.sync.products')}: ${syncRun.products_done} ${t('common.of')} ${syncRun.products_total}`}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+          {syncRun?.status === 'failed' && syncRun.last_error ? (
+            <Text testID="store-settings-sync-error" variant="caption" tone="danger" style={{ marginTop: tokens.spacing.xs }}>
+              {syncRun.last_error}
+            </Text>
+          ) : null}
           {syncNote ? (
             <Text testID="store-settings-sync-note" variant="caption" tone="muted">
               {syncNote}

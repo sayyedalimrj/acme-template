@@ -20,6 +20,9 @@ export const productService = {
   updateProduct(id: string, input: ProductUpdateInput): Promise<Product> {
     return getAdapters().products.updateProduct(id, input);
   },
+  deleteProduct(id: string): Promise<void> {
+    return getAdapters().products.deleteProduct(id);
+  },
   createProduct(input: ProductCreateInput): Promise<Product> {
     return getAdapters().products.createProduct(input);
   },

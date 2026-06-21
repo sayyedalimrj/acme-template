@@ -28,7 +28,9 @@ export interface AppUser {
  * profile-completion form is shown.
  */
 export function isProfileComplete(user: Pick<AppUser, 'name' | 'email'>): boolean {
-  return Boolean(user.name && user.name.trim().length > 0 && user.email && user.email.trim().length > 0);
+  // Email is OPTIONAL: a profile is complete once the user has a name. (Email is collected when
+  // provided and validated for format, but never required to enter the app.)
+  return Boolean(user.name && user.name.trim().length > 0);
 }
 
 /**
@@ -196,7 +198,8 @@ export async function getUserById(id: string): Promise<AppUser | null> {
 export interface ProfileUpdate {
   firstName: string;
   lastName: string;
-  email: string;
+  /** Optional — stored only when provided; never required to complete the profile. */
+  email?: string;
 }
 
 /**
@@ -206,7 +209,8 @@ export interface ProfileUpdate {
  */
 export async function updateUserProfile(id: string, input: ProfileUpdate): Promise<AppUser> {
   const name = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
-  const email = input.email.trim();
+  // Email is optional: store NULL when omitted/blank (don't write an empty string).
+  const email = input.email && input.email.trim().length > 0 ? input.email.trim() : null;
   const updated = await queryOne<AppUser>(
     `UPDATE app_user SET name = $2, email = $3, updated_at = now()
        WHERE id = $1

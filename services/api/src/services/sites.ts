@@ -52,10 +52,13 @@ export interface SiteRow {
 }
 
 export async function listSites(tenantId: string): Promise<SiteRow[]> {
+  // Exclude disconnected/deleted connections so a removed store's card disappears immediately from
+  // the merchant's store list, the active-store carousel, and the dashboard (which derive the
+  // active site from this list). Read-models are kept in the DB for history/reporting.
   return query<SiteRow>(
     `SELECT id, tenant_id, name, url, connection_mode, status, woo_version, wp_version,
             currency, last_synced_at, last_error, created_at
-       FROM site WHERE tenant_id = $1 ORDER BY created_at DESC`,
+       FROM site WHERE tenant_id = $1 AND status <> 'disconnected' ORDER BY created_at DESC`,
     [tenantId],
   );
 }
@@ -468,8 +471,9 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
 
   const run = (
     await query<{ id: string }>(
-      `INSERT INTO sync_run (site_id, tenant_id, source, status) VALUES ($1, $2, 'woo_rest', 'running') RETURNING id`,
-      [siteId, site.tenant_id],
+      `INSERT INTO sync_run (site_id, tenant_id, source, status, phase, message, progress_percent)
+         VALUES ($1, $2, 'woo_rest', 'running', 'orders', $3, 5) RETURNING id`,
+      [siteId, site.tenant_id, 'شروع همگام‌سازی…'],
     )
   )[0];
 
@@ -478,8 +482,47 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
     orders: 0, customers: 0, coupons: 0,
   };
   const pageSize = 100;
+
+  // Phase-boundary progress writers. `progress_percent` is an estimate (allowed by spec); the
+  // per-entity counters are honest (set from the real synced counts as each phase finishes).
+  const setPhase = async (phase: string, percent: number, message: string): Promise<void> => {
+    await query(`UPDATE sync_run SET phase = $2, progress_percent = $3, message = $4 WHERE id = $1`, [
+      run.id, phase, percent, message,
+    ]);
+  };
+  type CounterCol =
+    | 'products_total' | 'products_done' | 'orders_total' | 'orders_done'
+    | 'customers_total' | 'customers_done' | 'coupons_total' | 'coupons_done'
+    | 'media_total' | 'media_done';
+  const setCounters = async (fields: Partial<Record<CounterCol, number>>): Promise<void> => {
+    const cols = Object.keys(fields) as CounterCol[];
+    if (cols.length === 0) return;
+    // Column names are an internal fixed enum (CounterCol), never user input — safe to inline.
+    const sets = cols.map((c, i) => `${c} = $${i + 2}`).join(', ');
+    await query(`UPDATE sync_run SET ${sets} WHERE id = $1`, [run.id, ...cols.map((c) => fields[c]!)]);
+  };
+
   try {
-    // Categories first so product→category links can resolve.
+    // PHASE 1 — ORDERS FIRST so the dashboard chart/revenue can populate quickly, before the
+    // heavier product/variation/media pull. Orders do not depend on taxonomies.
+    await setPhase('orders', 10, 'همگام‌سازی سفارش‌ها…');
+    stats.orders = await syncAllWooPages(
+      (page) => listOrders(creds, { page, pageSize }),
+      async (o) => {
+        await query(
+          `INSERT INTO synced_order (site_id, tenant_id, external_id, number, status, total_minor, currency, customer_name, external_created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
+           ON CONFLICT (site_id, external_id) DO UPDATE SET
+             number = EXCLUDED.number, status = EXCLUDED.status, total_minor = EXCLUDED.total_minor,
+             customer_name = EXCLUDED.customer_name, external_created_at = EXCLUDED.external_created_at, updated_at = now()`,
+          [siteId, site.tenant_id, o.externalId, o.number, o.status, o.totalMinor, o.currency, o.customerName, o.createdAt],
+        );
+      },
+    );
+    await setCounters({ orders_total: stats.orders, orders_done: stats.orders });
+    await setPhase('categories', 38, 'همگام‌سازی دسته‌ها و برچسب‌ها…');
+
+    // PHASE 2 — taxonomies first so product→category links can resolve.
     stats.categories = await syncAllWooPages(
       (page) => listCategories(creds, { page, pageSize }),
       async (c) => {
@@ -555,6 +598,8 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
       stats.attributes = 0; // attribute endpoint restricted → leave product-level attributes intact
     }
 
+    // PHASE 3 — products (heavy; variations only for variable products).
+    await setPhase('products', 50, 'همگام‌سازی محصولات…');
     stats.products = await syncAllWooPages(
       (page) => listProducts(creds, { page, pageSize }),
       async (p) => {
@@ -564,21 +609,13 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
         stats.images += counts.images;
       },
     );
+    await setCounters({
+      products_total: stats.products, products_done: stats.products,
+      media_total: stats.images, media_done: stats.images,
+    });
+    await setPhase('customers', 88, 'همگام‌سازی مشتریان…');
 
-    stats.orders = await syncAllWooPages(
-      (page) => listOrders(creds, { page, pageSize }),
-      async (o) => {
-        await query(
-          `INSERT INTO synced_order (site_id, tenant_id, external_id, number, status, total_minor, currency, customer_name, external_created_at, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
-           ON CONFLICT (site_id, external_id) DO UPDATE SET
-             number = EXCLUDED.number, status = EXCLUDED.status, total_minor = EXCLUDED.total_minor,
-             customer_name = EXCLUDED.customer_name, external_created_at = EXCLUDED.external_created_at, updated_at = now()`,
-          [siteId, site.tenant_id, o.externalId, o.number, o.status, o.totalMinor, o.currency, o.customerName, o.createdAt],
-        );
-      },
-    );
-
+    // PHASE 4 — customers.
     stats.customers = await syncAllWooPages(
       (page) => listCustomers(creds, { page, pageSize }),
       async (c) => {
@@ -592,6 +629,8 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
         );
       },
     );
+    await setCounters({ customers_total: stats.customers, customers_done: stats.customers });
+    await setPhase('coupons', 95, 'همگام‌سازی کوپن‌ها…');
 
     try {
       stats.coupons = await syncAllWooPages(
@@ -610,19 +649,21 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
     } catch {
       /* coupons optional */
     }
+    await setCounters({ coupons_total: stats.coupons, coupons_done: stats.coupons });
 
     await query(
-      `UPDATE sync_run SET status = 'success', stats = $2, finished_at = now() WHERE id = $1`,
-      [run.id, JSON.stringify(stats)],
+      `UPDATE sync_run SET status = 'success', phase = 'done', progress_percent = 100,
+              message = $2, stats = $3, finished_at = now() WHERE id = $1`,
+      [run.id, 'همگام‌سازی کامل شد.', JSON.stringify(stats)],
     );
     await query(`UPDATE site SET last_synced_at = now(), last_error = NULL WHERE id = $1`, [siteId]);
     return stats;
   } catch (err) {
     const message = (err as Error).message?.slice(0, 300) ?? 'sync failed';
-    await query(`UPDATE sync_run SET status = 'failed', error = $2, finished_at = now() WHERE id = $1`, [
-      run.id,
-      message,
-    ]);
+    await query(
+      `UPDATE sync_run SET status = 'failed', error = $2, message = $2, finished_at = now() WHERE id = $1`,
+      [run.id, message],
+    );
     await query(`UPDATE site SET last_error = $2 WHERE id = $1`, [siteId, message]);
     throw err;
   }
