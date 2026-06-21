@@ -80,8 +80,14 @@ export function createApp(): express.Express {
   app.use('/plugin', pluginRouter);
   app.use('/webhooks', webhookRouter);
 
-  // JSON parser for the rest of the API.
-  app.use(express.json({ limit: '256kb' }));
+  // JSON parser for the rest of the API. Product image uploads (base64-in-JSON) need a larger
+  // body; EVERY other route keeps the tight 256kb cap (no broadening of the attack surface).
+  const jsonSmall = express.json({ limit: '256kb' });
+  const jsonMedia = express.json({ limit: '12mb' });
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const isMediaUpload = req.method === 'POST' && /\/media$/.test(req.path);
+    return (isMediaUpload ? jsonMedia : jsonSmall)(req, res, next);
+  });
 
   app.use('/auth', authRouter);
   app.use('/admin', adminRouter);

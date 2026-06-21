@@ -4,8 +4,8 @@
  * A focused, working edit form for the controlled product fields the backend can safely write to
  * WooCommerce (name, price, stock quantity/status, publication status). It loads the current
  * product, submits via `useUpdateProduct` (live: PATCH → WooCommerce → read-model resync; mock:
- * in-memory), and returns to the detail screen on success. No image/binary upload here — there is
- * no safe upload backend yet (see the detail-screen note), so no broken upload control is shown.
+ * in-memory), and returns to the detail screen on success. The full image gallery (upload / add by
+ * URL / set cover / reorder / remove) is managed in-app via `ProductMediaGallery` below.
  */
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -28,6 +28,7 @@ import { useTheme } from '@/theme';
 import type { Product, ProductStatus, StockStatus } from '@/domain/types';
 
 import { useProduct, useUpdateProduct } from './useProducts';
+import { ProductMediaGallery } from './components/ProductMediaGallery';
 
 export interface ProductEditScreenProps {
   productId: string;
@@ -163,6 +164,13 @@ function ProductEditForm({ productId, product }: ProductEditFormProps): React.JS
           ]}
         />
       </Card>
+
+      {/* Full image gallery: upload / add by URL / set cover / reorder / remove — inside the app. */}
+      <ProductMediaGallery
+        productId={productId}
+        siteId={activeSite.data?.id}
+        fallbackImages={product.images?.map((img) => ({ src: img.src, alt: img.alt })) ?? []}
+      />
 
       {update.isError ? (
         <Text tone="danger" variant="caption">

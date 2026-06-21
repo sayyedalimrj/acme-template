@@ -15,6 +15,16 @@ import { parsePagination } from '../../util/pagination';
 import { badRequest, notFound } from '../../util/errors';
 import { authenticate, requireAdmin, requirePermission, requirePortal, type AuthedRequest } from '../middleware/auth';
 import { asyncHandler } from '../asyncHandler';
+import {
+  addMessage as addSupportMessage,
+  getMessages as getSupportMessages,
+  getTicket as getSupportTicket,
+  listTickets as listSupportTickets,
+  markRead as markSupportRead,
+  setStatus as setSupportStatus,
+  unreadCount as supportUnreadCount,
+  type SupportStatus,
+} from '../../services/supportService';
 
 export const adminRouter = Router();
 adminRouter.use(authenticate, requirePortal('admin'), requireAdmin);
@@ -304,5 +314,81 @@ adminRouter.get(
       [pageSize, offset],
     );
     res.json({ items: rows, page, pageSize });
+  }),
+);
+
+
+// ---- support inbox (admin side: sees ALL tenants' tickets) ----
+
+const adminTicketStatusValues = ['open', 'in_progress', 'closed'] as const;
+const adminReplySchema = z.object({ body: z.string().trim().min(1).max(5000) });
+const adminStatusSchema = z.object({ status: z.enum(adminTicketStatusValues) });
+
+adminRouter.get(
+  '/support/tickets',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const status = req.query.status ? String(req.query.status) : undefined;
+    const valid = status && (adminTicketStatusValues as readonly string[]).includes(status)
+      ? (status as SupportStatus)
+      : undefined;
+    const tickets = await listSupportTickets({ status: valid });
+    res.json({ tickets });
+  }),
+);
+
+adminRouter.get(
+  '/support/unread-count',
+  asyncHandler(async (_req: AuthedRequest, res: Response) => {
+    res.json({ count: await supportUnreadCount({}) });
+  }),
+);
+
+adminRouter.get(
+  '/support/tickets/:id',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const ticket = await getSupportTicket(req.params.id);
+    const messages = await getSupportMessages(ticket.id);
+    await markSupportRead(ticket.id, 'admin'); // opening the thread clears the admin unread badge
+    res.json({ ticket: { ...ticket, admin_unread: 0 }, messages });
+  }),
+);
+
+adminRouter.post(
+  '/support/tickets/:id/messages',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const parsed = adminReplySchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('متن پاسخ را وارد کنید.');
+    const message = await addSupportMessage(req.params.id, {
+      senderRole: 'admin',
+      userId: req.auth!.sub,
+      body: parsed.data.body,
+    });
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'support.admin.reply',
+      targetType: 'support_ticket',
+      targetId: req.params.id,
+      requestIp: req.ip,
+      meta: {},
+    });
+    res.status(201).json({ message });
+  }),
+);
+
+adminRouter.patch(
+  '/support/tickets/:id',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const parsed = adminStatusSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('وضعیت نامعتبر است.');
+    const ticket = await setSupportStatus(req.params.id, parsed.data.status);
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'support.admin.status',
+      targetType: 'support_ticket',
+      targetId: req.params.id,
+      requestIp: req.ip,
+      meta: { status: parsed.data.status },
+    });
+    res.json({ ticket });
   }),
 );

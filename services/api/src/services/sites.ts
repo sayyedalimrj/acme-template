@@ -294,6 +294,12 @@ export async function disconnectSite(siteId: string): Promise<void> {
       [siteId],
     );
     await client.query(`UPDATE plugin_connection SET status = 'revoked' WHERE site_id = $1`, [siteId]);
+    // Cancel any in-flight sync so a removed/disconnected store leaves no stale 'running' progress.
+    await client.query(
+      `UPDATE sync_run SET status = 'cancelled', message = 'اتصال فروشگاه حذف شد', finished_at = now()
+         WHERE site_id = $1 AND status IN ('queued', 'running')`,
+      [siteId],
+    );
     await client.query(
       `UPDATE site SET status = 'disconnected', updated_at = now() WHERE id = $1`,
       [siteId],
@@ -483,29 +489,43 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
   };
   const pageSize = 100;
 
-  // Phase-boundary progress writers. `progress_percent` is an estimate (allowed by spec); the
-  // per-entity counters are honest (set from the real synced counts as each phase finishes).
-  const setPhase = async (phase: string, percent: number, message: string): Promise<void> => {
-    await query(`UPDATE sync_run SET phase = $2, progress_percent = $3, message = $4 WHERE id = $1`, [
-      run.id, phase, percent, message,
-    ]);
-  };
+  // Granular progress writer: updates phase + percent + message + any per-entity counters in one
+  // row write. percent is honest — when a total is known it tracks done/total within the phase's
+  // allotted band; when unknown it holds the band's floor (indeterminate, never a fake number).
   type CounterCol =
     | 'products_total' | 'products_done' | 'orders_total' | 'orders_done'
     | 'customers_total' | 'customers_done' | 'coupons_total' | 'coupons_done'
     | 'media_total' | 'media_done';
-  const setCounters = async (fields: Partial<Record<CounterCol, number>>): Promise<void> => {
-    const cols = Object.keys(fields) as CounterCol[];
-    if (cols.length === 0) return;
-    // Column names are an internal fixed enum (CounterCol), never user input — safe to inline.
-    const sets = cols.map((c, i) => `${c} = $${i + 2}`).join(', ');
-    await query(`UPDATE sync_run SET ${sets} WHERE id = $1`, [run.id, ...cols.map((c) => fields[c]!)]);
+  const setProgress = async (
+    fields: { phase?: string; percent?: number; message?: string } & Partial<Record<CounterCol, number>>,
+  ): Promise<void> => {
+    const sets: string[] = [];
+    const vals: unknown[] = [];
+    const push = (col: string, val: unknown): void => {
+      vals.push(val);
+      sets.push(`${col} = $${vals.length + 1}`);
+    };
+    if (fields.phase !== undefined) push('phase', fields.phase);
+    if (fields.percent !== undefined) push('progress_percent', Math.max(0, Math.min(100, Math.round(fields.percent))));
+    if (fields.message !== undefined) push('message', fields.message);
+    for (const col of [
+      'products_total', 'products_done', 'orders_total', 'orders_done',
+      'customers_total', 'customers_done', 'coupons_total', 'coupons_done',
+      'media_total', 'media_done',
+    ] as CounterCol[]) {
+      if (fields[col] !== undefined) push(col, fields[col]); // CounterCol is a fixed enum (safe)
+    }
+    if (sets.length === 0) return;
+    await query(`UPDATE sync_run SET ${sets.join(', ')} WHERE id = $1`, [run.id, ...vals]);
   };
+  // Map progress within a phase to its allotted percent band; floor when the total is unknown.
+  const band = (lo: number, hi: number, done: number, total: number): number =>
+    total > 0 ? lo + (hi - lo) * Math.min(1, done / total) : lo;
 
   try {
     // PHASE 1 — ORDERS FIRST so the dashboard chart/revenue can populate quickly, before the
-    // heavier product/variation/media pull. Orders do not depend on taxonomies.
-    await setPhase('orders', 10, 'همگام‌سازی سفارش‌ها…');
+    // heavier product/variation/media pull. Orders do not depend on taxonomies. (band 5→35%)
+    await setProgress({ phase: 'orders', percent: 5, message: 'همگام‌سازی سفارش‌ها…' });
     stats.orders = await syncAllWooPages(
       (page) => listOrders(creds, { page, pageSize }),
       async (o) => {
@@ -518,9 +538,17 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
           [siteId, site.tenant_id, o.externalId, o.number, o.status, o.totalMinor, o.currency, o.customerName, o.createdAt],
         );
       },
+      async (done, total) => {
+        await setProgress({
+          phase: 'orders',
+          orders_done: done,
+          orders_total: total,
+          percent: band(5, 35, done, total),
+          message: total > 0 ? `همگام‌سازی سفارش‌ها (${done} از ${total})…` : `همگام‌سازی سفارش‌ها (${done})…`,
+        });
+      },
     );
-    await setCounters({ orders_total: stats.orders, orders_done: stats.orders });
-    await setPhase('categories', 38, 'همگام‌سازی دسته‌ها و برچسب‌ها…');
+    await setProgress({ phase: 'categories', percent: 38, message: 'همگام‌سازی دسته‌ها و برچسب‌ها…' });
 
     // PHASE 2 — taxonomies first so product→category links can resolve.
     stats.categories = await syncAllWooPages(
@@ -598,8 +626,8 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
       stats.attributes = 0; // attribute endpoint restricted → leave product-level attributes intact
     }
 
-    // PHASE 3 — products (heavy; variations only for variable products).
-    await setPhase('products', 50, 'همگام‌سازی محصولات…');
+    // PHASE 3 — products (heavy; variations only for variable products). (band 45→88%)
+    await setProgress({ phase: 'products', percent: 45, message: 'همگام‌سازی محصولات…' });
     stats.products = await syncAllWooPages(
       (page) => listProducts(creds, { page, pageSize }),
       async (p) => {
@@ -608,12 +636,22 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
         stats.variants += counts.variants;
         stats.images += counts.images;
       },
+      async (done, total) => {
+        await setProgress({
+          phase: 'products',
+          products_done: done,
+          products_total: total,
+          media_done: stats.images,
+          percent: band(45, 88, done, total),
+          message: total > 0 ? `همگام‌سازی محصولات (${done} از ${total})…` : `همگام‌سازی محصولات (${done})…`,
+        });
+      },
     );
-    await setCounters({
+    await setProgress({
       products_total: stats.products, products_done: stats.products,
       media_total: stats.images, media_done: stats.images,
     });
-    await setPhase('customers', 88, 'همگام‌سازی مشتریان…');
+    await setProgress({ phase: 'customers', percent: 90, message: 'همگام‌سازی مشتریان…' });
 
     // PHASE 4 — customers.
     stats.customers = await syncAllWooPages(
@@ -629,8 +667,8 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
         );
       },
     );
-    await setCounters({ customers_total: stats.customers, customers_done: stats.customers });
-    await setPhase('coupons', 95, 'همگام‌سازی کوپن‌ها…');
+    await setProgress({ customers_total: stats.customers, customers_done: stats.customers });
+    await setProgress({ phase: 'coupons', percent: 95, message: 'همگام‌سازی کوپن‌ها…' });
 
     try {
       stats.coupons = await syncAllWooPages(
@@ -649,7 +687,7 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
     } catch {
       /* coupons optional */
     }
-    await setCounters({ coupons_total: stats.coupons, coupons_done: stats.coupons });
+    await setProgress({ coupons_total: stats.coupons, coupons_done: stats.coupons });
 
     await query(
       `UPDATE sync_run SET status = 'success', phase = 'done', progress_percent = 100,
@@ -669,10 +707,11 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
   }
 }
 
-/** Walk every WooCommerce list page (100 items/page) until exhausted. */
+/** Walk every WooCommerce list page (100 items/page) until exhausted. Reports per-page progress. */
 async function syncAllWooPages<T>(
   fetchPage: (page: number) => Promise<WooPage<T>>,
   upsert: (item: T) => Promise<void>,
+  onPage?: (done: number, total: number) => Promise<void>,
 ): Promise<number> {
   let page = 1;
   let synced = 0;
@@ -685,6 +724,9 @@ async function syncAllWooPages<T>(
       await upsert(item);
       synced += 1;
     }
+    // Report progress after each page so the UI shows continuous movement + a real "x of y"
+    // (total comes from the Woo `x-wp-total` header), instead of sitting frozen at a boundary %.
+    if (onPage) await onPage(synced, reportedTotal);
     if (batch.items.length === 0) break;
     if (batch.items.length < batch.pageSize) break;
     if (reportedTotal > 0 && synced >= reportedTotal) break;
