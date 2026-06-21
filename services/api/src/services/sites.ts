@@ -164,14 +164,26 @@ export async function verifyWooConnection(input: {
     [input.siteId],
   );
 
-  // Best-effort initial sync (don't fail the connect if the first pull hiccups).
-  try {
-    await syncWooSite(input.siteId);
-  } catch {
-    /* sync errors are recorded on the site row by syncWooSite */
-  }
+  // Kick off the initial catalog/orders sync in the BACKGROUND so connect/re-test returns fast.
+  // Blocking on the full sync here is exactly what made the connect form hit the API request
+  // timeout ("درخواست زمان‌بر شد"). syncWooSite records its own progress/result.
+  startSiteSync(input.siteId);
 
   return (await getSite(input.siteId))!;
+}
+
+/**
+ * Run a full WooCommerce sync in the BACKGROUND and return immediately. Connect/re-test and the
+ * manual sync button must never block on the (potentially long) full catalog/orders pull — a
+ * blocking sync is what caused the connect form to exceed the API request timeout. `syncWooSite`
+ * records its own progress/result on `sync_run` + the site row (`last_synced_at` / `last_error`),
+ * which the status endpoint surfaces. The rejection is swallowed here (already persisted) so the
+ * detached promise never becomes an unhandled rejection.
+ */
+export function startSiteSync(siteId: string): void {
+  void syncWooSite(siteId).catch(() => {
+    /* failure already recorded on sync_run + site.last_error by syncWooSite */
+  });
 }
 
 /** Decrypt the active WooCommerce credentials for a site (server-side use only). */

@@ -14,6 +14,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 
@@ -33,9 +34,12 @@ import {
 } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
 import {
+  deleteSite,
   getSiteStatus,
+  triggerSiteSync,
   updateSiteSettings,
   verifyWooConnection,
+  wooConnectErrorMessage,
   type SiteStatusResult,
 } from '@/services/connectionApi';
 import { useT } from '@/i18n/I18nProvider';
@@ -141,6 +145,7 @@ function StoreSettingsForm({
   const { tokens, rowDirection } = useTheme();
   const t = useT();
   const fmt = useFormatters();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { site, plugin, lastSync } = data;
 
@@ -153,6 +158,8 @@ function StoreSettingsForm({
   const [consumerSecret, setConsumerSecret] = useState('');
   const [credError, setCredError] = useState<string | undefined>();
   const [credOk, setCredOk] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [syncNote, setSyncNote] = useState<string | undefined>();
 
   const isRest = site.connection_mode === 'woo_rest';
   const hasPlugin = site.connection_mode === 'plugin' || Boolean(plugin);
@@ -178,7 +185,26 @@ function StoreSettingsForm({
     },
     onError: (e: unknown) => {
       setCredOk(false);
-      setCredError(e instanceof Error ? e.message : t('storeSettings.loadError'));
+      setCredError(wooConnectErrorMessage(e));
+    },
+  });
+
+  const sync = useMutation({
+    mutationFn: () => triggerSiteSync(siteId),
+    onSuccess: async () => {
+      setSyncNote(t('storeSettings.sync.started'));
+      await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'status'] });
+    },
+    onError: (e: unknown) => setSyncNote(wooConnectErrorMessage(e)),
+  });
+
+  const remove = useMutation({
+    mutationFn: () => deleteSite(siteId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['sites'] });
+      await queryClient.invalidateQueries({ queryKey: ['site'] });
+      // Connection removed — leave the settings screen so no stale "connected" state is shown.
+      router.replace('/connect-site' as never);
     },
   });
 
@@ -240,7 +266,7 @@ function StoreSettingsForm({
               </Text>
             </View>
           ) : null}
-          <View style={{ alignItems: 'flex-start', marginTop: tokens.spacing.xs }}>
+          <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.sm, marginTop: tokens.spacing.xs }}>
             <Button
               testID="store-settings-refresh"
               label={t('storeSettings.refresh')}
@@ -250,7 +276,26 @@ function StoreSettingsForm({
               loading={refreshing}
               leading={<Ionicons name="refresh" size={16} color={tokens.color.text} />}
             />
+            {isRest ? (
+              <Button
+                testID="store-settings-sync"
+                label={t('storeSettings.sync.button')}
+                variant="secondary"
+                size="sm"
+                onPress={() => {
+                  setSyncNote(undefined);
+                  sync.mutate();
+                }}
+                loading={sync.isPending}
+                leading={<Ionicons name="sync-outline" size={16} color={tokens.color.text} />}
+              />
+            ) : null}
           </View>
+          {syncNote ? (
+            <Text testID="store-settings-sync-note" variant="caption" tone="muted">
+              {syncNote}
+            </Text>
+          ) : null}
         </View>
       </Card>
 
@@ -381,6 +426,48 @@ function StoreSettingsForm({
           </Text>
         </Card>
       ) : null}
+
+      {/* Danger zone: remove the connection from JetWeb only (does not delete the real store). */}
+      <Card title={t('storeSettings.delete.heading')}>
+        <Text variant="caption" tone="muted">
+          {t('storeSettings.delete.note')}
+        </Text>
+        {!confirmDelete ? (
+          <View style={{ alignItems: 'flex-start', marginTop: tokens.spacing.xs }}>
+            <Button
+              testID="store-settings-delete"
+              label={t('storeSettings.delete.button')}
+              variant="ghost"
+              onPress={() => setConfirmDelete(true)}
+              leading={<Ionicons name="trash-outline" size={16} color={tokens.color.danger} />}
+            />
+          </View>
+        ) : (
+          <View style={{ gap: tokens.spacing.sm, marginTop: tokens.spacing.xs }}>
+            <Text testID="store-settings-delete-confirm" variant="caption" tone="danger">
+              {t('storeSettings.delete.confirm')}
+            </Text>
+            <View style={{ flexDirection: rowDirection, gap: tokens.spacing.sm }}>
+              <Button
+                testID="store-settings-delete-cancel"
+                label={t('common.cancel')}
+                variant="secondary"
+                size="sm"
+                onPress={() => setConfirmDelete(false)}
+                disabled={remove.isPending}
+              />
+              <Button
+                testID="store-settings-delete-confirm-btn"
+                label={t('storeSettings.delete.confirmButton')}
+                variant="ghost"
+                size="sm"
+                onPress={() => remove.mutate()}
+                loading={remove.isPending}
+              />
+            </View>
+          </View>
+        )}
+      </Card>
     </Screen>
   );
 }

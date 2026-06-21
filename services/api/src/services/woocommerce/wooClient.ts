@@ -158,58 +158,139 @@ function baseUrl(storeUrl: string): string {
   return storeUrl.replace(/\/+$/, '');
 }
 
+/**
+ * Defense-in-depth redaction: strip the consumer key/secret out of any string before it could be
+ * surfaced in an error or a log. We never log full Woo URLs (which under query-auth carry the
+ * secret), but this guarantees secrets can never leak even if some upstream error embeds them.
+ */
+function redactWooSecrets(text: string, creds: WooCredentials): string {
+  let out = text;
+  if (creds.consumerSecret) out = out.split(creds.consumerSecret).join('cs_***');
+  if (creds.consumerKey) out = out.split(creds.consumerKey).join('ck_***');
+  // Also redact any consumer_secret/consumer_key query params that slipped into a URL string.
+  out = out.replace(/(consumer_(?:key|secret)=)[^&\s"']+/gi, '$1***');
+  return out;
+}
+
+type WooMethod = 'GET' | 'POST' | 'PUT';
+type WooAuthStrategy = 'query' | 'basic';
+
+interface WooHttpOptions {
+  method?: WooMethod;
+  query?: Record<string, string | number | undefined>;
+  body?: Record<string, unknown>;
+}
+
+/**
+ * Central WooCommerce REST request builder — the single place all Woo calls go through so auth,
+ * timeouts, retries and error mapping are consistent.
+ *
+ * Auth: over HTTPS we try QUERY-STRING auth first (`consumer_key`/`consumer_secret`), because many
+ * managed WordPress hosts silently drop the `Authorization` header (PHP-CGI / proxies), which made
+ * Basic-auth requests fail with `woocommerce_rest_cannot_view`. If query-auth is rejected (401/403)
+ * we fall back to Basic auth. Over plain HTTP (local/dev only) we use Basic ONLY — secrets must
+ * never be placed in a plaintext query string. SSRF validation runs on the host before any fetch.
+ *
+ * Errors are mapped to specific codes (never a generic timeout): `woo_auth_failed` (401),
+ * `woo_forbidden` (403), `woo_timeout` (abort), `woo_network_error` (connection), `woo_unavailable`
+ * (429/5xx), `woo_request_failed` (other). Secrets are redacted from any thrown message.
+ */
+async function wooHttp(
+  creds: WooCredentials,
+  path: string,
+  opts: WooHttpOptions = {},
+): Promise<{ json: unknown; total: number }> {
+  const method: WooMethod = opts.method ?? 'GET';
+  const root = baseUrl(creds.storeUrl);
+  await assertSafeOutboundUrl(root); // SSRF guard on the host (unchanged by query params)
+  const isHttps = /^https:\/\//i.test(root);
+
+  const buildUrl = (withQueryAuth: boolean): URL => {
+    const u = new URL(`${root}/wp-json/wc/v3${path}`);
+    for (const [k, v] of Object.entries(opts.query ?? {})) {
+      if (v !== undefined) u.searchParams.set(k, String(v));
+    }
+    if (withQueryAuth) {
+      u.searchParams.set('consumer_key', creds.consumerKey);
+      u.searchParams.set('consumer_secret', creds.consumerSecret);
+    }
+    return u;
+  };
+
+  // Over HTTPS: query-auth first (robust against dropped Authorization), then Basic fallback.
+  const strategies: WooAuthStrategy[] = isHttps ? ['query', 'basic'] : ['basic'];
+  let sawForbidden = false;
+
+  for (const strategy of strategies) {
+    const url = buildUrl(strategy === 'query');
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (opts.body) headers['Content-Type'] = 'application/json';
+    if (strategy === 'basic') headers.Authorization = authHeader(creds);
+
+    let authRejected = false;
+    for (let attempt = 0; attempt <= env.WOO_MAX_RETRIES; attempt += 1) {
+      try {
+        const res = await safeFetch(url.href, {
+          method,
+          headers,
+          body: opts.body ? JSON.stringify(opts.body) : undefined,
+          timeoutMs: env.WOO_HTTP_TIMEOUT_MS,
+        });
+        if (res.status === 401 || res.status === 403) {
+          if (res.status === 403) sawForbidden = true;
+          authRejected = true; // do not retry auth failures; try the next strategy instead
+          break;
+        }
+        if (res.status === 429 || res.status >= 500) {
+          if (attempt < env.WOO_MAX_RETRIES) {
+            await delay(250 * (attempt + 1));
+            continue;
+          }
+          throw badGateway('فروشگاه ووکامرس پاسخ نداد.', 'woo_unavailable');
+        }
+        if (!res.ok) {
+          throw badGateway('درخواست به ووکامرس ناموفق بود.', 'woo_request_failed');
+        }
+        const total = Number(res.headers.get('x-wp-total') ?? '0') || 0;
+        const json = await res.json().catch(() => null);
+        return { json, total };
+      } catch (err) {
+        if ((err as { name?: string }).name === 'AbortError') {
+          if (attempt < env.WOO_MAX_RETRIES) {
+            await delay(250 * (attempt + 1));
+            continue;
+          }
+          throw badGateway('اتصال به فروشگاه بیش از حد طول کشید.', 'woo_timeout');
+        }
+        if (isNetworkError(err)) {
+          if (attempt < env.WOO_MAX_RETRIES) {
+            await delay(250 * (attempt + 1));
+            continue;
+          }
+          throw badGateway('فروشگاه در دسترس نیست یا ارتباط برقرار نشد.', 'woo_network_error');
+        }
+        // Already a safe AppError (no secrets); redact defensively and rethrow.
+        if (err instanceof Error) err.message = redactWooSecrets(err.message, creds);
+        throw err;
+      }
+    }
+    if (!authRejected) break; // a non-auth terminal outcome already returned/threw
+    // else: this strategy was rejected with 401/403 → try the next strategy
+  }
+
+  // Every auth strategy was rejected.
+  if (sawForbidden) {
+    throw badGateway('کلید واردشده دسترسی لازم برای این عملیات را ندارد.', 'woo_forbidden');
+  }
+  throw badGateway('اعتبارنامه ووکامرس معتبر نیست یا دسترسی کافی ندارد.', 'woo_auth_failed');
+}
+
 async function wooFetch(
   creds: WooCredentials,
   path: string,
   query: Record<string, string | number | undefined> = {},
 ): Promise<{ json: unknown; total: number }> {
-  await assertSafeOutboundUrl(baseUrl(creds.storeUrl));
-  const url = new URL(`${baseUrl(creds.storeUrl)}/wp-json/wc/v3${path}`);
-  for (const [k, v] of Object.entries(query)) {
-    if (v !== undefined) url.searchParams.set(k, String(v));
-  }
-
-  let lastErr: unknown;
-  for (let attempt = 0; attempt <= env.WOO_MAX_RETRIES; attempt += 1) {
-    try {
-      const res = await safeFetch(url.href, {
-        headers: { Authorization: authHeader(creds), Accept: 'application/json' },
-        timeoutMs: env.WOO_HTTP_TIMEOUT_MS,
-      });
-      if (res.status === 401 || res.status === 403) {
-        throw badGateway('اعتبارنامه ووکامرس نامعتبر است.', 'woo_auth_failed');
-      }
-      // Retry on 429/5xx.
-      if (res.status === 429 || res.status >= 500) {
-        lastErr = new Error(`woo ${res.status}`);
-        if (attempt < env.WOO_MAX_RETRIES) {
-          await delay(250 * (attempt + 1));
-          continue;
-        }
-        throw badGateway('فروشگاه ووکامرس پاسخ نداد.', 'woo_unavailable');
-      }
-      if (!res.ok) {
-        throw badGateway('درخواست به ووکامرس ناموفق بود.', 'woo_request_failed');
-      }
-      const total = Number(res.headers.get('x-wp-total') ?? '0') || 0;
-      const json = await res.json().catch(() => null);
-      return { json, total };
-    } catch (err) {
-      // AbortError or network error → retry, else rethrow safe errors.
-      if ((err as { name?: string }).name === 'AbortError' || isNetworkError(err)) {
-        lastErr = err;
-        if (attempt < env.WOO_MAX_RETRIES) {
-          await delay(250 * (attempt + 1));
-          continue;
-        }
-        throw badGateway('ارتباط با فروشگاه ووکامرس برقرار نشد.', 'woo_unreachable');
-      }
-      throw err; // already a safe AppError
-    }
-  }
-  // All retries exhausted.
-  void lastErr;
-  throw badGateway('ارتباط با فروشگاه ووکامرس برقرار نشد.', 'woo_unreachable');
+  return wooHttp(creds, path, { method: 'GET', query });
 }
 
 function isNetworkError(err: unknown): boolean {
@@ -238,15 +319,25 @@ function pageParams(q: ListQuery): { page: number; per_page: number } {
 export async function verifyWooCredentials(
   creds: WooCredentials,
 ): Promise<{ ok: true; currency: string; wooVersion: string | null }> {
-  // /data/currencies/current is lightweight and requires read auth.
-  const { json } = await wooFetch(creds, '/data/currencies/current');
-  const currency = (json as { code?: string })?.code ?? 'IRT';
+  // Lightest possible auth proof: list ONE product. This endpoint is readable on virtually every
+  // store whose REST keys have read access, returns instantly, and (unlike system_status) is not
+  // restricted by hardening plugins — so a successful response reliably proves the keys work.
+  await wooFetch(creds, '/products', { per_page: 1 });
+
+  // Currency + Woo version are best-effort enrichment; never fail the connection if restricted.
+  let currency = 'IRT';
   let wooVersion: string | null = null;
+  try {
+    const cur = await wooFetch(creds, '/data/currencies/current');
+    currency = (cur.json as { code?: string })?.code ?? currency;
+  } catch {
+    /* /data/currencies/current may be restricted — auth already proven via /products */
+  }
   try {
     const sys = await wooFetch(creds, '/system_status', {});
     wooVersion = ((sys.json as { environment?: { version?: string } })?.environment?.version) ?? null;
   } catch {
-    // system_status may be restricted; currency check already proved auth works.
+    /* system_status is often restricted; not required for a successful connection */
   }
   return { ok: true, currency, wooVersion };
 }
@@ -591,30 +682,8 @@ async function wooWrite(
   path: string,
   body: Record<string, unknown>,
 ): Promise<{ json: unknown }> {
-  const url = `${baseUrl(creds.storeUrl)}/wp-json/wc/v3${path}`;
-  await assertSafeOutboundUrl(url);
-  try {
-    const res = await safeFetch(url, {
-      method,
-      headers: {
-        Authorization: authHeader(creds),
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(body),
-      timeoutMs: env.WOO_HTTP_TIMEOUT_MS,
-    });
-    if (res.status === 401 || res.status === 403) {
-      throw badGateway('اعتبارنامه ووکامرس اجازه این عملیات را ندارد.', 'woo_auth_failed');
-    }
-    if (!res.ok) throw badGateway('بروزرسانی در ووکامرس ناموفق بود.', 'woo_request_failed');
-    return { json: await res.json().catch(() => null) };
-  } catch (err) {
-    if ((err as { name?: string }).name === 'AbortError' || isNetworkError(err)) {
-      throw badGateway('ارتباط با فروشگاه ووکامرس برقرار نشد.', 'woo_unreachable');
-    }
-    throw err;
-  }
+  const { json } = await wooHttp(creds, path, { method, body });
+  return { json };
 }
 
 // ---- normalizers ----

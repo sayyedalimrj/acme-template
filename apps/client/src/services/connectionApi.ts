@@ -4,10 +4,36 @@
  * vault. The frontend NEVER stores or transmits these keys anywhere except this single backend
  * verify call over HTTPS.
  */
-import { http } from '@/services/httpClient';
+import { http, ApiError } from '@/services/httpClient';
 
 export interface VerifyWooResult {
   site: { id: string; status: string; currency: string };
+}
+
+/**
+ * Map a backend Woo connection error to a SPECIFIC Persian message. The connect/re-test flow must
+ * never collapse a real backend error into a generic "request took too long" — each known code has
+ * its own message; anything else falls back to the backend's own message.
+ */
+export function wooConnectErrorMessage(err: unknown): string {
+  const code = err instanceof ApiError ? err.code : '';
+  switch (code) {
+    case 'woo_auth_failed':
+      return 'کلیدهای ووکامرس معتبر نیستند یا دسترسی کافی ندارند.';
+    case 'woo_forbidden':
+      return 'کلید واردشده دسترسی لازم برای خواندن/نوشتن اطلاعات فروشگاه را ندارد.';
+    case 'woo_timeout':
+    case 'timeout':
+      return 'اتصال به فروشگاه بیش از حد طول کشید. لطفاً دوباره تلاش کنید.';
+    case 'woo_network_error':
+    case 'woo_unavailable':
+    case 'network_error':
+      return 'فروشگاه در دسترس نیست یا ارتباط سرور با آن برقرار نشد.';
+    case 'sync_failed':
+      return 'اتصال ذخیره شد، اما همگام‌سازی انجام نشد. از دکمه همگام‌سازی دوباره تلاش کنید.';
+    default:
+      return err instanceof Error && err.message ? err.message : 'خطایی رخ داد. دوباره تلاش کنید.';
+  }
 }
 
 /** Verify + persist WooCommerce REST credentials for a pending site. */
@@ -85,4 +111,22 @@ export function updateSiteSettings(
     `/merchant/sites/${encodeURIComponent(siteId)}`,
     input,
   );
+}
+
+/**
+ * Start a full WooCommerce sync in the background (returns 202 immediately). The UI then polls the
+ * status endpoint for progress; it never blocks the merchant on the long catalog/orders pull.
+ */
+export function triggerSiteSync(siteId: string): Promise<{ ok: boolean; status: string }> {
+  return http.post<{ ok: boolean; status: string }>(
+    `/merchant/sites/${encodeURIComponent(siteId)}/sync`,
+  );
+}
+
+/**
+ * Remove this store connection from JetWeb only (soft delete): revokes the stored credentials and
+ * marks the local connection disconnected. The real WooCommerce/WordPress store is NEVER touched.
+ */
+export function deleteSite(siteId: string): Promise<{ ok: boolean }> {
+  return http.del<{ ok: boolean }>(`/merchant/sites/${encodeURIComponent(siteId)}`);
 }
