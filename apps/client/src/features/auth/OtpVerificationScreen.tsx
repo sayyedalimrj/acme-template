@@ -118,7 +118,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
             user: {
               id: res.user.id,
               name: res.user.name ?? '',
-              email: '',
+              email: res.user.email ?? '',
               mobile: res.user.mobile ?? identifier,
               // Show a backend-provided profile photo when present; initials fallback otherwise.
               // TODO(PR #58): backend avatar upload/storage endpoint to populate this.
@@ -130,6 +130,7 @@ export function OtpVerificationScreen(): React.JSX.Element {
             roles: res.roles,
             allowedPortals: res.allowedPortals,
             portal: res.portal,
+            profileComplete: res.profileComplete,
           });
         } catch (e) {
           submittedRef.current = false;

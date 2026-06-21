@@ -6,13 +6,16 @@
  *   - "bar": proportional vertical bars (good for discrete buckets).
  *   - "line": a smooth (Catmull-Rom sampled) line with point dots — used for the cumulative
  *     sales trend. The smooth curve is drawn as many tiny rotated segments.
- * RTL-safe: the series and the x-axis labels are mirrored together.
+ *
+ * Direction: this is a TIME SERIES, so the x-axis always flows left→right (oldest first, newest
+ * last) — the universal chart convention — even in an RTL (Persian) UI. The data is already
+ * ordered oldest→newest, so the newest/highlighted point sits on the RIGHT. (Mirroring the axis
+ * for RTL made a growing trend read as "descending/reversed", which is the reported bug.)
  */
 import React, { useState } from 'react';
 import { View, type LayoutChangeEvent } from 'react-native';
 
 import { Text } from '@/components/ui';
-import { useTheme } from '@/theme';
 
 import { useMobileColors } from '../mobileTokens';
 
@@ -107,12 +110,10 @@ function LineChart({
   data,
   height,
   colors,
-  isRTL,
 }: {
   data: OverviewPoint[];
   height: number;
   colors: ReturnType<typeof useMobileColors>;
-  isRTL: boolean;
 }): React.JSX.Element {
   const [width, setWidth] = useState(0);
   const max = Math.max(1, ...data.map((d) => (Number.isFinite(d.value) ? d.value : 0)));
@@ -123,10 +124,10 @@ function LineChart({
   const usableH = Math.max(1, height - padTop - padBottom);
   const n = data.length;
 
+  // Time flows left→right (oldest first); no RTL mirroring for a time series.
   const xFor = (i: number): number => {
     const base = n <= 1 ? 0 : (i / (n - 1)) * usableW;
-    const x = padX + base;
-    return isRTL ? width - x : x;
+    return padX + base;
   };
   const yFor = (v: number): number => {
     const safe = Number.isFinite(v) && v > 0 ? v : 0;
@@ -187,14 +188,13 @@ export function OverviewChart({
   testID,
 }: OverviewChartProps): React.JSX.Element {
   const colors = useMobileColors();
-  const { rowDirection, isRTL } = useTheme();
   const max = Math.max(1, ...data.map((d) => (Number.isFinite(d.value) ? d.value : 0)));
   const gridFractions = [0, 0.5, 1];
 
   return (
     <View testID={testID} style={{ gap: 8 }}>
       {variant === 'line' ? (
-        <LineChart data={data} height={height} colors={colors} isRTL={isRTL} />
+        <LineChart data={data} height={height} colors={colors} />
       ) : (
         <View style={{ height, justifyContent: 'flex-end' }}>
           {/* Soft gridline backdrop. */}
@@ -215,8 +215,8 @@ export function OverviewChart({
             ))}
           </View>
 
-          {/* Bars. */}
-          <View style={{ flexDirection: rowDirection, alignItems: 'flex-end', gap: 8, height }}>
+          {/* Bars. Time flows left→right (oldest first); no RTL mirroring for a time series. */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, height }}>
             {data.map((d, index) => {
               const safe = Number.isFinite(d.value) && d.value > 0 ? d.value : 0;
               const barHeight = Math.max(6, Math.round((safe / max) * (height - 10)));
@@ -241,7 +241,7 @@ export function OverviewChart({
         </View>
       )}
 
-      <View style={{ flexDirection: rowDirection, gap: 8 }}>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
         {data.map((d, index) => (
           <View key={`${d.label}-label-${index}`} style={{ flex: 1, alignItems: 'center' }}>
             <Text

@@ -16,6 +16,7 @@ import { ThemeProvider } from '@/theme';
 import { GlobalHeader } from '../GlobalHeader';
 
 let mockUser: { name?: string; mobile?: string; email?: string; avatarUrl?: string } | null = null;
+let mockApiConfigured = false;
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ navigate: jest.fn(), replace: jest.fn(), push: jest.fn(), back: jest.fn() }),
@@ -23,6 +24,13 @@ jest.mock('expo-router', () => ({
 
 jest.mock('@/session/SessionProvider', () => ({
   useSession: () => ({ user: mockUser }),
+}));
+
+// Production = a real API is configured. In that mode the header must NOT show showcase (mock)
+// notification/support badges — only real backend counts (which do not exist yet → hidden).
+jest.mock('@/config/api.config', () => ({
+  isApiConfigured: () => mockApiConfigured,
+  getApiBaseUrl: () => (mockApiConfigured ? 'https://api.jet-web.ir' : ''),
 }));
 
 const metrics: Metrics = {
@@ -45,6 +53,7 @@ function renderHeader(): ReturnType<typeof render> {
 
 beforeEach(() => {
   mockUser = null;
+  mockApiConfigured = false;
 });
 
 describe('GlobalHeader identity', () => {
@@ -78,5 +87,24 @@ describe('GlobalHeader identity', () => {
     const { getByTestId, queryByTestId } = renderHeader();
     expect(getByTestId('header-avatar-initials')).toBeTruthy();
     expect(queryByTestId('header-avatar-image')).toBeNull();
+  });
+});
+
+describe('GlobalHeader badges (no fake counters in production)', () => {
+  it('hides notification/support badges when a real API is configured (production)', () => {
+    mockUser = { name: 'علی کریمی', mobile: '09120000000' };
+    mockApiConfigured = true;
+    const { queryByTestId } = renderHeader();
+    expect(queryByTestId('header-notif-badge')).toBeNull();
+    expect(queryByTestId('header-support-badge')).toBeNull();
+  });
+
+  it('shows the illustrative badges only in the showcase (mock) build', () => {
+    mockUser = { name: 'علی کریمی', mobile: '09120000000' };
+    mockApiConfigured = false;
+    const { getByTestId } = renderHeader();
+    // UNREAD mock counters are > 0, so the showcase build renders them.
+    expect(getByTestId('header-notif-badge')).toBeTruthy();
+    expect(getByTestId('header-support-badge')).toBeTruthy();
   });
 });

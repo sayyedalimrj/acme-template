@@ -13,6 +13,7 @@ import type {
   ProductImage,
   ProductListQuery,
   ProductStatus,
+  ProductCreateInput,
   ProductUpdateInput,
   StockStatus,
 } from '@/domain/types';
@@ -143,6 +144,20 @@ export function createHttpProductAdapter(): ProductAdapter {
       if (input.categoryIds !== undefined) body.categoryExternalIds = input.categoryIds;
       const res = await http.patch<{ product: BackendProduct }>(
         `/merchant/sites/${siteId()}/products/${encodeURIComponent(id)}`,
+        body,
+      );
+      return toProduct(res.product);
+    },
+    async createProduct(input: ProductCreateInput): Promise<Product> {
+      const body: Record<string, unknown> = { name: input.name, status: input.status ?? 'draft' };
+      if (input.sku !== undefined && input.sku !== '') body.sku = input.sku;
+      if (input.regularPrice !== undefined) body.regularPrice = String(input.regularPrice);
+      if (input.stockQuantity !== undefined) body.stockQuantity = input.stockQuantity;
+      if (input.description !== undefined && input.description !== '') {
+        body.description = input.description;
+      }
+      const res = await http.post<{ product: BackendProduct }>(
+        `/merchant/sites/${siteId()}/products`,
         body,
       );
       return toProduct(res.product);

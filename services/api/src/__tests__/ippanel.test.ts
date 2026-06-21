@@ -7,6 +7,6 @@ describe('ippanel helpers', () => {
 
   it('rejects Persian text as pattern code', () => {
     expect(looksLikeMessageBody('کد تایید شما {{code}}')).toBe(true);
-    expect(looksLikeMessageBody('jcxqs3bwxo3rfkk')).toBe(false);
+    expect(looksLikeMessageBody('ebvqrqy10gm3o04')).toBe(false);
   });
 });

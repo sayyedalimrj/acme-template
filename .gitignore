@@ -1,0 +1,23 @@
+# Root-level ignores. Per-app ignores live in each app (e.g. apps/client/.gitignore).
+# Build artifacts and secrets must never be committed.
+
+# Generated WordPress plugin packages (built by scripts/package-plugin.sh)
+wordpress-plugin/build/
+*.zip
+
+# Portal/web build outputs (also covered by apps/client/.gitignore)
+dist/
+dist-*/
+
+# Dependencies
+node_modules/
+
+# Environment files (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Logs and temp
+*.log
+tmp/
+.DS_Store

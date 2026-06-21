@@ -23,6 +23,7 @@ import {
   setWooWebhookSecret,
   startConnection,
   syncWooSite,
+  updateSiteSettings,
   verifyWooConnection,
   type SiteRow,
 } from '../../services/sites';
@@ -30,6 +31,7 @@ import {
   getOrder,
   getProduct,
   getSalesReport,
+  createProduct,
   updateOrderStatus,
   updateProduct,
   updateProductStock,
@@ -176,6 +178,35 @@ merchantRouter.get(
       [site.id],
     );
     res.json({ site, plugin, lastSync });
+  }),
+);
+
+const siteEditSchema = z
+  .object({
+    name: z.string().trim().min(1).max(160).optional(),
+    url: z.string().trim().min(3).max(300).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'هیچ تغییری ارسال نشده است.' });
+
+merchantRouter.patch(
+  '/sites/:siteId',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    ensureManage(req);
+    const site = await siteFor(req, req.params.siteId);
+    const parsed = siteEditSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('اطلاعات فروشگاه نامعتبر است.');
+    const updated = await updateSiteSettings(site.id, site.tenant_id, parsed.data);
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'site.settings.update',
+      targetType: 'site',
+      targetId: site.id,
+      requestIp: req.ip,
+      meta: { fields: Object.keys(parsed.data), status: updated.status },
+    });
+    invalidate(`merchant:overview:${site.tenant_id}`);
+    // Never returns secrets; if the host changed, status is now 'pending' (re-verify required).
+    res.json({ site: updated });
   }),
 );
 
@@ -472,6 +503,69 @@ merchantRouter.get(
       [site.id],
     );
     res.json({ report: { period, currency: site.currency, ...row } });
+  }),
+);
+
+const productCreateSchema = z.object({
+  name: z.string().trim().min(1).max(300),
+  sku: z.string().trim().max(100).optional(),
+  regularPrice: z.string().trim().regex(/^(\d+(\.\d{1,4})?)?$/).max(20).optional(),
+  status: z.enum(['publish', 'draft']).default('draft'),
+  stockQuantity: z.number().int().optional(),
+  description: z.string().trim().max(20000).optional(),
+});
+
+merchantRouter.post(
+  '/sites/:siteId/products',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    ensureManage(req);
+    const site = await siteFor(req, req.params.siteId);
+    const parsed = productCreateSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('اطلاعات محصول نامعتبر است.');
+    const creds = await getWooCredentials(site.id);
+    if (!creds) throw badRequest('این فروشگاه اتصال REST فعال ندارد.');
+
+    // Create in WooCommerce; the returned status is the REAL resulting status (no fake "review").
+    const product = await createProduct(creds, {
+      name: parsed.data.name,
+      sku: parsed.data.sku,
+      regularPrice: parsed.data.regularPrice,
+      status: parsed.data.status,
+      stockQuantity: parsed.data.stockQuantity,
+      description: parsed.data.description,
+    });
+
+    // Pull the new product into the read-model so the list/detail show it immediately.
+    try {
+      await resyncProduct(site.id, product.externalId);
+    } catch {
+      /* read-model refresh is best-effort; the WooCommerce create already succeeded */
+    }
+
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'product.create',
+      targetType: 'product',
+      targetId: product.externalId,
+      requestIp: req.ip,
+      meta: { siteId: site.id, status: product.status },
+    });
+    invalidate(`site:overview:${site.id}`);
+    invalidate(`merchant:overview:${site.tenant_id}`);
+    res.status(201).json({
+      product: {
+        external_id: product.externalId,
+        name: product.name,
+        sku: product.sku,
+        status: product.status,
+        type: product.type,
+        permalink: product.permalink,
+        price_minor: product.priceMinor,
+        currency: product.currency,
+        stock_status: product.stockStatus,
+        stock_qty: product.stockQty,
+      },
+    });
   }),
 );
 

@@ -72,10 +72,17 @@ const HEAD = `
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <style>
       /* Fill the viewport and paint the safe-area regions (notch / home indicator) with the
-         app backdrop so 'viewport-fit=cover' never leaves a bare white strip. */
-      html, body, #root { height: 100%; }
+         app backdrop so 'viewport-fit=cover' never leaves a bare white strip.
+
+         Single source of truth for viewport HEIGHT: 100dvh tracks the *visible* (dynamic)
+         viewport as mobile Safari / PWA toolbars show & hide, so the fixed bottom tab bar sits
+         exactly at the visible bottom and never leaves a large blank/gray gap below it. The
+         100% line is the fallback for engines without dvh. The bottom safe-area inset (home
+         indicator) is applied ONCE — inside the tab bar component — never here as well. */
+      html, body, #root { height: 100%; height: 100dvh; }
+      html { background-color: #EEF1F6; }
       body { margin: 0; background-color: #EEF1F6; overflow: hidden; }
-      @media (prefers-color-scheme: dark) { body { background-color: #08090B; } }
+      @media (prefers-color-scheme: dark) { html, body { background-color: #08090B; } }
     </style>
     <script>
       if ('serviceWorker' in navigator) {

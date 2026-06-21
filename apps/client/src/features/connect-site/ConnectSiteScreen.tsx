@@ -7,6 +7,7 @@
  * handled by a secure backend/proxy later (see security steering).
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 
@@ -77,6 +78,8 @@ interface SiteRowProps {
   isActive: boolean;
   onSetActive: () => void;
   onDisconnect: () => void;
+  onSettings: () => void;
+  canEdit: boolean;
   busy: boolean;
 }
 
@@ -85,6 +88,8 @@ function SiteRow({
   isActive,
   onSetActive,
   onDisconnect,
+  onSettings,
+  canEdit,
   busy,
 }: SiteRowProps): React.JSX.Element {
   const { tokens, rowDirection } = useTheme();
@@ -117,6 +122,15 @@ function SiteRow({
             disabled={busy}
           />
         ) : null}
+        {canEdit ? (
+          <Button
+            label={t('storeSettings.openCta')}
+            variant="secondary"
+            size="sm"
+            onPress={onSettings}
+            disabled={busy}
+          />
+        ) : null}
         <Button
           label={t('connectSite.disconnect')}
           variant="ghost"
@@ -132,6 +146,7 @@ function SiteRow({
 export function ConnectSiteScreen(): React.JSX.Element {
   const { tokens } = useTheme();
   const t = useT();
+  const router = useRouter();
 
   const sitesQuery = useSites();
   const { data: activeSite } = useActiveSite();
@@ -217,6 +232,8 @@ export function ConnectSiteScreen(): React.JSX.Element {
                   isActive={activeSite?.id === site.id}
                   onSetActive={() => setActive.mutate(site.id)}
                   onDisconnect={() => disconnect.mutate(site.id)}
+                  onSettings={() => router.navigate(`/store-settings/${site.id}` as never)}
+                  canEdit={isApiConfigured()}
                   busy={mutating}
                 />
               </View>

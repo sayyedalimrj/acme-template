@@ -118,6 +118,21 @@ if [[ -z "$ADMIN_URL" && -z "$AFFILIATE_URL" ]]; then
   echo "  ℹ IP-only preview validates merchant only. Map admin/partner hostnames for full portal QA."
 fi
 
+# --- SNI-safe local origin checks -----------------------------------------
+# On the portal server itself you often want to test the LOCAL origin while still presenting the
+# real hostname. `curl -H "Host: api.jet-web.ir" https://127.0.0.1` is NOT enough for HTTPS: TLS
+# SNI (the hostname inside the handshake) is sent BEFORE any HTTP Host header, so the server may
+# pick the wrong cert/vhost. Use `--resolve <host>:443:127.0.0.1` so curl does SNI for the real
+# hostname but connects to localhost. `-k` skips cert verification for self-signed origins.
+if [[ "${SNI_LOCAL:-false}" == "true" ]]; then
+  echo "  SNI-safe local origin checks (--resolve):"
+  for host in api.jet-web.ir app.jet-web.ir admin.jet-web.ir partner.jet-web.ir; do
+    path="/"; [[ "$host" == api.* ]] && path="/health"
+    code=$(curl -k -so /dev/null -w '%{http_code}' --resolve "${host}:443:127.0.0.1" "https://${host}${path}" || echo "000")
+    if [[ "$code" =~ ^2|3 ]]; then pass "SNI ${host}${path} → ${code}"; else fail "SNI ${host}${path} → ${code}"; fi
+  done
+fi
+
 if [[ -n "$SMS_TEST_NUMBER" ]]; then
   resp=$(curl -sf -X POST "${API_URL%/}/auth/otp/request" \
     -H 'Content-Type: application/json' \

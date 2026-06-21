@@ -13,11 +13,17 @@ import { getApiBaseUrl } from '@/config/api.config';
 import { getActivePortal } from '@/config/portal.config';
 import type { AppPortal } from '@/domain/types';
 
-let authToken: string | null = null;
-let refreshToken: string | null = null;
+import { clearStoredTokens, loadTokens, persistTokens } from './tokenStorage';
+
+// Hydrate synchronously at module load so the very first authorized request after a page refresh
+// already carries the persisted token (web localStorage is synchronous).
+const hydrated = loadTokens();
+let authToken: string | null = hydrated.token;
+let refreshToken: string | null = hydrated.refreshToken;
 
 export function setAuthToken(token: string | null): void {
   authToken = token;
+  persistTokens({ token: authToken, refreshToken });
 }
 
 export function getAuthToken(): string | null {
@@ -26,21 +32,29 @@ export function getAuthToken(): string | null {
 
 export function setRefreshToken(token: string | null): void {
   refreshToken = token;
+  persistTokens({ token: authToken, refreshToken });
 }
 
 export function getRefreshToken(): string | null {
   return refreshToken;
 }
 
-/** Set both tokens at once (called on sign-in / refresh). */
+/** Set both tokens at once (called on sign-in / refresh) and persist them. */
 export function setSessionTokens(tokens: { token: string; refreshToken?: string | null }): void {
   authToken = tokens.token;
   if (tokens.refreshToken !== undefined) refreshToken = tokens.refreshToken;
+  persistTokens({ token: authToken, refreshToken });
 }
 
 export function clearSessionTokens(): void {
   authToken = null;
   refreshToken = null;
+  clearStoredTokens();
+}
+
+/** True when a refresh token is present (a session may be restorable across a reload). */
+export function hasStoredSession(): boolean {
+  return Boolean(refreshToken);
 }
 
 interface ApiErrorShape {
@@ -71,6 +85,28 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
+/** Authenticated PATCH (attaches the current access token). Used by profile completion. */
+async function patchJson<T>(path: string, body: unknown): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBaseUrl()}${path}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error('ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.');
+  }
+  const data = (await res.json().catch(() => ({}))) as ApiErrorShape & Record<string, unknown>;
+  if (!res.ok) {
+    throw new Error(data.error?.message ?? 'خطایی رخ داد. دوباره تلاش کنید.');
+  }
+  return data as T;
+}
+
 export interface RequestOtpResponse {
   ok: boolean;
   expiresInSeconds: number;
@@ -91,6 +127,8 @@ export interface VerifyOtpUser {
   name: string | null;
   mobile: string;
   role: string;
+  /** Email (frontend-safe). Used to decide if the first-login profile is complete. */
+  email?: string | null;
   /**
    * Optional profile photo URL. Frontend-safe (never a credential). Wired through to the
    * session avatar when present; backend upload/storage is a PR #58 item.
@@ -107,6 +145,8 @@ export interface VerifyOtpResponse {
   portal: AppPortal;
   allowedPortals: AppPortal[];
   tenantId?: string | null;
+  /** Whether the user has completed the first-login profile (name + email). */
+  profileComplete?: boolean;
 }
 
 export function verifyOtp(
@@ -129,6 +169,40 @@ export async function refreshSession(): Promise<boolean> {
     clearSessionTokens();
     return false;
   }
+}
+
+/**
+ * Restore a session from the persisted refresh token after a page reload / PWA relaunch.
+ *
+ * Returns the full session payload (user + portal + allowedPortals + profileComplete) on success
+ * so the SessionProvider can rebuild state exactly as a fresh login would. On failure (no token,
+ * expired/revoked, or network) it clears local tokens and returns null so the caller redirects to
+ * login. The refresh token is rotated server-side on success.
+ */
+export async function restoreSession(): Promise<VerifyOtpResponse | null> {
+  if (!refreshToken) return null;
+  try {
+    const res = await postJson<VerifyOtpResponse>('/auth/refresh', { refreshToken });
+    setSessionTokens({ token: res.accessToken ?? res.token, refreshToken: res.refreshToken });
+    return res;
+  } catch {
+    clearSessionTokens();
+    return null;
+  }
+}
+
+export interface CompleteProfileResponse {
+  user: VerifyOtpUser;
+  profileComplete: boolean;
+}
+
+/** Save the first-login profile (first + last name + email) server-side. */
+export async function completeProfile(input: {
+  firstName: string;
+  lastName: string;
+  email: string;
+}): Promise<CompleteProfileResponse> {
+  return patchJson<CompleteProfileResponse>('/auth/profile', input);
 }
 
 /** Revoke the current refresh session on the backend (best-effort) and clear local tokens. */

@@ -10,7 +10,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme';
 
@@ -138,7 +137,6 @@ export function Screen({
   headerRight,
 }: ScreenProps): React.JSX.Element {
   const { tokens } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const hasHeader = Boolean(title);
   const resolvedShowBack = showBack ?? hasHeader;
@@ -146,7 +144,10 @@ export function Screen({
   const padding = padded ? tokens.spacing.lg : 0;
   const innerStyle: ViewStyle = {
     padding,
-    paddingBottom: padding + insets.bottom,
+    // The bottom safe-area inset is owned solely by the fixed bottom tab bar (rendered by the
+    // shell as a sibling below this scroll area). Re-adding insets.bottom here double-counted the
+    // home-indicator gap and left a blank strip; the base padding is enough to clear the content.
+    paddingBottom: padding,
     gap: tokens.spacing.lg,
     // Desktop-admin rhythm: cap and center content on wide screens, full-width on mobile.
     width: '100%',

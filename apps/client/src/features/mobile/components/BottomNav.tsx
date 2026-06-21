@@ -9,7 +9,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
-import { Platform, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useT } from '@/i18n/I18nProvider';
@@ -71,9 +71,11 @@ export function BottomNav(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { rowDirection } = useTheme();
 
-  // On the web (iPhone Safari especially) the safe-area inset is often 0 while the browser's
-  // bottom toolbar overlaps the bar, so keep a comfortable minimum bottom gap there.
-  const bottomInset = Platform.OS === 'web' ? Math.max(insets.bottom, 16) : insets.bottom;
+  // Bottom safe-area inset only. The web root is sized with 100dvh (see pwa-postbuild), so the
+  // *visible* viewport already excludes the mobile browser toolbar — the bar sits flush at the
+  // bottom with no artificial gap. On a standalone iOS PWA `insets.bottom` carries the real
+  // home-indicator inset, which we still honor.
+  const bottomInset = insets.bottom;
 
   return (
     <View

@@ -6,6 +6,7 @@ asks you to put secrets in git or in the frontend bundle (see `.kiro/steering/se
 
 > Read this together with:
 > - **`SERVER_SETUP.fa.md`** — **راهنمای قدم‌به‌قدم فارسی** برای VPS (Ubuntu + Nginx + SSL + systemd)
+> - `docs/PORTAL_OPS.md` — day-2 operations runbook: one-command normal update on the new portal server, first install, rollback, Cloudflare/NPM origin SSL, SNI-safe verification, plugin pairing + REST fallback
 > - `PORTALS.md` — the three role-based experiences (merchant / admin / affiliate) in one build
 > - `apps/client/README.md` — the frontend app
 > - `services/api/README.md` — the **only deployable** production backend (OTP, RBAC, vault, WooCommerce proxy, plugin sync, billing)

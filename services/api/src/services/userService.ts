@@ -22,6 +22,35 @@ export interface AppUser {
   status: string;
 }
 
+/**
+ * True when the user has supplied the profile fields the onboarding form collects
+ * (first + last name combined into `name`, plus an email). Drives whether the first-login
+ * profile-completion form is shown.
+ */
+export function isProfileComplete(user: Pick<AppUser, 'name' | 'email'>): boolean {
+  return Boolean(user.name && user.name.trim().length > 0 && user.email && user.email.trim().length > 0);
+}
+
+/**
+ * Reconcile an EXISTING user's role against the admin allow-list when they authenticate.
+ *
+ * The allow-list is the single server-side source of truth for who may use the admin portal.
+ * If an allow-listed mobile signs into the admin portal but its stored role isn't an admin role
+ * (e.g. it signed up as a merchant earlier), promote it to platform_admin so admin access works
+ * without manual DB edits. Non-admin-portal logins are never changed, so merchant/affiliate
+ * behavior is unaffected. Returns the role the user should have for this login.
+ */
+export function reconcileAdminRole(user: Pick<AppUser, 'mobile' | 'role'>, portal: Portal): Role {
+  if (portal !== 'admin') return user.role;
+  if (adminAllowlist.includes(user.mobile)) {
+    return user.role === 'platform_admin' ? user.role : 'platform_admin';
+  }
+  if (supportAllowlist.includes(user.mobile)) {
+    return user.role === 'platform_admin' || user.role === 'support_admin' ? user.role : 'support_admin';
+  }
+  return user.role;
+}
+
 function resolveRoleForNewUser(mobile: string, portal: Portal): Role {
   if (portal === 'admin') {
     if (adminAllowlist.includes(mobile)) return 'platform_admin';
@@ -61,6 +90,18 @@ export async function findOrCreateUser(
 
   if (existing) {
     if (existing.status !== 'active') throw forbidden('این حساب غیرفعال است.');
+
+    // Promote allow-listed mobiles to the right admin role on admin-portal login (server-side
+    // source of truth). No-op for non-admin portals, so merchant/affiliate logins are unchanged.
+    const reconciledRole = reconcileAdminRole(existing, portal);
+    if (reconciledRole !== existing.role) {
+      await query(`UPDATE app_user SET role = $2, updated_at = now() WHERE id = $1`, [
+        existing.id,
+        reconciledRole,
+      ]);
+      existing.role = reconciledRole;
+    }
+
     if (!roleCanUsePortal(existing.role, portal)) {
       throw forbidden('این حساب اجازه ورود به این پنل را ندارد.');
     }
@@ -150,4 +191,28 @@ export async function getUserById(id: string): Promise<AppUser | null> {
     `SELECT id, mobile, name, email, role, status FROM app_user WHERE id = $1`,
     [id],
   );
+}
+
+export interface ProfileUpdate {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+/**
+ * Save the first-login profile (first + last name + email). First and last name are stored as a
+ * single `name` field (the app shows a single display name); email is stored verbatim. Returns
+ * the updated user so the caller can report the real, persisted completion state.
+ */
+export async function updateUserProfile(id: string, input: ProfileUpdate): Promise<AppUser> {
+  const name = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
+  const email = input.email.trim();
+  const updated = await queryOne<AppUser>(
+    `UPDATE app_user SET name = $2, email = $3, updated_at = now()
+       WHERE id = $1
+       RETURNING id, mobile, name, email, role, status`,
+    [id, name, email],
+  );
+  if (!updated) throw forbidden('کاربر یافت نشد.');
+  return updated;
 }
