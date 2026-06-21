@@ -9,7 +9,7 @@
  * WordPress" messaging. In the mock/demo build (no API) it renders the images read-only.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { Image, View } from 'react-native';
 
