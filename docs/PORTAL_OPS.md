@@ -51,7 +51,9 @@ What the hardened installer guarantees:
   warning). Even with `--force-env` it **preserves** existing secrets: `JWT_SECRET`,
   `OTP_HASH_SECRET`, `CREDENTIAL_ENCRYPTION_KEY`, the **DB password** (no drift — it reuses the
   existing `DATABASE_URL` / `ALTER USER`s to match), the **IPPanel API key + `IPPANEL_PATTERN_CODE`**,
-  originator, OTP variable, `SMS_DRY_RUN`, and `ADMIN_MOBILE_ALLOWLIST`.
+  originator, OTP variable, `SMS_DRY_RUN`, and `ADMIN_MOBILE_ALLOWLIST`. On a **fresh** install the
+  default `IPPANEL_PATTERN_CODE` is `ebvqrqy10gm3o04` (the current production pattern); updates to an
+  already-installed box keep whatever pattern that server's `.env` already has.
 - **Preflights the API port** (default 8080). If it's taken (e.g. the old Nginx preview), it fails
   with an actionable message instead of silently killing another service.
 - Builds each portal with the clean, cache-isolated export (see below).

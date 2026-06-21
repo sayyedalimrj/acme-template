@@ -144,7 +144,7 @@ if [[ ! -f "$ENV_FILE" || "$FORCE_ENV" == "true" ]]; then
   # SMS / IPPanel: preserve the provider key + PATTERN code from the previous .env. Defaults are
   # used ONLY on a first install; an update must never reset a working pattern code.
   IPPANEL_API_KEY_VAL="${PREV_IPPANEL_API_KEY:-}"
-  IPPANEL_PATTERN_VAL="${PREV_IPPANEL_PATTERN:-jcxqs3bwxo3rfkk}"
+  IPPANEL_PATTERN_VAL="${PREV_IPPANEL_PATTERN:-ebvqrqy10gm3o04}"
   IPPANEL_ORIGINATOR_VAL="${PREV_IPPANEL_ORIGINATOR:-+983000505}"
   IPPANEL_OTP_VAR_VAL="${PREV_IPPANEL_OTP_VAR:-verification-code}"
   IPPANEL_BASE_VAL="${PREV_IPPANEL_BASE:-https://edge.ippanel.com/v1}"

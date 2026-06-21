@@ -37,12 +37,14 @@ function IconButton({
   onPress,
   label,
   colors,
+  badgeTestID,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   badge?: number;
   onPress: () => void;
   label: string;
   colors: MobileColorTokens;
+  badgeTestID?: string;
 }): React.JSX.Element {
   return (
     <PressableScale
@@ -60,6 +62,7 @@ function IconButton({
       <Ionicons name={icon} size={20} color={colors.text} />
       {badge && badge > 0 ? (
         <View
+          testID={badgeTestID}
           style={{
             position: 'absolute',
             top: 6,
@@ -192,6 +195,7 @@ export function GlobalHeader(): React.JSX.Element {
             onPress={() => go('/notifications')}
             label={t('notif.title')}
             colors={colors}
+            badgeTestID="header-notif-badge"
           />
           <IconButton
             icon="chatbubble-ellipses-outline"
@@ -199,6 +203,7 @@ export function GlobalHeader(): React.JSX.Element {
             onPress={() => go('/support')}
             label={t('csupport.title')}
             colors={colors}
+            badgeTestID="header-support-badge"
           />
         </View>
       </View>

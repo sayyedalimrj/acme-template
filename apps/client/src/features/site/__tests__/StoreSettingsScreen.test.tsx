@@ -21,6 +21,11 @@ import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import { I18nProvider } from '@/i18n/I18nProvider';
 import { ThemeProvider } from '@/theme';
+import type {
+  SiteStatusResult,
+  SiteStatusSite,
+  VerifyWooResult,
+} from '@/services/connectionApi';
 
 jest.mock('@/config/api.config', () => ({
   isApiConfigured: () => true,
@@ -33,13 +38,18 @@ jest.mock('expo-router', () => ({
   usePathname: () => '/store-settings/site-1',
 }));
 
-const getSiteStatus = jest.fn();
-const updateSiteSettings = jest.fn();
-const verifyWooConnection = jest.fn();
+// Typed mocks (function-type generic so mockResolvedValue is correctly typed under @jest/globals;
+// `mock`-prefixed so the hoisted jest.mock factory may legally reference them).
+const mockGetSiteStatus = jest.fn<(siteId: string) => Promise<SiteStatusResult>>();
+const mockUpdateSiteSettings =
+  jest.fn<(siteId: string, input: { name?: string; url?: string }) => Promise<{ site: SiteStatusSite }>>();
+const mockVerifyWooConnection =
+  jest.fn<(siteId: string, consumerKey: string, consumerSecret: string) => Promise<VerifyWooResult>>();
+
 jest.mock('@/services/connectionApi', () => ({
-  getSiteStatus: (...a: unknown[]) => getSiteStatus(...a),
-  updateSiteSettings: (...a: unknown[]) => updateSiteSettings(...a),
-  verifyWooConnection: (...a: unknown[]) => verifyWooConnection(...a),
+  getSiteStatus: (...a: [string]) => mockGetSiteStatus(...a),
+  updateSiteSettings: (...a: [string, { name?: string; url?: string }]) => mockUpdateSiteSettings(...a),
+  verifyWooConnection: (...a: [string, string, string]) => mockVerifyWooConnection(...a),
 }));
 
 import { StoreSettingsScreen } from '@/features/site/StoreSettingsScreen';
@@ -89,12 +99,14 @@ const restStatus = {
 };
 
 beforeEach(() => {
-  getSiteStatus.mockReset();
-  updateSiteSettings.mockReset();
-  verifyWooConnection.mockReset();
-  getSiteStatus.mockResolvedValue(restStatus);
-  updateSiteSettings.mockResolvedValue({ site: { ...restStatus.site } });
-  verifyWooConnection.mockResolvedValue({ site: { id: 'site-1', status: 'connected', currency: 'IRT' } });
+  mockGetSiteStatus.mockReset();
+  mockUpdateSiteSettings.mockReset();
+  mockVerifyWooConnection.mockReset();
+  mockGetSiteStatus.mockResolvedValue(restStatus);
+  mockUpdateSiteSettings.mockResolvedValue({ site: { ...restStatus.site } });
+  mockVerifyWooConnection.mockResolvedValue({
+    site: { id: 'site-1', status: 'connected', currency: 'IRT' },
+  });
 });
 
 describe('StoreSettingsScreen', () => {
@@ -115,7 +127,7 @@ describe('StoreSettingsScreen', () => {
     fireEvent.changeText(screen.getByTestId('store-settings-name'), 'نام جدید');
     fireEvent.press(screen.getByTestId('store-settings-save'));
     await waitFor(() =>
-      expect(updateSiteSettings).toHaveBeenCalledWith('site-1', {
+      expect(mockUpdateSiteSettings).toHaveBeenCalledWith('site-1', {
         name: 'نام جدید',
         url: 'https://shop.example',
       }),
@@ -128,13 +140,13 @@ describe('StoreSettingsScreen', () => {
 
     // No credentials → does not call the verify endpoint.
     fireEvent.press(screen.getByTestId('store-settings-retest'));
-    expect(verifyWooConnection).not.toHaveBeenCalled();
+    expect(mockVerifyWooConnection).not.toHaveBeenCalled();
 
     fireEvent.changeText(screen.getByTestId('store-settings-ck'), 'ck_new');
     fireEvent.changeText(screen.getByTestId('store-settings-cs'), 'cs_new');
     fireEvent.press(screen.getByTestId('store-settings-retest'));
     await waitFor(() =>
-      expect(verifyWooConnection).toHaveBeenCalledWith('site-1', 'ck_new', 'cs_new'),
+      expect(mockVerifyWooConnection).toHaveBeenCalledWith('site-1', 'ck_new', 'cs_new'),
     );
   });
 });

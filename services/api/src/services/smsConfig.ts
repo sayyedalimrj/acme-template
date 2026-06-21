@@ -34,7 +34,7 @@ export function validateSmsConfigAtStartup(): void {
     errors.push('IPPANEL_PATTERN_CODE is required when SMS_DRY_RUN=false');
   } else if (looksLikeMessageBody(env.IPPANEL_PATTERN_CODE)) {
     errors.push(
-      'IPPANEL_PATTERN_CODE must be the ippanel pattern slug (e.g. jcxqs3bwxo3rfkk), not a message body',
+      'IPPANEL_PATTERN_CODE must be the ippanel pattern slug (e.g. ebvqrqy10gm3o04), not a message body',
     );
   }
   if (!env.IPPANEL_ORIGINATOR.trim()) {

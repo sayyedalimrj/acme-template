@@ -8,7 +8,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
-import { Platform, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMobileFontFamily } from '@/features/mobile/mobileUxSpec';
@@ -47,7 +47,9 @@ export function PortalBottomNav({ tabs, homeHref }: PortalBottomNavProps): React
   const insets = useSafeAreaInsets();
   const { rowDirection } = useTheme();
 
-  const bottomInset = Platform.OS === 'web' ? Math.max(insets.bottom, 16) : insets.bottom;
+  // Bottom safe-area inset only (the web root uses 100dvh, so the visible viewport already
+  // excludes the mobile browser toolbar — no artificial gap; iOS PWA home-indicator preserved).
+  const bottomInset = insets.bottom;
 
   return (
     <View
