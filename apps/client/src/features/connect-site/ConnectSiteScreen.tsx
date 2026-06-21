@@ -33,7 +33,7 @@ import {
   useSetActiveSite,
 } from '@/features/site/useSiteMutations';
 import { isApiConfigured } from '@/config/api.config';
-import { verifyWooConnection } from '@/services/connectionApi';
+import { verifyWooConnection, wooConnectErrorMessage } from '@/services/connectionApi';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 import type { SiteConnection, SiteStatus } from '@/domain/types';
@@ -184,7 +184,7 @@ export function ConnectSiteScreen(): React.JSX.Element {
               await verifyWooConnection(site.id, consumerKey.trim(), consumerSecret.trim());
               await sitesQuery.refetch();
             } catch (err) {
-              setVerifyError((err as Error).message ?? 'اتصال ناموفق بود.');
+              setVerifyError(wooConnectErrorMessage(err));
             } finally {
               setVerifying(false);
             }

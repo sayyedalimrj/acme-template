@@ -257,22 +257,6 @@ export function ProductCreateScreen(): React.JSX.Element {
           </FormCard>
         </AnimatedSection>
 
-        <AnimatedSection index={2}>
-          <FormCard title={t('product.new.media')}>
-            <Text
-              testID="product-media-deferred-note"
-              style={{
-                fontSize: mobileType.captionSize,
-                color: colors.textSecondary,
-                textAlign: isRTL ? 'right' : 'left',
-                lineHeight: 20,
-              }}
-            >
-              {t('product.new.mediaDeferredNote')}
-            </Text>
-          </FormCard>
-        </AnimatedSection>
-
         <AnimatedSection index={3}>
           <FormCard title={t('product.new.pricingStock')}>
             <Field

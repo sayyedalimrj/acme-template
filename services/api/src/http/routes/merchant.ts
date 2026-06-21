@@ -22,7 +22,7 @@ import {
   resyncProduct,
   setWooWebhookSecret,
   startConnection,
-  syncWooSite,
+  startSiteSync,
   updateSiteSettings,
   verifyWooConnection,
   type SiteRow,
@@ -131,10 +131,14 @@ merchantRouter.post(
   }),
 );
 
+// A real WooCommerce key never contains the mask glyph (•) and is never all asterisks. Rejecting
+// masked placeholders guarantees the frontend's "••••••" display can never be sent as a real
+// secret (which would otherwise fail Woo auth and could be mistaken for a credential change).
+const notMasked = (v: string): boolean => !/[\u2022•]/.test(v) && !/^[*]+$/.test(v.trim());
 const verifySchema = z.object({
   siteId: z.string().uuid(),
-  consumerKey: z.string().trim().min(8).max(200),
-  consumerSecret: z.string().trim().min(8).max(200),
+  consumerKey: z.string().trim().min(8).max(200).refine(notMasked, 'masked_placeholder'),
+  consumerSecret: z.string().trim().min(8).max(200).refine(notMasked, 'masked_placeholder'),
 });
 
 merchantRouter.post(
@@ -257,10 +261,40 @@ merchantRouter.post(
     if (site.connection_mode !== 'woo_rest') {
       throw badRequest('همگام‌سازی دستی فقط برای اتصال REST است؛ افزونه خودش داده می‌فرستد.');
     }
-    const stats = await syncWooSite(site.id);
+    // Start the sync in the background and return immediately — never block the UI on a full pull.
+    // Progress/result are recorded on sync_run + the site row and exposed via the status endpoint.
+    startSiteSync(site.id);
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'site.sync.start',
+      targetType: 'site',
+      targetId: site.id,
+      requestIp: req.ip,
+      meta: {},
+    });
+    res.status(202).json({ ok: true, status: 'running' });
+  }),
+);
+
+merchantRouter.delete(
+  '/sites/:siteId',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    ensureManage(req);
+    const site = await siteFor(req, req.params.siteId);
+    // Soft delete: revoke this site's stored credentials + mark the local connection disconnected.
+    // The remote WooCommerce/WordPress store is NEVER touched; historical synced read-models are
+    // kept for reporting. The merchant can reconnect later with fresh keys.
+    await disconnectSite(site.id);
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'site.delete',
+      targetType: 'site',
+      targetId: site.id,
+      requestIp: req.ip,
+      meta: {},
+    });
     invalidate(`merchant:overview:${site.tenant_id}`);
-    invalidate(`site:overview:${site.id}`);
-    res.json({ ok: true, stats });
+    res.json({ ok: true });
   }),
 );
 

@@ -10,13 +10,14 @@
  * overview numbers here and the products/orders/customers screens — updates to that store.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 
 import { EmptyState, LoadingState, Text } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
+import { triggerSiteSync, wooConnectErrorMessage } from '@/services/connectionApi';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useActiveSite, useSites } from '@/features/site/useSites';
@@ -173,6 +174,16 @@ function OverviewSection({
   const { rowDirection, isRTL } = useTheme();
   const [metric, setMetric] = useState<OverviewMetric>('sales');
   const [range, setRange] = useState<OverviewRange>('week');
+  const queryClient = useQueryClient();
+  const [syncNote, setSyncNote] = useState<string | undefined>();
+  const sync = useMutation({
+    mutationFn: () => triggerSiteSync(siteId as string),
+    onSuccess: async () => {
+      setSyncNote(t('home.overview.syncStarted'));
+      if (siteId) await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'dashboard'] });
+    },
+    onError: (e: unknown) => setSyncNote(wooConnectErrorMessage(e)),
+  });
 
   // Production (real backend): show real headline totals, and a clean empty state for the trend
   // chart until a real time-series is synced. Never render mock bars/trend in production.
@@ -213,7 +224,25 @@ function OverviewSection({
           icon="bar-chart-outline"
           title={t('home.overview.empty')}
           fill={false}
+          action={
+            siteId
+              ? {
+                  label: sync.isPending
+                    ? t('home.overview.syncing')
+                    : t('storeSettings.sync.button'),
+                  onPress: () => {
+                    setSyncNote(undefined);
+                    sync.mutate();
+                  },
+                }
+              : undefined
+          }
         />
+        {syncNote ? (
+          <Text testID="home-overview-sync-note" variant="caption" tone="muted">
+            {syncNote}
+          </Text>
+        ) : null}
       </View>
     );
   }

@@ -122,6 +122,15 @@ export const en = {
   'storeSettings.plugin.lastSeen': 'Last seen',
   'storeSettings.plugin.repairNote':
     'To re-pair, open the JetWeb connector in your WordPress admin and use its "reconnect" action with a fresh pairing code.',
+  'storeSettings.sync.button': 'Sync now',
+  'storeSettings.sync.started': 'Sync started — this runs in the background. Refresh to see progress.',
+  'storeSettings.delete.heading': 'Remove store connection',
+  'storeSettings.delete.note':
+    'This removes the connection from JetWeb only. It does NOT delete your real WordPress/WooCommerce store; previously synced data is kept for reports.',
+  'storeSettings.delete.button': 'Remove store connection',
+  'storeSettings.delete.confirm':
+    'Are you sure? JetWeb will disconnect from this store. Your WordPress/WooCommerce store stays intact.',
+  'storeSettings.delete.confirmButton': 'Yes, remove connection',
   // Placeholder screens
   'placeholder.title': 'Coming soon',
   'placeholder.body':
@@ -1287,6 +1296,8 @@ export const en = {
   'home.activity.lowStockCaption': 'A product is running low',
   'home.activity.supportMessage': 'Support message',
   'home.overview.empty': 'No trend data yet. Charts appear once your store has synced sales.',
+  'home.overview.syncing': 'Syncing…',
+  'home.overview.syncStarted': 'Sync started — it runs in the background. Pull to refresh shortly.',
   'home.activity.empty': 'No recent activity yet.',
   'more.title': 'Features',
   'more.section.manage': 'Manage',
@@ -1351,8 +1362,6 @@ export const en = {
   'product.new.mediaNone': 'No image selected',
   'product.new.mediaSelected': 'Image selected',
   'product.new.mediaSample': 'Gallery',
-  'product.new.mediaDeferredNote':
-    'Add the product photo in WordPress after you create it — open the product from its detail page with "Open in WordPress". Photos you add there sync back here automatically.',
   'product.new.pricingStock': 'Price & stock',
   'product.new.name': 'Product name',
   'product.new.namePlaceholder': 'e.g. Cotton T-shirt',
@@ -1512,6 +1521,15 @@ export const fa: Record<StringKey, string> = {
   'storeSettings.plugin.lastSeen': 'آخرین بازدید',
   'storeSettings.plugin.repairNote':
     'برای اتصال مجدد، رابط جت‌وب را در پیشخوان وردپرس باز کنید و با یک کد اتصال تازه از گزینه «اتصال مجدد» استفاده کنید.',
+  'storeSettings.sync.button': 'همگام‌سازی',
+  'storeSettings.sync.started': 'همگام‌سازی شروع شد و در پس‌زمینه انجام می‌شود. برای دیدن وضعیت، به‌روزرسانی کنید.',
+  'storeSettings.delete.heading': 'حذف اتصال فروشگاه',
+  'storeSettings.delete.note':
+    'این کار فقط اتصال را از جت‌وب حذف می‌کند. فروشگاه واقعی وردپرس/ووکامرس شما حذف نمی‌شود؛ داده‌های قبلی برای گزارش‌ها نگه داشته می‌شوند.',
+  'storeSettings.delete.button': 'حذف اتصال فروشگاه',
+  'storeSettings.delete.confirm':
+    'مطمئن هستید؟ جت‌وب اتصال این فروشگاه را قطع می‌کند. فروشگاه وردپرس/ووکامرس شما دست‌نخورده می‌ماند.',
+  'storeSettings.delete.confirmButton': 'بله، اتصال حذف شود',
   'placeholder.title': 'به‌زودی',
   'placeholder.body': 'این بخش بخشی از نقشه راه است و در نسخه‌ای آینده ساخته می‌شود.',
   'products.title': 'محصولات',
@@ -2625,6 +2643,8 @@ export const fa: Record<StringKey, string> = {
   'home.activity.lowStockCaption': 'موجودی یک محصول رو به اتمام است',
   'home.activity.supportMessage': 'پیام پشتیبانی',
   'home.overview.empty': 'هنوز داده‌ای برای نمودار نیست. پس از همگام‌سازی فروش فروشگاه، نمودار نمایش داده می‌شود.',
+  'home.overview.syncing': 'در حال همگام‌سازی…',
+  'home.overview.syncStarted': 'همگام‌سازی شروع شد و در پس‌زمینه انجام می‌شود. کمی بعد صفحه را به‌روزرسانی کنید.',
   'home.activity.empty': 'هنوز فعالیتی ثبت نشده است.',
   'more.title': 'امکانات',
   'more.section.manage': 'مدیریت',
@@ -2689,8 +2709,6 @@ export const fa: Record<StringKey, string> = {
   'product.new.mediaNone': 'تصویری انتخاب نشده',
   'product.new.mediaSelected': 'تصویر انتخاب شد',
   'product.new.mediaSample': 'گالری',
-  'product.new.mediaDeferredNote':
-    'تصویر محصول را پس از ساخت آن، در وردپرس اضافه کنید — از صفحه جزئیات محصول گزینه «باز کردن در وردپرس» را بزنید. تصویری که آنجا اضافه می‌کنید به‌صورت خودکار اینجا همگام می‌شود.',
   'product.new.pricingStock': 'قیمت و موجودی',
   'product.new.name': 'نام محصول',
   'product.new.namePlaceholder': 'مثلاً تیشرت نخی',
