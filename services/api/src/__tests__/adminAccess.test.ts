@@ -58,15 +58,17 @@ describe('reconcileAdminRole (server-side admin allow-list)', () => {
 });
 
 describe('isProfileComplete', () => {
-  it('is false when name and/or email are missing or blank', () => {
+  it('is false when the name is missing or blank (email is OPTIONAL)', () => {
     expect(isProfileComplete({ name: null, email: null })).toBe(false);
-    expect(isProfileComplete({ name: 'Ali', email: null })).toBe(false);
     expect(isProfileComplete({ name: null, email: 'a@b.co' })).toBe(false);
     expect(isProfileComplete({ name: '   ', email: 'a@b.co' })).toBe(false);
   });
 
-  it('is true only when both name and email are present', () => {
+  it('is true once a name is present, with or without an email', () => {
     expect(isProfileComplete({ name: 'Ali Karimi', email: 'a@b.co' })).toBe(true);
+    // Email is optional: a name alone completes the profile.
+    expect(isProfileComplete({ name: 'Ali', email: null })).toBe(true);
+    expect(isProfileComplete({ name: 'Ali', email: '' })).toBe(true);
   });
 });
 
