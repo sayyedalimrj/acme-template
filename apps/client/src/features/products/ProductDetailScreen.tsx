@@ -172,7 +172,6 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
       ) : null}
 
       <Card title={t('product.section.overview')}>
-        <DetailRow label={t('product.label.sku')} value={product.sku || none} />
         <DetailRow label={t('product.label.type')} value={t(productTypeLabelKey(product.type))} />
         <DetailRow
           label={t('product.label.lastUpdated')}

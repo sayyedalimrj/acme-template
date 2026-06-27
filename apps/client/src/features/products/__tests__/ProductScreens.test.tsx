@@ -61,8 +61,10 @@ describe('ProductListScreen', () => {
 
     fireEvent.changeText(screen.getByTestId('product-search'), 'بادبان');
 
-    await waitFor(() => expect(screen.queryByText('تی‌شرت نخی آئورا')).toBeNull());
-    expect(screen.getByText('کیف پارچه‌ای بادبان')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.queryByText('تی‌شرت نخی آئورا')).toBeNull();
+      expect(screen.getByText('کیف پارچه‌ای بادبان')).toBeTruthy();
+    });
   });
 });
 

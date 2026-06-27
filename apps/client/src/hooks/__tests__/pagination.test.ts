@@ -1,3 +1,5 @@
+import { describe, expect, it } from '@jest/globals';
+
 import { formatTemplate } from '@/i18n/I18nProvider';
 
 function flattenPages<T>(pages: { items: T[] }[]): T[] {

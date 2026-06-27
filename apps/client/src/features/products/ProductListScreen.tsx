@@ -341,7 +341,6 @@ export function ProductListScreen(): React.JSX.Element {
           </View>
         )
       }
-      onEndReached={listQuery.fetchNextPage}
     />
   );
 }

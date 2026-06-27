@@ -1,8 +1,8 @@
 /**
  * Social connections and publish jobs — tenant/site scoped.
  */
-import { query, queryOne } from '../db';
-import { badRequest, notFound } from '../util/errors';
+import { query, queryOne } from '../../db';
+import { badRequest, notFound } from '../../util/errors';
 import { audit } from '../audit';
 import { sealSecret } from '../security/credentialVault';
 import {
@@ -82,7 +82,7 @@ export async function createSocialConnection(input: {
       token_iv: sealed.iv,
       token_auth_tag: sealed.authTag,
       token_ciphertext: sealed.ciphertext,
-      token_key_version: sealed.keyVersion,
+      token_key_version: String(sealed.keyVersion),
     };
   }
   const row = await queryOne<SocialConnectionRow>(
@@ -120,12 +120,11 @@ export async function createSocialConnection(input: {
     await query(`UPDATE social_connection SET last_error = $2 WHERE id = $1`, [row.id, test.message]);
   }
   await audit({
-    tenantId: input.tenantId,
     actorUserId: input.actorUserId,
     action: 'social.connection.create',
     targetType: 'social_connection',
     targetId: row.id,
-    metadata: { platform: input.platform, siteId: input.siteId },
+    meta: { tenantId: input.tenantId, platform: input.platform, siteId: input.siteId },
   });
   const updated = await queryOne<SocialConnectionRow>(`SELECT * FROM social_connection WHERE id = $1`, [
     row.id,
@@ -167,12 +166,11 @@ export async function disconnectSocialConnection(
     [connectionId],
   );
   await audit({
-    tenantId: row.tenant_id,
     actorUserId,
     action: 'social.connection.revoke',
     targetType: 'social_connection',
     targetId: connectionId,
-    metadata: { siteId },
+    meta: { tenantId: row.tenant_id, siteId },
   });
 }
 
@@ -217,12 +215,16 @@ export async function enqueueProductPublishJob(input: {
   if (!job) throw badRequest('صف انتشار ایجاد نشد.');
   void processPublishJob(job.id).catch(() => undefined);
   await audit({
-    tenantId: input.tenantId,
     actorUserId: input.actorUserId,
     action: 'social.publish.enqueue',
     targetType: 'social_publish_job',
     targetId: job.id,
-    metadata: { productId: input.productExternalId, connectionId: input.connectionId },
+    meta: {
+      tenantId: input.tenantId,
+      siteId: input.siteId,
+      productId: input.productExternalId,
+      connectionId: input.connectionId,
+    },
   });
   return (
     (await queryOne(`SELECT * FROM social_publish_job WHERE id = $1`, [job.id])) ??

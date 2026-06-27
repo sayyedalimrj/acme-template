@@ -272,7 +272,6 @@ export function OrderListScreen(): React.JSX.Element {
           </View>
         )
       }
-      onEndReached={listQuery.fetchNextPage}
     />
   );
 }

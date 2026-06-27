@@ -3,7 +3,7 @@
  * Resets to page 1 when filter query changes.
  */
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import type { Paged } from '@/domain/types';
 
@@ -39,12 +39,13 @@ export function usePageQuery<T, Q extends Record<string, unknown>>({
   pageSize = 20,
   enabled = true,
 }: PageQueryOptions<T, Q>): PageQueryResult<T> {
-  const [page, setPage] = useState(1);
   const querySig = JSON.stringify(query);
+  const [pageState, setPageState] = useState({ sig: querySig, page: 1 });
+  const page = pageState.sig === querySig ? pageState.page : 1;
 
-  useEffect(() => {
-    setPage(1);
-  }, [querySig]);
+  const setPage = (next: number): void => {
+    setPageState({ sig: querySig, page: next });
+  };
 
   const result: UseQueryResult<Paged<T>, Error> = useQuery({
     queryKey: [...queryKey, query, page, pageSize],
@@ -72,10 +73,10 @@ export function usePageQuery<T, Q extends Record<string, unknown>>({
       void result.refetch();
     },
     nextPage: () => {
-      if (hasNext) setPage((p) => p + 1);
+      if (hasNext) setPage(page + 1);
     },
     prevPage: () => {
-      if (hasPrev) setPage((p) => p - 1);
+      if (hasPrev) setPage(page - 1);
     },
     setPage,
   };
