@@ -29,6 +29,7 @@ import {
   requestTypeLabelKey,
 } from '../onboardingHelpers';
 import { ChoiceGroup } from './ChoiceGroup';
+import { ReferralCodeField } from './ReferralCodeField';
 import { SecurityNote } from './SecurityNote';
 
 export interface ExistingSiteFormProps {
@@ -44,6 +45,7 @@ export function ExistingSiteForm({
   const t = useT();
 
   const [businessName, setBusinessName] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [siteUrl, setSiteUrl] = useState('');
   const [platform, setPlatform] = useState<PlatformConfirmation>('woocommerce');
   const [requestType, setRequestType] = useState<ExistingRequestType>('connect_only');
@@ -59,10 +61,11 @@ export function ExistingSiteForm({
 
   const handleSubmit = () => {
     setTouched(true);
-    if (businessName.trim().length === 0 || !isValidStoreUrl(siteUrl)) {
+    if (businessName.trim().length === 0 || referralCode.trim().length === 0 || !isValidStoreUrl(siteUrl)) {
       return;
     }
     onSubmit({
+      referralCode: referralCode.trim().toUpperCase(),
       businessName: businessName.trim(),
       siteUrl: siteUrl.trim(),
       platform,
@@ -77,6 +80,8 @@ export function ExistingSiteForm({
         <Text variant="subheading">{t('onboarding.existing.title')}</Text>
         <Text tone="muted">{t('onboarding.existing.subtitle')}</Text>
       </View>
+
+      <ReferralCodeField value={referralCode} onChange={setReferralCode} disabled={submitting} touched={touched} />
 
       <FormField label={t('onboarding.existing.businessName.label')} required error={nameError}>
         <Input

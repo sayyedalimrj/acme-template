@@ -1,10 +1,16 @@
 /**
- * HTTP Customer adapter — reads the active site's customers from the backend read-model and maps
- * them onto the app's Customer domain type (display name + aggregates; PII minimized).
+ * HTTP Customer adapter — reads the active site's customers from the backend read-model.
  */
 import { http, qs } from '@/services/httpClient';
 import { minorToMoney } from '@/domain/money';
-import type { Customer, CustomerListQuery, Paged } from '@/domain/types';
+import type {
+  Customer,
+  CustomerListQuery,
+  CustomerOrderSummary,
+  ISODate,
+  OrderStatus,
+  Paged,
+} from '@/domain/types';
 
 import type { CustomerAdapter } from '../types';
 import { getActiveHttpSiteId } from './httpActiveSite';
@@ -12,25 +18,65 @@ import { getActiveHttpSiteId } from './httpActiveSite';
 interface BackendCustomer {
   external_id: string;
   display_name: string | null;
+  email?: string | null;
+  phone?: string | null;
+  username?: string | null;
   orders_count: number;
   total_spent_minor: number | string;
   currency: string;
+  external_created_at?: string | null;
 }
 
-function toCustomer(c: BackendCustomer): Customer {
+interface BackendOrderSummary {
+  external_id: string;
+  number: string | null;
+  status: string | null;
+  total_minor: number | string;
+  currency: string;
+  external_created_at: string | null;
+}
+
+const ORDER_STATUSES: OrderStatus[] = [
+  'pending',
+  'processing',
+  'on-hold',
+  'completed',
+  'cancelled',
+  'refunded',
+  'failed',
+];
+
+function mapRecentOrder(o: BackendOrderSummary): CustomerOrderSummary {
+  const status: OrderStatus = ORDER_STATUSES.includes(o.status as OrderStatus)
+    ? (o.status as OrderStatus)
+    : 'pending';
+  const created = o.external_created_at ?? new Date().toISOString();
+  return {
+    orderId: o.external_id,
+    number: o.number ?? o.external_id,
+    status,
+    total: minorToMoney(o.total_minor, o.currency),
+    currency: o.currency,
+    dateCreated: created,
+  };
+}
+
+function toCustomer(c: BackendCustomer, recentOrders?: CustomerOrderSummary[]): Customer {
   const [firstName, ...rest] = (c.display_name ?? '').split(' ');
-  const now = new Date().toISOString();
+  const created = c.external_created_at ?? new Date().toISOString();
   return {
     id: c.external_id,
     firstName: firstName ?? '',
     lastName: rest.join(' '),
-    email: '',
-    username: c.display_name ?? c.external_id,
+    email: c.email ?? '',
+    username: c.username ?? c.display_name ?? c.external_id,
     role: 'customer',
     ordersCount: c.orders_count,
     totalSpent: minorToMoney(c.total_spent_minor, c.currency),
     currency: c.currency,
-    dateCreated: now,
+    dateCreated: created,
+    recentOrders,
+    lastOrderDate: recentOrders?.[0]?.dateCreated as ISODate | undefined,
   };
 }
 
@@ -47,20 +93,18 @@ export function createHttpCustomerAdapter(): CustomerAdapter {
         `/merchant/sites/${siteId()}/customers${qs({ page: query.page, pageSize: query.pageSize })}`,
       );
       return {
-        items: res.items.map(toCustomer),
+        items: res.items.map((c) => toCustomer(c)),
         total: res.total,
         page: res.page,
         pageSize: res.pageSize,
       };
     },
     async getCustomer(id: string): Promise<Customer> {
-      // The backend exposes a list read-model; find the customer within it.
-      const res = await http.get<{ items: BackendCustomer[] }>(
-        `/merchant/sites/${siteId()}/customers${qs({ pageSize: 100 })}`,
+      const res = await http.get<{ customer: BackendCustomer; recentOrders: BackendOrderSummary[] }>(
+        `/merchant/sites/${siteId()}/customers/${encodeURIComponent(id)}`,
       );
-      const found = res.items.find((c) => c.external_id === id);
-      if (!found) throw new Error(`Customer not found: ${id}`);
-      return toCustomer(found);
+      const recent = (res.recentOrders ?? []).map(mapRecentOrder);
+      return toCustomer(res.customer, recent);
     },
   };
 }

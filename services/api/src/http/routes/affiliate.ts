@@ -32,7 +32,8 @@ affiliateRouter.get(
          (SELECT COALESCE(sum(amount),0) FROM commission WHERE marketer_id = $1 AND status = 'paid')::bigint AS paid,
          (SELECT COALESCE(sum(amount),0) FROM commission WHERE marketer_id = $1 AND status IN ('pending','approved'))::bigint AS pending,
          (SELECT count(*) FROM referral WHERE marketer_id = $1)::int AS referrals_total,
-         (SELECT count(*) FROM referral WHERE marketer_id = $1 AND status = 'active')::int AS referrals_active`,
+         (SELECT count(*) FROM referral WHERE marketer_id = $1 AND status = 'active')::int AS referrals_active,
+         (SELECT COALESCE(sum(m.store_sales_amount),0) FROM referral r JOIN merchant m ON m.id = r.merchant_id WHERE r.marketer_id = $1)::bigint AS referred_sales_total`,
       [marketerId],
     );
     const profile = await queryOne<{ code: string }>(
@@ -52,7 +53,7 @@ affiliateRouter.get(
     const marketerId = await marketerIdForUser(req.auth!.sub);
     const { page, pageSize, offset } = parsePagination(req.query as Record<string, unknown>);
     const rows = await query(
-      `SELECT r.id, r.status, r.created_at, m.store_name,
+      `SELECT r.id, r.status, r.created_at, m.store_name, m.store_sales_amount,
               (SELECT COALESCE(sum(c.amount),0) FROM commission c WHERE c.referral_id = r.id)::bigint AS commission_earned
          FROM referral r LEFT JOIN merchant m ON m.id = r.merchant_id
         WHERE r.marketer_id = $1 ORDER BY r.created_at DESC LIMIT $2 OFFSET $3`,

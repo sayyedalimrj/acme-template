@@ -12,6 +12,7 @@ import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { ListPaginationFooter } from '@/components/ui/ListPaginationFooter';
 import {
   AnimatedSection,
   EmptySiteCard,
@@ -159,24 +160,108 @@ function OrderRow({
   );
 }
 
-export function OrderListScreen(): React.JSX.Element {
+function OrderListBody({
+  search,
+  status,
+}: {
+  search: string;
+  status: OrderStatusFilter;
+}): React.JSX.Element {
   const colors = useMobileColors();
   const shadow = useMobileShadow();
   const t = useT();
   const router = useRouter();
   const { isRTL } = useTheme();
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
 
+  const ordersQuery = useOrders({
+    page: 1,
+    pageSize: page * PAGE_SIZE,
+    status: status === 'all' ? undefined : status,
+  });
+
+  const filtered = useMemo(() => {
+    const rows = ordersQuery.data?.items ?? [];
+    return filterOrders(rows, { search, status: 'all' });
+  }, [ordersQuery.data?.items, search]);
+
+  if (ordersQuery.isPending) {
+    return (
+      <Text style={{ color: colors.muted, textAlign: isRTL ? 'right' : 'left' }}>
+        {t('common.loading')}
+      </Text>
+    );
+  }
+
+  if (ordersQuery.isError) {
+    return (
+      <PressableScale
+        onPress={() => ordersQuery.refetch()}
+        accessibilityLabel={t('common.retry')}
+        style={{ paddingVertical: 24, alignItems: 'center' }}
+      >
+        <Text style={{ color: colors.primary, fontWeight: '700' }}>
+          {t('orders.error')} · {t('common.retry')}
+        </Text>
+      </PressableScale>
+    );
+  }
+
+  if (filtered.length === 0) {
+    return (
+      <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+        <Ionicons name="receipt-outline" size={34} color={colors.mutedSoft} />
+        <Text style={{ color: colors.muted, marginTop: 10 }}>{t('orders.empty')}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <AnimatedSection index={1}>
+      <View
+        testID="order-list"
+        style={[
+          {
+            borderRadius: mobileMetrics.cardRadius,
+            backgroundColor: colors.card,
+            paddingHorizontal: 16,
+            paddingVertical: 4,
+          },
+          shadow,
+        ]}
+      >
+        {filtered.map((order, index) => (
+          <View key={order.id}>
+            {index > 0 ? (
+              <View style={{ height: 1, backgroundColor: colors.separator }} />
+            ) : null}
+            <OrderRow
+              order={order}
+              customerFallback={t('orders.customerFallback')}
+              onPress={() => router.navigate(`/orders/${order.id}` as never)}
+            />
+          </View>
+        ))}
+      </View>
+      <ListPaginationFooter
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={ordersQuery.data?.total ?? 0}
+        loading={ordersQuery.isFetching}
+        onLoadMore={() => setPage((p) => p + 1)}
+      />
+    </AnimatedSection>
+  );
+}
+
+export function OrderListScreen(): React.JSX.Element {
+  const t = useT();
+  const router = useRouter();
   const activeSite = useActiveSite();
-  const ordersQuery = useOrders();
-
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<OrderStatusFilter>('all');
-
-  const items = ordersQuery.data?.items;
-  const filtered = useMemo(
-    () => filterOrders(items ?? [], { search, status }),
-    [items, search, status],
-  );
+  const listKey = `${activeSite.data?.id ?? 'none'}:${status}`;
 
   if (!activeSite.isPending && !activeSite.data) {
     return (
@@ -210,54 +295,7 @@ export function OrderListScreen(): React.JSX.Element {
           </View>
         </AnimatedSection>
 
-        {ordersQuery.isPending ? (
-          <Text style={{ color: colors.muted, textAlign: isRTL ? 'right' : 'left' }}>
-            {t('common.loading')}
-          </Text>
-        ) : ordersQuery.isError ? (
-          <PressableScale
-            onPress={() => ordersQuery.refetch()}
-            accessibilityLabel={t('common.retry')}
-            style={{ paddingVertical: 24, alignItems: 'center' }}
-          >
-            <Text style={{ color: colors.primary, fontWeight: '700' }}>
-              {t('orders.error')} · {t('common.retry')}
-            </Text>
-          </PressableScale>
-        ) : filtered.length === 0 ? (
-          <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-            <Ionicons name="receipt-outline" size={34} color={colors.mutedSoft} />
-            <Text style={{ color: colors.muted, marginTop: 10 }}>{t('orders.empty')}</Text>
-          </View>
-        ) : (
-          <AnimatedSection index={1}>
-            <View
-              testID="order-list"
-              style={[
-                {
-                  borderRadius: mobileMetrics.cardRadius,
-                  backgroundColor: colors.card,
-                  paddingHorizontal: 16,
-                  paddingVertical: 4,
-                },
-                shadow,
-              ]}
-            >
-              {filtered.map((order, index) => (
-                <View key={order.id}>
-                  {index > 0 ? (
-                    <View style={{ height: 1, backgroundColor: colors.separator }} />
-                  ) : null}
-                  <OrderRow
-                    order={order}
-                    customerFallback={t('orders.customerFallback')}
-                    onPress={() => router.navigate(`/orders/${order.id}` as never)}
-                  />
-                </View>
-              ))}
-            </View>
-          </AnimatedSection>
-        )}
+        <OrderListBody key={listKey} search={search} status={status} />
       </View>
     </MobilePage>
   );

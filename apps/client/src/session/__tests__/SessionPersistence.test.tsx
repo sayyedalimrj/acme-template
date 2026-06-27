@@ -9,6 +9,8 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { render, screen, waitFor } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
+import { SessionProvider, useSession } from '@/session/SessionProvider';
+
 const mockRestoreSession = jest.fn<() => Promise<unknown>>();
 let mockHasStoredSession = true;
 
@@ -40,8 +42,6 @@ jest.mock('@/services/authApi', () => ({
   logoutSession: jest.fn(async () => {}),
   completeProfile: jest.fn(),
 }));
-
-import { SessionProvider, useSession } from '@/session/SessionProvider';
 
 function Probe(): React.JSX.Element {
   const { status, profileComplete, user } = useSession();

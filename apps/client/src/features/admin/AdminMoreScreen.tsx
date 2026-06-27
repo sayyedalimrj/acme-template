@@ -35,6 +35,7 @@ export function AdminMoreScreen(): React.JSX.Element {
     href: string;
     badge?: number;
   }[] = [
+    { key: 'onboarding', icon: 'rocket-outline', label: 'درخواست فروشگاه', href: '/admin/onboarding' },
     { key: 'support', icon: 'chatbubbles-outline', label: 'پشتیبانی', href: '/admin/support', badge: supportUnread },
     { key: 'merchants', icon: 'storefront-outline', label: 'فروشندگان', href: '/admin/merchants' },
     { key: 'marketers', icon: 'megaphone-outline', label: 'بازاریاب‌ها', href: '/admin/marketers' },

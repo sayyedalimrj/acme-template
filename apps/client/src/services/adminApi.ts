@@ -31,6 +31,7 @@ import {
 // ---- mappers (backend → display types) ----
 
 function mapOverview(o: Record<string, unknown>): AdminOverview {
+  const pendingOnboarding = Number(o.pending_onboarding ?? 0);
   return {
     merchantsTotal: Number(o.merchants_total ?? 0),
     merchantsActive: Number(o.merchants_active ?? 0),
@@ -40,8 +41,20 @@ function mapOverview(o: Record<string, unknown>): AdminOverview {
     openSupport: 0,
     pendingPayouts: Number(o.pending_payouts ?? 0),
     pendingPayoutsAmountLabel: tomanLabel(0),
-    metrics: [],
-    recentActivity: [],
+    metrics: [
+      { id: 'merchants', label: 'فروشندگان فعال', value: String(o.merchants_active ?? 0), tone: 'success' },
+      { id: 'gmv', label: 'فروش کل (GMV)', value: tomanLabel(Number(o.gmv ?? 0)), tone: 'info' },
+      { id: 'onboarding', label: 'درخواست فروشگاه', value: String(pendingOnboarding), tone: pendingOnboarding > 0 ? 'warning' : 'neutral' },
+      { id: 'payouts', label: 'تسویه در انتظار', value: String(o.pending_payouts ?? 0), tone: 'info' },
+    ],
+    recentActivity: pendingOnboarding > 0
+      ? [{
+          id: 'onboarding-pending',
+          kind: 'system' as const,
+          message: `${pendingOnboarding} درخواست فروشگاه در انتظار تایید`,
+          date: 'اکنون',
+        }]
+      : [],
   };
 }
 

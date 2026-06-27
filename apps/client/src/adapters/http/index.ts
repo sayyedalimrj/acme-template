@@ -13,13 +13,13 @@ import { createMockBillingAdapter } from '../mock/mockBillingAdapter';
 import { createMockCustomerIntelligenceAdapter } from '../mock/mockCustomerIntelligenceAdapter';
 import { createMockMediaStudioAdapter } from '../mock/mockMediaStudioAdapter';
 import { createMockNotificationAutomationAdapter } from '../mock/mockNotificationAutomationAdapter';
-import { createMockOnboardingAdapter } from '../mock/mockOnboardingAdapter';
 import { createMockReportsAnalyticsAdapter } from '../mock/mockReportsAnalyticsAdapter';
 import { createMockSupportAdapter } from '../mock/mockSupportAdapter';
 import { createMockSupportMessagingAdapter } from '../mock/mockSupportMessagingAdapter';
 import type { Adapters } from '../types';
 import { createHttpCustomerAdapter } from './httpCustomerAdapter';
 import { createHttpDashboardAdapter } from './httpDashboardAdapter';
+import { createHttpOnboardingAdapter } from './httpOnboardingAdapter';
 import { createHttpOrderAdapter } from './httpOrderAdapter';
 import { createHttpProductAdapter } from './httpProductAdapter';
 import { createHttpSiteAdapter } from './httpSiteAdapter';
@@ -34,7 +34,7 @@ export function createHttpAdapters(): Adapters {
     dashboard: createHttpDashboardAdapter(),
     // Not-yet-backed, development-only surfaces (delegated to in-memory implementations):
     auth: createMockAuthAdapter(),
-    onboarding: createMockOnboardingAdapter(),
+    onboarding: createHttpOnboardingAdapter(),
     support: createMockSupportAdapter(),
     supportMessaging: createMockSupportMessagingAdapter(),
     billing: createMockBillingAdapter(),

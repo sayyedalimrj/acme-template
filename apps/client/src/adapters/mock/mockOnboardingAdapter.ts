@@ -67,6 +67,7 @@ export function createMockOnboardingAdapter(): OnboardingAdapter {
       const request: ExistingSiteOnboardingRequest = {
         id: `onb_exist_new_${nextId++}`,
         type: 'existing',
+        referralCode: input.referralCode,
         businessName: input.businessName,
         siteUrl: input.siteUrl,
         platform: input.platform,
@@ -88,6 +89,7 @@ export function createMockOnboardingAdapter(): OnboardingAdapter {
       const request: NewStoreLaunchRequest = {
         id: `onb_new_new_${nextId++}`,
         type: 'new',
+        referralCode: input.referralCode,
         businessName: input.businessName,
         domain: input.domain,
         businessType: input.businessType,

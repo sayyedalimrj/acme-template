@@ -25,6 +25,16 @@ import {
   unreadCount as supportUnreadCount,
   type SupportStatus,
 } from '../../services/supportService';
+import {
+  countOnboardingRequestsAdmin,
+  getOnboardingRequestAdmin,
+  listNotifications,
+  listOnboardingRequestsAdmin,
+  listOnboardingStatusEvents,
+  markNotificationRead,
+  unreadNotificationCount,
+  updateOnboardingStatusAdmin,
+} from '../../services/onboardingService';
 
 export const adminRouter = Router();
 adminRouter.use(authenticate, requirePortal('admin'), requireAdmin);
@@ -42,6 +52,7 @@ adminRouter.get(
            (SELECT COALESCE(sum(mrr_amount), 0) FROM merchant WHERE status = 'active')::bigint AS mrr,
            (SELECT COALESCE(sum(total_minor),0) FROM synced_order)::bigint AS gmv,
            (SELECT count(*) FROM payout WHERE status = 'requested')::int AS pending_payouts,
+           (SELECT count(*) FROM onboarding_request WHERE status IN ('submitted','under_review','provisioning','ready'))::int AS pending_onboarding,
            (SELECT count(*) FROM webhook_event WHERE status = 'failed')::int AS failed_webhooks`,
       ),
     );
@@ -390,5 +401,75 @@ adminRouter.patch(
       meta: { status: parsed.data.status },
     });
     res.json({ ticket });
+  }),
+);
+
+// ---- Onboarding queue ----
+
+adminRouter.get(
+  '/onboarding/requests',
+  asyncHandler(async (req, res: Response) => {
+    const { page, pageSize, offset } = parsePagination(req.query as Record<string, unknown>);
+    const status = req.query.status ? String(req.query.status) : null;
+    const items = await listOnboardingRequestsAdmin({ status, page, pageSize, offset });
+    const total = await countOnboardingRequestsAdmin(status);
+    res.json({ items, page, pageSize, total });
+  }),
+);
+
+adminRouter.get(
+  '/onboarding/requests/:id',
+  asyncHandler(async (req, res: Response) => {
+    const row = await getOnboardingRequestAdmin(req.params.id);
+    if (!row) throw notFound('درخواست یافت نشد.');
+    const events = await listOnboardingStatusEvents(row.id);
+    res.json({ request: row, statusHistory: events });
+  }),
+);
+
+const onboardingStatusSchema = z.object({
+  status: z.enum(['under_review', 'provisioning', 'ready', 'delivered', 'rejected', 'archived']),
+  adminNote: z.string().trim().max(2000).optional(),
+  createSite: z
+    .object({
+      name: z.string().trim().min(1),
+      url: z.string().trim().url(),
+      mode: z.enum(['woo_rest', 'plugin']).default('woo_rest'),
+    })
+    .optional(),
+});
+
+adminRouter.patch(
+  '/onboarding/requests/:id/status',
+  requirePermission('admin.manage'),
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const parsed = onboardingStatusSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('وضعیت نامعتبر است.');
+    const updated = await updateOnboardingStatusAdmin({
+      requestId: req.params.id,
+      status: parsed.data.status,
+      adminUserId: req.auth!.sub,
+      adminNote: parsed.data.adminNote,
+      createSite: parsed.data.createSite,
+    });
+    invalidate('admin:overview');
+    res.json({ request: updated });
+  }),
+);
+
+adminRouter.get(
+  '/notifications',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const unreadOnly = req.query.unread === '1';
+    const items = await listNotifications({ audience: 'admin', unreadOnly });
+    res.json({ items, unreadCount: await unreadNotificationCount('admin') });
+  }),
+);
+
+adminRouter.patch(
+  '/notifications/:id/read',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    await markNotificationRead(req.params.id);
+    res.json({ ok: true });
   }),
 );

@@ -15,6 +15,7 @@ import { env } from '../../env';
 import { audit } from '../../services/audit';
 import { getSite, getWooCredentials, getWooWebhookSecret } from '../../services/sites';
 import { getOrder, getProduct } from '../../services/woocommerce/wooClient';
+import { upsertSyncedOrder } from '../../services/syncModels';
 import { settlePaidPayment } from './billing';
 import { query, queryOne } from '../../db';
 import { asyncHandler } from '../asyncHandler';
@@ -134,14 +135,7 @@ async function applyWooWebhook(
   if (topic.startsWith('order')) {
     if (!creds) return;
     const order = await getOrder(creds, externalId);
-    await query(
-      `INSERT INTO synced_order (site_id, tenant_id, external_id, number, status, total_minor, currency, customer_name, external_created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
-       ON CONFLICT (site_id, external_id) DO UPDATE SET
-         number=EXCLUDED.number, status=EXCLUDED.status, total_minor=EXCLUDED.total_minor,
-         customer_name=EXCLUDED.customer_name, updated_at=now()`,
-      [siteId, tenantId, order.externalId, order.number, order.status, order.totalMinor, order.currency, order.customerName, order.createdAt],
-    );
+    await upsertSyncedOrder(siteId, tenantId, order);
   } else if (topic.startsWith('product')) {
     if (!creds) return;
     const product = await getProduct(creds, externalId);

@@ -26,7 +26,13 @@ import {
 } from '@/features/affiliate/affiliateMockData';
 
 interface OverviewResponse {
-  overview: { paid: string; pending: string; referrals_total: number; referrals_active: number };
+  overview: {
+    paid: string;
+    pending: string;
+    referrals_total: number;
+    referrals_active: number;
+    referred_sales_total?: string | number;
+  };
   profile: { code: string; commission_rate_bps: number; tier: string; status: string };
   availableBalanceMinor: number;
   referralLink: string | null;
@@ -76,6 +82,7 @@ export function useAffiliateReferrals(): LiveData<AffiliateReferral[]> {
       planLabel: '',
       joinedAt: String(r.created_at ?? ''),
       commissionLabel: tomanLabel(Number(r.commission_earned ?? 0)),
+      salesVolumeLabel: tomanLabel(Number(r.store_sales_amount ?? 0)),
     }));
   });
 }

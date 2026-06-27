@@ -27,6 +27,7 @@ import { defaultBrandAssets, isValidDomain, uniqueCategories } from '../onboardi
 import { BrandAssetsChecklist } from './BrandAssetsChecklist';
 import { ChoiceGroup } from './ChoiceGroup';
 import { PlanPicker } from './PlanPicker';
+import { ReferralCodeField } from './ReferralCodeField';
 import { TemplateCatalog } from './TemplateCatalog';
 
 export interface NewStoreLaunchFormProps {
@@ -52,6 +53,7 @@ export function NewStoreLaunchForm({
   const categories = uniqueCategories(templates);
 
   const [businessName, setBusinessName] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [domain, setDomain] = useState('');
   const [businessType, setBusinessType] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
@@ -70,6 +72,7 @@ export function NewStoreLaunchForm({
   const businessTypeError =
     touched && !businessType ? t('onboarding.new.businessTypeRequired') : undefined;
   const templateError = touched && !templateId ? t('onboarding.new.templateRequired') : undefined;
+  const referralError = touched && referralCode.trim().length === 0 ? t('onboarding.referral.required') : undefined;
 
   const updateAsset = (key: BrandAssetItem['key'], readiness: AssetReadiness) => {
     setBrandAssets((prev) => prev.map((a) => (a.key === key ? { ...a, readiness } : a)));
@@ -79,6 +82,7 @@ export function NewStoreLaunchForm({
     setTouched(true);
     if (
       businessName.trim().length === 0 ||
+      referralCode.trim().length === 0 ||
       !isValidDomain(domain) ||
       !businessType ||
       !templateId
@@ -86,6 +90,7 @@ export function NewStoreLaunchForm({
       return;
     }
     onSubmit({
+      referralCode: referralCode.trim().toUpperCase(),
       businessName: businessName.trim(),
       domain: domain.trim().replace(/^https?:\/\//i, ''),
       businessType,
@@ -114,6 +119,13 @@ export function NewStoreLaunchForm({
             invalid={Boolean(nameError)}
           />
         </FormField>
+
+        <ReferralCodeField value={referralCode} onChange={setReferralCode} disabled={submitting} touched={touched} />
+        {referralError ? (
+          <Text variant="caption" tone="danger">
+            {referralError}
+          </Text>
+        ) : null}
 
         <FormField label={t('onboarding.new.domain.label')} required error={domainError}>
           <Input

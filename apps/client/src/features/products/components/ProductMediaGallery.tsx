@@ -41,7 +41,7 @@ async function pickWebImage(): Promise<PickedImage | null> {
   return new Promise<PickedImage | null>((resolve) => {
     const input = g.document!.createElement('input') as Record<string, unknown> & {
       click: () => void;
-      files?: Array<{ name?: string; type?: string }>;
+      files?: { name?: string; type?: string }[];
     };
     input.type = 'file';
     input.accept = 'image/*';
@@ -76,7 +76,7 @@ export interface ProductMediaGalleryProps {
   /** Active site id (required for live management; absent in the mock build). */
   siteId?: string;
   /** Images already known from the product (used read-only when no API is configured). */
-  fallbackImages?: ReadonlyArray<{ src: string; alt?: string | null }>;
+  fallbackImages?: readonly { src: string; alt?: string | null }[];
   /** When false, render the gallery read-only (no add/remove/cover controls). */
   editable?: boolean;
 }
@@ -106,7 +106,14 @@ export function ProductMediaGallery({
                 key={`${img.src}-${i}`}
                 source={{ uri: img.src }}
                 accessibilityIgnoresInvertColors
-                style={{ width: 84, height: 84, borderRadius: tokens.radius.md, backgroundColor: tokens.color.surfaceAlt }}
+                style={{
+                  width: 96,
+                  height: 96,
+                  aspectRatio: 1,
+                  borderRadius: tokens.radius.md,
+                  backgroundColor: tokens.color.surfaceAlt,
+                }}
+                resizeMode="cover"
               />
             ))}
           </View>
@@ -224,7 +231,14 @@ function LiveGallery({
               <Image
                 source={{ uri: img.src }}
                 accessibilityIgnoresInvertColors
-                style={{ width: 64, height: 64, borderRadius: tokens.radius.md, backgroundColor: tokens.color.surfaceAlt }}
+                style={{
+                  width: 72,
+                  height: 72,
+                  aspectRatio: 1,
+                  borderRadius: tokens.radius.md,
+                  backgroundColor: tokens.color.surfaceAlt,
+                }}
+                resizeMode="cover"
               />
               <View style={{ flex: 1, gap: 4 }}>
                 {img.isCover ? (
