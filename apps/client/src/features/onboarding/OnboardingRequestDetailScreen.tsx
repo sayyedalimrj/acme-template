@@ -116,6 +116,27 @@ export function OnboardingRequestDetailScreen({
         <Badge tone={meta.tone} label={t(meta.labelKey)} />
       </View>
 
+      {['submitted', 'under_review', 'provisioning', 'ready_for_review', 'awaiting_assets'].includes(
+        request.status,
+      ) ? (
+        <Card testID="onboarding-provisioning-card">
+          <View style={{ gap: tokens.spacing.sm }}>
+            <Text variant="subheading">{t('onboarding.provisioning.title')}</Text>
+            <Text tone="muted">{t('onboarding.provisioning.body')}</Text>
+            {request.estimatedReadyAt ? (
+              <Text variant="label">
+                {t('onboarding.provisioning.countdown')}: {formatDate(request.estimatedReadyAt)}
+              </Text>
+            ) : null}
+            {request.referralCode ? (
+              <Text variant="caption" tone="muted">
+                {t('onboarding.referral.label')}: {request.referralCode}
+              </Text>
+            ) : null}
+          </View>
+        </Card>
+      ) : null}
+
       {/* Summary */}
       <Card title={t('onboarding.detail.summary')}>
         <DetailRow label={t('onboarding.detail.type')} value={typeLabel} />

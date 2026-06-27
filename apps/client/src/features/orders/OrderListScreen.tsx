@@ -8,10 +8,11 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { ListPaginationFooter } from '@/components/ui/ListPaginationFooter';
 import {
   AnimatedSection,
   EmptySiteCard,
@@ -167,15 +168,32 @@ export function OrderListScreen(): React.JSX.Element {
   const { isRTL } = useTheme();
 
   const activeSite = useActiveSite();
-  const ordersQuery = useOrders();
-
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<OrderStatusFilter>('all');
 
-  const items = ordersQuery.data?.items;
+  const ordersQuery = useOrders({
+    page,
+    pageSize: PAGE_SIZE,
+    status: status === 'all' ? undefined : status,
+  });
+
+  const [accumulated, setAccumulated] = useState<Order[]>([]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeSite.data?.id, status]);
+
+  useEffect(() => {
+    if (!ordersQuery.data) return;
+    if (page === 1) setAccumulated(ordersQuery.data.items);
+    else setAccumulated((prev) => [...prev, ...ordersQuery.data!.items]);
+  }, [ordersQuery.data, page]);
+
   const filtered = useMemo(
-    () => filterOrders(items ?? [], { search, status }),
-    [items, search, status],
+    () => filterOrders(accumulated, { search, status: 'all' }),
+    [accumulated, search],
   );
 
   if (!activeSite.isPending && !activeSite.data) {
@@ -256,6 +274,13 @@ export function OrderListScreen(): React.JSX.Element {
                 </View>
               ))}
             </View>
+            <ListPaginationFooter
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={ordersQuery.data?.total ?? 0}
+              loading={ordersQuery.isFetching}
+              onLoadMore={() => setPage((p) => p + 1)}
+            />
           </AnimatedSection>
         )}
       </View>

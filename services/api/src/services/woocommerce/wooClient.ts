@@ -123,22 +123,55 @@ export interface NormalizedVariation {
   raw: Record<string, unknown>;
 }
 
+export interface NormalizedOrderLineItem {
+  externalId: string;
+  productId: string;
+  name: string;
+  sku: string | null;
+  quantity: number;
+  priceMinor: number;
+  totalMinor: number;
+}
+
+export interface NormalizedAddress {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  address1: string | null;
+  city: string | null;
+  postcode: string | null;
+  country: string | null;
+}
+
 export interface NormalizedOrder {
   externalId: string;
   number: string | null;
   status: string | null;
   totalMinor: number;
+  subtotalMinor: number;
+  taxMinor: number;
+  shippingMinor: number;
+  discountMinor: number;
   currency: string;
   customerName: string | null;
+  paymentMethodTitle: string | null;
+  lineItems: NormalizedOrderLineItem[];
+  billing: NormalizedAddress;
+  shipping: NormalizedAddress | null;
   createdAt: string | null;
 }
 
 export interface NormalizedCustomer {
   externalId: string;
   displayName: string | null;
+  email: string | null;
+  phone: string | null;
+  username: string | null;
   ordersCount: number;
   totalSpentMinor: number;
   currency: string;
+  dateCreated: string | null;
 }
 
 export interface NormalizedCoupon {
@@ -884,19 +917,54 @@ function normalizeVariation(v: Record<string, unknown>): NormalizedVariation {
   };
 }
 
+function normalizeAddress(raw: Record<string, unknown> | undefined): NormalizedAddress {
+  const b = raw ?? {};
+  return {
+    firstName: String(b.first_name ?? ''),
+    lastName: String(b.last_name ?? ''),
+    email: String(b.email ?? ''),
+    phone: (b.phone as string) || null,
+    address1: (b.address_1 as string) || null,
+    city: (b.city as string) || null,
+    postcode: (b.postcode as string) || null,
+    country: (b.country as string) || null,
+  };
+}
+
 function normalizeOrder(o: Record<string, unknown>): NormalizedOrder {
   const currency = (o.currency as string) || 'IRT';
-  const billing = (o.billing as Record<string, unknown>) ?? {};
-  const first = (billing.first_name as string) ?? '';
-  const last = (billing.last_name as string) ?? '';
-  const name = `${first} ${last}`.trim();
+  const billing = normalizeAddress((o.billing as Record<string, unknown>) ?? {});
+  const shippingRaw = (o.shipping as Record<string, unknown>) ?? {};
+  const hasShipping = Object.values(shippingRaw).some((v) => v !== '' && v != null);
+  const name = `${billing.firstName} ${billing.lastName}`.trim();
+  const lineItemsRaw = Array.isArray(o.line_items) ? o.line_items : [];
+  const lineItems: NormalizedOrderLineItem[] = lineItemsRaw.map((li) => {
+    const row = li as Record<string, unknown>;
+    return {
+      externalId: String(row.id ?? ''),
+      productId: String(row.product_id ?? ''),
+      name: String(row.name ?? ''),
+      sku: (row.sku as string) || null,
+      quantity: Number(row.quantity ?? 0),
+      priceMinor: toMinorUnits(String(row.price ?? '0'), currency),
+      totalMinor: toMinorUnits(String(row.total ?? '0'), currency),
+    };
+  });
   return {
     externalId: String(o.id ?? ''),
     number: (o.number as string) || String(o.id ?? ''),
     status: (o.status as string) || null,
     totalMinor: toMinorUnits(String(o.total ?? '0'), currency),
+    subtotalMinor: toMinorUnits(String(o.subtotal ?? o.total ?? '0'), currency),
+    taxMinor: toMinorUnits(String(o.total_tax ?? '0'), currency),
+    shippingMinor: toMinorUnits(String(o.shipping_total ?? '0'), currency),
+    discountMinor: toMinorUnits(String(o.discount_total ?? '0'), currency),
     currency,
-    customerName: name || null, // minimal PII (display name only; no email/phone/address)
+    customerName: name || null,
+    paymentMethodTitle: (o.payment_method_title as string) || (o.payment_method as string) || null,
+    lineItems,
+    billing,
+    shipping: hasShipping ? normalizeAddress(shippingRaw) : null,
     createdAt: (o.date_created_gmt as string) || (o.date_created as string) || null,
   };
 }
@@ -910,9 +978,13 @@ function normalizeCustomer(c: Record<string, unknown>): NormalizedCustomer {
   return {
     externalId: String(c.id ?? ''),
     displayName: display,
+    email: (c.email as string) || null,
+    phone: (c.billing as Record<string, unknown> | undefined)?.phone as string | null ?? null,
+    username: username || null,
     ordersCount: Number(c.orders_count ?? 0),
     totalSpentMinor: toMinorUnits(String(c.total_spent ?? '0'), currency),
     currency,
+    dateCreated: (c.date_created_gmt as string) || (c.date_created as string) || null,
   };
 }
 

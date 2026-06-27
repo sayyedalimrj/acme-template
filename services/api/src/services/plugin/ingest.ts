@@ -6,7 +6,8 @@
  */
 import { query } from '../../db';
 import { getSite, upsertProductFull } from '../sites';
-import type { NormalizedProduct, NormalizedVariation } from '../woocommerce/wooClient';
+import { upsertSyncedCustomer, upsertSyncedOrder } from '../syncModels';
+import type { NormalizedCustomer, NormalizedOrder, NormalizedProduct, NormalizedVariation } from '../woocommerce/wooClient';
 
 export interface SyncEnvelope {
   schemaVersion: string;
@@ -185,36 +186,62 @@ export async function ingestSyncEnvelope(
     for (const o of envelope.data?.orders ?? []) {
       const ext = s(o.externalId ?? o.external_id ?? o.id);
       if (!ext) continue;
-      await query(
-        `INSERT INTO synced_order (site_id, tenant_id, external_id, number, status, total_minor, currency, customer_name, external_created_at, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
-         ON CONFLICT (site_id, external_id) DO UPDATE SET
-           number=EXCLUDED.number, status=EXCLUDED.status, total_minor=EXCLUDED.total_minor,
-           customer_name=EXCLUDED.customer_name, external_created_at=EXCLUDED.external_created_at, updated_at=now()`,
-        [
-          siteId, tenantId, ext, s(o.number), s(o.status),
-          n(o.totalMinor ?? o.total_minor), s(o.currency) ?? defaultCurrency,
-          s(o.customerName ?? o.customer_name), s(o.createdAt ?? o.created_at),
-        ],
-      );
+      const currency = s(o.currency) ?? defaultCurrency;
+      const billing = (o.billing as Record<string, unknown>) ?? {};
+      const lineItemsRaw = Array.isArray(o.lineItems ?? o.line_items) ? (o.lineItems ?? o.line_items) as Record<string, unknown>[] : [];
+      const normalized: NormalizedOrder = {
+        externalId: ext,
+        number: s(o.number),
+        status: s(o.status),
+        totalMinor: n(o.totalMinor ?? o.total_minor),
+        subtotalMinor: n(o.subtotalMinor ?? o.subtotal_minor ?? o.total_minor),
+        taxMinor: n(o.taxMinor ?? o.tax_minor),
+        shippingMinor: n(o.shippingMinor ?? o.shipping_minor),
+        discountMinor: n(o.discountMinor ?? o.discount_minor),
+        currency,
+        customerName: s(o.customerName ?? o.customer_name),
+        paymentMethodTitle: s(o.paymentMethodTitle ?? o.payment_method_title),
+        lineItems: lineItemsRaw.map((li) => ({
+          externalId: String(li.id ?? li.externalId ?? ''),
+          productId: String(li.productId ?? li.product_id ?? ''),
+          name: String(li.name ?? ''),
+          sku: s(li.sku),
+          quantity: Number(li.quantity ?? 0),
+          priceMinor: n(li.priceMinor ?? li.price_minor),
+          totalMinor: n(li.totalMinor ?? li.total_minor),
+        })),
+        billing: {
+          firstName: String(billing.first_name ?? billing.firstName ?? ''),
+          lastName: String(billing.last_name ?? billing.lastName ?? ''),
+          email: String(billing.email ?? ''),
+          phone: s(billing.phone),
+          address1: s(billing.address_1 ?? billing.address1),
+          city: s(billing.city),
+          postcode: s(billing.postcode),
+          country: s(billing.country),
+        },
+        shipping: null,
+        createdAt: s(o.createdAt ?? o.created_at ?? o.external_created_at),
+      };
+      await upsertSyncedOrder(siteId, tenantId, normalized);
       stats.orders += 1;
     }
 
     for (const c of envelope.data?.customers ?? []) {
       const ext = s(c.externalId ?? c.external_id ?? c.id);
       if (!ext) continue;
-      await query(
-        `INSERT INTO synced_customer (site_id, tenant_id, external_id, display_name, orders_count, total_spent_minor, currency, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7, now())
-         ON CONFLICT (site_id, external_id) DO UPDATE SET
-           display_name=EXCLUDED.display_name, orders_count=EXCLUDED.orders_count,
-           total_spent_minor=EXCLUDED.total_spent_minor, updated_at=now()`,
-        [
-          siteId, tenantId, ext, s(c.displayName ?? c.display_name),
-          n(c.ordersCount ?? c.orders_count), n(c.totalSpentMinor ?? c.total_spent_minor),
-          s(c.currency) ?? defaultCurrency,
-        ],
-      );
+      const normalized: NormalizedCustomer = {
+        externalId: ext,
+        displayName: s(c.displayName ?? c.display_name),
+        email: s(c.email),
+        phone: s(c.phone),
+        username: s(c.username),
+        ordersCount: n(c.ordersCount ?? c.orders_count),
+        totalSpentMinor: n(c.totalSpentMinor ?? c.total_spent_minor),
+        currency: s(c.currency) ?? defaultCurrency,
+        dateCreated: s(c.dateCreated ?? c.date_created ?? c.external_created_at),
+      };
+      await upsertSyncedCustomer(siteId, tenantId, normalized);
       stats.customers += 1;
     }
 

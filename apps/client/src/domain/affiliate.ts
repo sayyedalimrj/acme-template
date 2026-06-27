@@ -47,6 +47,8 @@ export interface AffiliateReferral {
   joinedAt: ISODate;
   /** Commission earned so far from this referral (display label). */
   commissionLabel: MoneyLabel;
+  /** Store sales volume attributed to this referral (stats only — no order data). */
+  salesVolumeLabel?: MoneyLabel;
 }
 
 // ---------------------------------------------------------------------------

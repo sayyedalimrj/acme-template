@@ -63,7 +63,7 @@ export function AffiliateReferralsScreen(): React.JSX.Element {
                 title={r.storeName}
                 subtitle={`${r.ownerName} • ${r.planLabel}`}
                 meta={r.commissionLabel}
-                metaSub={r.joinedAt}
+                metaSub={r.salesVolumeLabel ? `فروش: ${r.salesVolumeLabel}` : r.joinedAt}
                 badge={referralStatusMeta(r.status)}
                 testID={`affiliate-referral-${r.id}`}
               />

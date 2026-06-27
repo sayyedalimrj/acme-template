@@ -80,6 +80,14 @@ export function AdminHomeScreen(): React.JSX.Element {
               </View>
               <View style={{ flex: 1 }}>
                 <QuickActionCard
+                  icon="rocket"
+                  label="درخواست‌ها"
+                  onPress={() => go('/admin/onboarding')}
+                  testID="admin-qa-onboarding"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <QuickActionCard
                   icon="cash"
                   label="تسویه‌ها"
                   count={o.pendingPayouts}

@@ -9,7 +9,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Image, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import {
@@ -125,9 +125,19 @@ function ProductRow({
           backgroundColor: colors.tile,
           alignItems: 'center',
           justifyContent: 'center',
+          overflow: 'hidden',
         }}
       >
-        <Ionicons name="cube-outline" size={20} color={colors.muted} />
+        {product.images[0]?.src ? (
+          <Image
+            source={{ uri: product.images[0].src }}
+            accessibilityIgnoresInvertColors
+            style={{ width: 46, height: 46 }}
+            resizeMode="cover"
+          />
+        ) : (
+          <Ionicons name="cube-outline" size={20} color={colors.muted} />
+        )}
       </View>
 
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>

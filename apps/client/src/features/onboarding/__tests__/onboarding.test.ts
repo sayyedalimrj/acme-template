@@ -34,6 +34,7 @@ describe('onboarding service (mock)', () => {
   it('creates an existing-site request WITHOUT any credential fields', async () => {
     const before = (await onboardingService.listRequests()).length;
     const request = await onboardingService.createExistingSiteRequest({
+      referralCode: 'REZA20',
       businessName: 'My Store',
       siteUrl: 'https://my-store.example.test',
       platform: 'woocommerce',
@@ -54,6 +55,7 @@ describe('onboarding service (mock)', () => {
 
   it('creates a store-launch request with template + plan + brand assets', async () => {
     const request = await onboardingService.createStoreLaunchRequest({
+      referralCode: 'REZA20',
       businessName: 'Termeh Wear',
       domain: 'termeh-wear.example.test',
       businessType: 'پوشاک',
@@ -84,6 +86,7 @@ describe('onboarding service (mock)', () => {
   it('ignores stray (non-allow-listed) input fields such as injected credentials', async () => {
     // Even if a caller smuggles a credential-like field, it must not be persisted.
     const request = await onboardingService.createExistingSiteRequest({
+      referralCode: 'REZA20',
       businessName: 'Sneaky Store',
       siteUrl: 'https://sneaky.example.test',
       platform: 'woocommerce',

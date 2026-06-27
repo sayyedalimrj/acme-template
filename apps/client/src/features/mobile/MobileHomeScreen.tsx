@@ -18,11 +18,11 @@ import { View } from 'react-native';
 import { EmptyState, LoadingState, Text } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
 import { triggerSiteSync, wooConnectErrorMessage } from '@/services/connectionApi';
+import { dashboardService } from '@/services';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useActiveSite, useSites } from '@/features/site/useSites';
 import { useSetActiveSite } from '@/features/site/useSiteMutations';
-import { dashboardService } from '@/services';
 import { useTheme } from '@/theme';
 import type { DashboardOverview, SiteConnection } from '@/domain/types';
 
@@ -176,6 +176,12 @@ function OverviewSection({
   const [range, setRange] = useState<OverviewRange>('week');
   const queryClient = useQueryClient();
   const [syncNote, setSyncNote] = useState<string | undefined>();
+  const rangeKey = range === 'week' ? '7d' : range === 'year' ? '90d' : '30d';
+  const seriesQuery = useQuery({
+    queryKey: ['site', siteId, 'overview-series', rangeKey, metric],
+    queryFn: () => dashboardService.getOverviewSeries(rangeKey as '7d' | '30d' | '90d'),
+    enabled: !showcase && Boolean(siteId),
+  });
   const sync = useMutation({
     mutationFn: () => triggerSiteSync(siteId as string),
     onSuccess: async () => {
@@ -194,6 +200,26 @@ function OverviewSection({
         : metric === 'orders'
           ? fmt.num(overview?.ordersCount ?? 0)
           : fmt.num(overview?.customersCount ?? 0);
+
+    const salesRows = seriesQuery.data?.sales ?? [];
+    const customerRows = seriesQuery.data?.customers ?? [];
+    const chartSource =
+      metric === 'customers'
+        ? customerRows.map((r) => ({ label: String(r.day).slice(5, 10), value: Number(r.new_customers) }))
+        : metric === 'orders'
+          ? salesRows.map((r) => ({ label: String(r.day).slice(5, 10), value: Number(r.orders) }))
+          : salesRows.map((r) => ({
+              label: String(r.day).slice(5, 10),
+              value: Number(r.revenue_minor) / 100,
+            }));
+
+    const hasChart = chartSource.length > 0;
+    const points: OverviewPoint[] = chartSource.map((row, index) => ({
+      label: row.label,
+      value: row.value,
+      highlight: index === chartSource.length - 1,
+    }));
+
     return (
       <View
         style={[
@@ -205,6 +231,11 @@ function OverviewSection({
           options={OVERVIEW_METRICS.map((m) => ({ value: m.value, label: t(m.labelKey) }))}
           value={metric}
           onChange={setMetric}
+        />
+        <FilterChipRow
+          options={OVERVIEW_RANGES.map((r) => ({ value: r.value, label: t(r.labelKey) }))}
+          value={range}
+          onChange={setRange}
         />
         <Text
           style={{
@@ -219,25 +250,32 @@ function OverviewSection({
         >
           {realTotal}
         </Text>
-        <EmptyState
-          testID="home-overview-empty"
-          icon="bar-chart-outline"
-          title={t('home.overview.empty')}
-          fill={false}
-          action={
-            siteId
-              ? {
-                  label: sync.isPending
-                    ? t('home.overview.syncing')
-                    : t('storeSettings.sync.button'),
-                  onPress: () => {
-                    setSyncNote(undefined);
-                    sync.mutate();
-                  },
-                }
-              : undefined
-          }
-        />
+        {hasChart ? (
+          <OverviewChart
+            data={points}
+            variant={metric === 'sales' ? 'line' : 'bar'}
+          />
+        ) : (
+          <EmptyState
+            testID="home-overview-empty"
+            icon="bar-chart-outline"
+            title={seriesQuery.isPending ? t('common.loading') : t('home.overview.empty')}
+            fill={false}
+            action={
+              siteId
+                ? {
+                    label: sync.isPending
+                      ? t('home.overview.syncing')
+                      : t('storeSettings.sync.button'),
+                    onPress: () => {
+                      setSyncNote(undefined);
+                      sync.mutate();
+                    },
+                  }
+                : undefined
+            }
+          />
+        )}
         {syncNote ? (
           <Text testID="home-overview-sync-note" variant="caption" tone="muted">
             {syncNote}

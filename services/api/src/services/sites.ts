@@ -33,6 +33,7 @@ import {
   type WooCredentials,
   type WooPage,
 } from './woocommerce/wooClient';
+import { upsertSyncedCustomer, upsertSyncedOrder } from './syncModels';
 
 export type ConnectionMode = 'woo_rest' | 'plugin';
 
@@ -529,14 +530,7 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
     stats.orders = await syncAllWooPages(
       (page) => listOrders(creds, { page, pageSize }),
       async (o) => {
-        await query(
-          `INSERT INTO synced_order (site_id, tenant_id, external_id, number, status, total_minor, currency, customer_name, external_created_at, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
-           ON CONFLICT (site_id, external_id) DO UPDATE SET
-             number = EXCLUDED.number, status = EXCLUDED.status, total_minor = EXCLUDED.total_minor,
-             customer_name = EXCLUDED.customer_name, external_created_at = EXCLUDED.external_created_at, updated_at = now()`,
-          [siteId, site.tenant_id, o.externalId, o.number, o.status, o.totalMinor, o.currency, o.customerName, o.createdAt],
-        );
+        await upsertSyncedOrder(siteId, site.tenant_id, o);
       },
       async (done, total) => {
         await setProgress({
@@ -657,14 +651,7 @@ export async function syncWooSite(siteId: string): Promise<SyncStats> {
     stats.customers = await syncAllWooPages(
       (page) => listCustomers(creds, { page, pageSize }),
       async (c) => {
-        await query(
-          `INSERT INTO synced_customer (site_id, tenant_id, external_id, display_name, orders_count, total_spent_minor, currency, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7, now())
-           ON CONFLICT (site_id, external_id) DO UPDATE SET
-             display_name = EXCLUDED.display_name, orders_count = EXCLUDED.orders_count,
-             total_spent_minor = EXCLUDED.total_spent_minor, updated_at = now()`,
-          [siteId, site.tenant_id, c.externalId, c.displayName, c.ordersCount, c.totalSpentMinor, c.currency],
-        );
+        await upsertSyncedCustomer(siteId, site.tenant_id, c);
       },
     );
     await setProgress({ customers_total: stats.customers, customers_done: stats.customers });

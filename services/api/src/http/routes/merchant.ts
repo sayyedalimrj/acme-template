@@ -50,6 +50,16 @@ import {
   markRead as markSupportRead,
   unreadCount as supportUnreadCount,
 } from '../../services/supportService';
+import {
+  createOnboardingRequest,
+  getOnboardingRequestForTenant,
+  listNotifications,
+  listOnboardingRequestsForTenant,
+  listOnboardingStatusEvents,
+  markNotificationRead,
+  unreadNotificationCount,
+  validateReferralCode,
+} from '../../services/onboardingService';
 
 export const merchantRouter = Router();
 merchantRouter.use(authenticate, requirePortal('merchant'));
@@ -73,6 +83,46 @@ async function siteFor(req: AuthedRequest, siteId: string): Promise<SiteRow> {
 
 function ensureManage(req: AuthedRequest): void {
   if (!canManage(req.auth!.role)) throw forbidden('برای این عملیات دسترسی کافی ندارید.');
+}
+
+function mapOrderApi(o: Record<string, unknown>) {
+  return {
+    external_id: o.external_id,
+    number: o.number,
+    status: o.status,
+    total_minor: o.total_minor,
+    subtotal_minor: o.subtotal_minor ?? o.total_minor,
+    tax_minor: o.tax_minor ?? 0,
+    shipping_minor: o.shipping_minor ?? 0,
+    discount_minor: o.discount_minor ?? 0,
+    currency: o.currency,
+    customer_name: o.customer_name,
+    payment_method: o.payment_method,
+    line_items: o.line_items ?? [],
+    billing: o.billing ?? null,
+    shipping_address: o.shipping_address ?? null,
+    external_created_at: o.external_created_at,
+  };
+}
+
+function mapLiveOrder(o: Awaited<ReturnType<typeof getOrder>>) {
+  return {
+    external_id: o.externalId,
+    number: o.number,
+    status: o.status,
+    total_minor: o.totalMinor,
+    subtotal_minor: o.subtotalMinor,
+    tax_minor: o.taxMinor,
+    shipping_minor: o.shippingMinor,
+    discount_minor: o.discountMinor,
+    currency: o.currency,
+    customer_name: o.customerName,
+    payment_method: o.paymentMethodTitle,
+    line_items: o.lineItems,
+    billing: o.billing,
+    shipping_address: o.shipping,
+    external_created_at: o.createdAt,
+  };
 }
 
 // ---- tenant overview ----
@@ -513,26 +563,18 @@ merchantRouter.get(
     const creds = await getWooCredentials(site.id);
     if (creds) {
       const o = await getOrder(creds, req.params.orderId);
-      res.json({
-        order: {
-          external_id: o.externalId,
-          number: o.number,
-          status: o.status,
-          total_minor: o.totalMinor,
-          currency: o.currency,
-          customer_name: o.customerName,
-          external_created_at: o.createdAt,
-        },
-      });
+      res.json({ order: mapLiveOrder(o) });
       return;
     }
     const order = await queryOne(
-      `SELECT external_id, number, status, total_minor, currency, customer_name, external_created_at
+      `SELECT external_id, number, status, total_minor, subtotal_minor, tax_minor, shipping_minor,
+              discount_minor, currency, customer_name, payment_method, line_items, billing,
+              shipping_address, external_created_at
          FROM synced_order WHERE site_id = $1 AND external_id = $2`,
       [site.id, req.params.orderId],
     );
     if (!order) throw notFound('سفارش یافت نشد.');
-    res.json({ order });
+    res.json({ order: mapOrderApi(order as Record<string, unknown>) });
   }),
 );
 
@@ -551,6 +593,58 @@ merchantRouter.get(
       [site.id],
     );
     res.json({ items, page, pageSize, total: total?.count ?? 0 });
+  }),
+);
+
+merchantRouter.get(
+  '/sites/:siteId/customers/:customerId',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    const customer = await queryOne(
+      `SELECT external_id, display_name, email, phone, username, orders_count, total_spent_minor,
+              currency, external_created_at, updated_at
+         FROM synced_customer WHERE site_id = $1 AND external_id = $2`,
+      [site.id, req.params.customerId],
+    );
+    if (!customer) throw notFound('مشتری یافت نشد.');
+    const recentOrders = await query(
+      `SELECT external_id, number, status, total_minor, currency, external_created_at
+         FROM synced_order
+        WHERE site_id = $1 AND customer_name ILIKE '%' || split_part($2, ' ', 1) || '%'
+        ORDER BY external_created_at DESC NULLS LAST LIMIT 10`,
+      [site.id, (customer as { display_name?: string }).display_name ?? ''],
+    );
+    res.json({ customer, recentOrders });
+  }),
+);
+
+merchantRouter.get(
+  '/sites/:siteId/reports/overview-series',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    const range = String(req.query.range ?? '7d');
+    const days = range === '90d' ? 90 : range === '30d' ? 30 : 7;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const sales = await query(
+      `SELECT date_trunc('day', external_created_at) AS day,
+              count(*)::int AS orders,
+              COALESCE(sum(total_minor),0)::bigint AS revenue_minor
+         FROM synced_order
+        WHERE site_id = $1
+          AND external_created_at >= $2
+          AND status NOT IN ('cancelled','refunded','failed')
+        GROUP BY 1 ORDER BY 1 ASC`,
+      [site.id, since],
+    );
+    const customers = await query(
+      `SELECT date_trunc('day', external_created_at) AS day,
+              count(*)::int AS new_customers
+         FROM synced_customer
+        WHERE site_id = $1 AND external_created_at >= $2
+        GROUP BY 1 ORDER BY 1 ASC`,
+      [site.id, since],
+    );
+    res.json({ range, currency: site.currency, sales, customers });
   }),
 );
 
@@ -1022,5 +1116,130 @@ merchantRouter.post(
       { tenantId },
     );
     res.status(201).json({ message });
+  }),
+);
+
+// ---- Onboarding (managed store launch) ----
+
+const referralSchema = z.object({ referralCode: z.string().trim().min(1).max(40) });
+
+merchantRouter.post(
+  '/onboarding/validate-referral',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const parsed = referralSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('کد معرف را وارد کنید.');
+    const result = await validateReferralCode(parsed.data.referralCode);
+    res.json({ ok: true, code: result.code });
+  }),
+);
+
+const existingOnboardingSchema = z.object({
+  referralCode: z.string().trim().min(1).max(40),
+  businessName: z.string().trim().min(1).max(120),
+  siteUrl: z.string().trim().url(),
+  platform: z.string().trim().min(1),
+  requestType: z.string().trim().min(1),
+  contactNote: z.string().trim().max(2000).optional(),
+});
+
+const newOnboardingSchema = z.object({
+  referralCode: z.string().trim().min(1).max(40),
+  businessName: z.string().trim().min(1).max(120),
+  domain: z.string().trim().min(3).max(200),
+  businessType: z.string().trim().min(1),
+  templateId: z.string().trim().min(1),
+  planId: z.string().trim().min(1),
+  brandAssets: z.array(z.object({ key: z.string(), readiness: z.string() })).optional(),
+  brandColorPreference: z.string().trim().max(120).optional(),
+  contactNote: z.string().trim().max(2000).optional(),
+});
+
+merchantRouter.get(
+  '/onboarding/templates',
+  asyncHandler(async (_req, res: Response) => {
+    res.json({ items: [] });
+  }),
+);
+
+merchantRouter.get(
+  '/onboarding/plans',
+  asyncHandler(async (_req, res: Response) => {
+    const plans = await query(`SELECT id, code, name, price_minor, currency, interval, features FROM plan WHERE active = true`);
+    res.json({ items: plans });
+  }),
+);
+
+merchantRouter.get(
+  '/onboarding/requests',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const tenantId = await tenantFor(req);
+    const rows = await listOnboardingRequestsForTenant(tenantId);
+    res.json({ items: rows });
+  }),
+);
+
+merchantRouter.get(
+  '/onboarding/requests/:id',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const tenantId = await tenantFor(req);
+    const row = await getOnboardingRequestForTenant(tenantId, req.params.id);
+    if (!row) throw notFound('درخواست یافت نشد.');
+    const events = await listOnboardingStatusEvents(row.id);
+    res.json({ request: row, statusHistory: events });
+  }),
+);
+
+merchantRouter.post(
+  '/onboarding/requests/existing',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const parsed = existingOnboardingSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('اطلاعات درخواست ناقص است.');
+    const tenantId = await tenantFor(req);
+    const created = await createOnboardingRequest({
+      tenantId,
+      userId: req.auth!.sub,
+      type: 'existing',
+      referralCode: parsed.data.referralCode,
+      payload: parsed.data,
+    });
+    res.status(201).json({ request: created });
+  }),
+);
+
+merchantRouter.post(
+  '/onboarding/requests/new',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const parsed = newOnboardingSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest('اطلاعات درخواست ناقص است.');
+    const tenantId = await tenantFor(req);
+    const created = await createOnboardingRequest({
+      tenantId,
+      userId: req.auth!.sub,
+      type: 'new',
+      referralCode: parsed.data.referralCode,
+      payload: parsed.data,
+    });
+    res.status(201).json({ request: created });
+  }),
+);
+
+merchantRouter.get(
+  '/notifications',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const unreadOnly = req.query.unread === '1';
+    const items = await listNotifications({
+      audience: 'merchant',
+      userId: req.auth!.sub,
+      unreadOnly,
+    });
+    res.json({ items, unreadCount: await unreadNotificationCount('merchant', req.auth!.sub) });
+  }),
+);
+
+merchantRouter.patch(
+  '/notifications/:id/read',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    await markNotificationRead(req.params.id, req.auth!.sub);
+    res.json({ ok: true });
   }),
 );

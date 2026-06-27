@@ -540,6 +540,12 @@ interface OnboardingRequestBase {
   type: OnboardingType;
   /** Business / brand name (frontend-safe). */
   businessName: string;
+  /** Referral code used when submitting the request. */
+  referralCode: string;
+  /** Estimated delivery time (ISO) while provisioning. */
+  estimatedReadyAt?: ISODate;
+  /** Linked site id after admin delivery. */
+  siteId?: string;
   /** Frontend-safe contact note (no credentials, ever). */
   contactNote?: string;
   /** Chronological status timeline (oldest → newest). */
@@ -586,6 +592,7 @@ export type OnboardingRequest = ExistingSiteOnboardingRequest | NewStoreLaunchRe
  * mock adapter assigns id/status/timeline/timestamps.
  */
 export interface ExistingOnboardingInput {
+  referralCode: string;
   businessName: string;
   siteUrl: string;
   platform: PlatformConfirmation;
@@ -598,6 +605,7 @@ export interface ExistingOnboardingInput {
  * mock adapter assigns id/status/timeline/timestamps.
  */
 export interface NewLaunchInput {
+  referralCode: string;
   businessName: string;
   domain: string;
   businessType: string;

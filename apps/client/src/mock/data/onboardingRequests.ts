@@ -15,6 +15,7 @@ export const onboardingRequests: OnboardingRequest[] = [
   {
     id: 'onb_exist_1001',
     type: 'existing',
+    referralCode: 'REZA20',
     businessName: 'فروشگاه نقش‌ونگار',
     siteUrl: 'https://naghshonegar.example.test',
     platform: 'woocommerce',
@@ -36,6 +37,7 @@ export const onboardingRequests: OnboardingRequest[] = [
   {
     id: 'onb_exist_1002',
     type: 'existing',
+    referralCode: 'REZA20',
     businessName: 'دیجی‌مارکت پارس',
     siteUrl: 'https://digimarket-pars.example.test',
     platform: 'not_sure',
@@ -57,6 +59,7 @@ export const onboardingRequests: OnboardingRequest[] = [
   {
     id: 'onb_new_2001',
     type: 'new',
+    referralCode: 'REZA20',
     businessName: 'آرایشی گل‌بانو',
     domain: 'golbanoo-shop.example.test',
     businessType: 'آرایشی و بهداشتی',
@@ -92,6 +95,7 @@ export const onboardingRequests: OnboardingRequest[] = [
   {
     id: 'onb_new_2002',
     type: 'new',
+    referralCode: 'REZA20',
     businessName: 'پوشاک ترمه',
     domain: 'termeh-wear.example.test',
     businessType: 'پوشاک',

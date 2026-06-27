@@ -106,7 +106,14 @@ export function ProductMediaGallery({
                 key={`${img.src}-${i}`}
                 source={{ uri: img.src }}
                 accessibilityIgnoresInvertColors
-                style={{ width: 84, height: 84, borderRadius: tokens.radius.md, backgroundColor: tokens.color.surfaceAlt }}
+                style={{
+                  width: 96,
+                  height: 96,
+                  aspectRatio: 1,
+                  borderRadius: tokens.radius.md,
+                  backgroundColor: tokens.color.surfaceAlt,
+                }}
+                resizeMode="cover"
               />
             ))}
           </View>
@@ -224,7 +231,14 @@ function LiveGallery({
               <Image
                 source={{ uri: img.src }}
                 accessibilityIgnoresInvertColors
-                style={{ width: 64, height: 64, borderRadius: tokens.radius.md, backgroundColor: tokens.color.surfaceAlt }}
+                style={{
+                  width: 72,
+                  height: 72,
+                  aspectRatio: 1,
+                  borderRadius: tokens.radius.md,
+                  backgroundColor: tokens.color.surfaceAlt,
+                }}
+                resizeMode="cover"
               />
               <View style={{ flex: 1, gap: 4 }}>
                 {img.isCover ? (
