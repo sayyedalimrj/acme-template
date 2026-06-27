@@ -12,6 +12,14 @@ import type { NormalizedCustomer, NormalizedOrder, NormalizedProduct, Normalized
 export interface SyncEnvelope {
   schemaVersion: string;
   generatedAt?: string;
+  syncRunId?: string;
+  chunk?: {
+    entity?: string;
+    chunkNumber?: number;
+    page?: number;
+    isFinal?: boolean;
+    totalChunks?: number;
+  };
   site?: {
     pluginVersion?: string;
     wooVersion?: string;
@@ -22,10 +30,12 @@ export interface SyncEnvelope {
     categories?: ReadonlyArray<Record<string, unknown>>;
     tags?: ReadonlyArray<Record<string, unknown>>;
     brands?: ReadonlyArray<Record<string, unknown>>;
+    attributes?: ReadonlyArray<Record<string, unknown>>;
     products?: ReadonlyArray<Record<string, unknown>>;
     orders?: ReadonlyArray<Record<string, unknown>>;
     customers?: ReadonlyArray<Record<string, unknown>>;
     coupons?: ReadonlyArray<Record<string, unknown>>;
+    reports?: Record<string, unknown>;
   };
 }
 
@@ -34,6 +44,15 @@ export interface IngestStats {
   orders: number;
   customers: number;
   coupons: number;
+  categories?: number;
+  tags?: number;
+  brands?: number;
+}
+
+export interface IngestResult {
+  ok: boolean;
+  syncRunId: string;
+  stats: IngestStats;
 }
 
 const n = (v: unknown, d = 0): number => {
@@ -124,24 +143,30 @@ export async function ingestSyncEnvelope(
   siteId: string,
   tenantId: string,
   envelope: SyncEnvelope,
-): Promise<IngestStats> {
+): Promise<IngestResult> {
   const site = await getSite(siteId);
   const defaultCurrency = envelope.site?.currency ?? site?.currency ?? 'IRT';
+  const syncRunGroup = envelope.syncRunId ?? undefined;
+  const entity = envelope.chunk?.entity ?? null;
+  const chunkNumber = envelope.chunk?.chunkNumber ?? null;
 
   const run = (
     await query<{ id: string }>(
-      `INSERT INTO sync_run (site_id, tenant_id, source, status) VALUES ($1, $2, 'plugin', 'running') RETURNING id`,
-      [siteId, tenantId],
+      `INSERT INTO sync_run (site_id, tenant_id, source, status, sync_run_group, entity, chunk_number)
+         VALUES ($1, $2, 'plugin', 'running', $3, $4, $5) RETURNING id`,
+      [siteId, tenantId, syncRunGroup ?? null, entity, chunkNumber],
     )
   )[0];
 
-  const stats: IngestStats = { products: 0, orders: 0, customers: 0, coupons: 0 };
+  const stats: IngestStats = { products: 0, orders: 0, customers: 0, coupons: 0, categories: 0, tags: 0, brands: 0 };
+  let receivedCount = 0;
   try {
     // Taxonomies first (if the envelope includes them) so product links can resolve. Optional —
     // a minimal envelope omits these and product taxonomy data still survives in `raw`.
     for (const c of envelope.data?.categories ?? []) {
       const ext = s(c.externalId ?? c.external_id ?? c.id);
       if (!ext) continue;
+      receivedCount += 1;
       await query(
         `INSERT INTO synced_category (site_id, tenant_id, external_id, parent_external_id, name, slug, raw, updated_at)
            VALUES ($1,$2,$3,$4,$5,$6,$7, now())
@@ -150,31 +175,49 @@ export async function ingestSyncEnvelope(
            raw=EXCLUDED.raw, updated_at=now()`,
         [siteId, tenantId, ext, s(c.parentExternalId ?? c.parent_external_id ?? c.parent), s(c.name) ?? '', s(c.slug), JSON.stringify(c)],
       );
+      stats.categories = (stats.categories ?? 0) + 1;
     }
     for (const t of envelope.data?.tags ?? []) {
       const ext = s(t.externalId ?? t.external_id ?? t.id);
       if (!ext) continue;
+      receivedCount += 1;
       await query(
         `INSERT INTO synced_tag (site_id, tenant_id, external_id, name, slug, raw, updated_at)
            VALUES ($1,$2,$3,$4,$5,$6, now())
          ON CONFLICT (site_id, external_id) DO UPDATE SET name=EXCLUDED.name, slug=EXCLUDED.slug, raw=EXCLUDED.raw, updated_at=now()`,
         [siteId, tenantId, ext, s(t.name) ?? '', s(t.slug), JSON.stringify(t)],
       );
+      stats.tags = (stats.tags ?? 0) + 1;
     }
     for (const b of envelope.data?.brands ?? []) {
       const ext = s(b.externalId ?? b.external_id ?? b.id);
       if (!ext) continue;
+      receivedCount += 1;
       await query(
         `INSERT INTO synced_brand (site_id, tenant_id, external_id, name, slug, raw, updated_at)
            VALUES ($1,$2,$3,$4,$5,$6, now())
          ON CONFLICT (site_id, external_id) DO UPDATE SET name=EXCLUDED.name, slug=EXCLUDED.slug, raw=EXCLUDED.raw, updated_at=now()`,
         [siteId, tenantId, ext, s(b.name) ?? '', s(b.slug), JSON.stringify(b)],
       );
+      stats.brands = (stats.brands ?? 0) + 1;
+    }
+
+    for (const a of envelope.data?.attributes ?? []) {
+      const ext = s(a.externalId ?? a.external_id ?? a.id);
+      if (!ext) continue;
+      receivedCount += 1;
+      await query(
+        `INSERT INTO synced_attribute (site_id, tenant_id, external_id, name, slug, raw, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6, now())
+         ON CONFLICT (site_id, external_id) DO UPDATE SET name=EXCLUDED.name, slug=EXCLUDED.slug, raw=EXCLUDED.raw, updated_at=now()`,
+        [siteId, tenantId, ext, s(a.name) ?? '', s(a.slug), JSON.stringify(a)],
+      );
     }
 
     for (const p of envelope.data?.products ?? []) {
       const ext = s(p.externalId ?? p.external_id ?? p.id);
       if (!ext) continue;
+      receivedCount += 1;
       // Route through the shared deep-preservation path: raw/meta/categories/tags/brands/
       // attributes/images/variations are all persisted when present (lossless), with safe
       // defaults when the envelope is minimal.
@@ -186,6 +229,7 @@ export async function ingestSyncEnvelope(
     for (const o of envelope.data?.orders ?? []) {
       const ext = s(o.externalId ?? o.external_id ?? o.id);
       if (!ext) continue;
+      receivedCount += 1;
       const currency = s(o.currency) ?? defaultCurrency;
       const billing = (o.billing as Record<string, unknown>) ?? {};
       const lineItemsRaw = Array.isArray(o.lineItems ?? o.line_items) ? (o.lineItems ?? o.line_items) as Record<string, unknown>[] : [];
@@ -230,6 +274,7 @@ export async function ingestSyncEnvelope(
     for (const c of envelope.data?.customers ?? []) {
       const ext = s(c.externalId ?? c.external_id ?? c.id);
       if (!ext) continue;
+      receivedCount += 1;
       const normalized: NormalizedCustomer = {
         externalId: ext,
         displayName: s(c.displayName ?? c.display_name),
@@ -248,6 +293,7 @@ export async function ingestSyncEnvelope(
     for (const c of envelope.data?.coupons ?? []) {
       const ext = s(c.externalId ?? c.external_id ?? c.id);
       if (!ext) continue;
+      receivedCount += 1;
       await query(
         `INSERT INTO synced_coupon (site_id, tenant_id, external_id, code, discount_type, amount_minor, currency, updated_at)
            VALUES ($1,$2,$3,$4,$5,$6,$7, now())
@@ -261,16 +307,33 @@ export async function ingestSyncEnvelope(
       stats.coupons += 1;
     }
 
+    const inserted = stats.products + stats.orders + stats.customers + stats.coupons
+      + (stats.categories ?? 0) + (stats.tags ?? 0) + (stats.brands ?? 0);
+    const phase = entity ? `plugin:${entity}` : 'plugin:sync';
+    const isFinal = envelope.chunk?.isFinal !== false;
     await query(
-      `UPDATE sync_run SET status='success', stats=$2, finished_at=now() WHERE id=$1`,
-      [run.id, JSON.stringify(stats)],
+      `UPDATE sync_run SET status='success', stats=$2, finished_at=now(),
+              phase=$3, message=$4, progress_percent=$5,
+              received_count=$6, inserted_count=$7, updated_count=$7
+         WHERE id=$1`,
+      [
+        run.id,
+        JSON.stringify(stats),
+        phase,
+        entity ? `chunk ${chunkNumber ?? 1}` : 'sync complete',
+        isFinal ? 100 : Math.min(99, (chunkNumber ?? 1) * 10),
+        receivedCount,
+        inserted,
+      ],
     );
-    await query(
-      `UPDATE site SET last_synced_at=now(), last_error=NULL, woo_version=COALESCE($2, woo_version),
-              wp_version=COALESCE($3, wp_version), updated_at=now() WHERE id=$1`,
-      [siteId, envelope.site?.wooVersion ?? null, envelope.site?.wpVersion ?? null],
-    );
-    return stats;
+    if (isFinal || !entity) {
+      await query(
+        `UPDATE site SET last_synced_at=now(), last_error=NULL, woo_version=COALESCE($2, woo_version),
+                wp_version=COALESCE($3, wp_version), updated_at=now() WHERE id=$1`,
+        [siteId, envelope.site?.wooVersion ?? null, envelope.site?.wpVersion ?? null],
+      );
+    }
+    return { ok: true, syncRunId: run.id, stats };
   } catch (err) {
     const message = (err as Error).message?.slice(0, 300) ?? 'ingest failed';
     await query(`UPDATE sync_run SET status='failed', error=$2, finished_at=now() WHERE id=$1`, [

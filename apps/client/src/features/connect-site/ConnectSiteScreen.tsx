@@ -33,7 +33,8 @@ import {
   useSetActiveSite,
 } from '@/features/site/useSiteMutations';
 import { isApiConfigured } from '@/config/api.config';
-import { verifyWooConnection, wooConnectErrorMessage } from '@/services/connectionApi';
+import { verifyWooConnection, wooConnectErrorMessage, type PluginConnectionStartResult } from '@/services/connectionApi';
+import { PluginPairingCard } from '@/features/connect-site/PluginPairingCard';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 import type { SiteConnection, SiteStatus } from '@/domain/types';
@@ -144,7 +145,7 @@ function SiteRow({
 }
 
 export function ConnectSiteScreen(): React.JSX.Element {
-  const { tokens } = useTheme();
+  const { tokens, rowDirection } = useTheme();
   const t = useT();
   const router = useRouter();
 
@@ -158,6 +159,8 @@ export function ConnectSiteScreen(): React.JSX.Element {
   const [url, setUrl] = useState('');
   const [consumerKey, setConsumerKey] = useState('');
   const [consumerSecret, setConsumerSecret] = useState('');
+  const [connectionMode, setConnectionMode] = useState<'woo_rest' | 'plugin'>('plugin');
+  const [pluginPairing, setPluginPairing] = useState<PluginConnectionStartResult | null>(null);
   const [touched, setTouched] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
@@ -173,12 +176,22 @@ export function ConnectSiteScreen(): React.JSX.Element {
       return;
     }
     connect.mutate(
-      { name: name.trim(), url: url.trim() },
+      { name: name.trim(), url: url.trim(), mode: connectionMode },
       {
         onSuccess: async (site) => {
-          // When connected to the real backend with REST credentials, verify them now so the
-          // store becomes "connected" and an initial sync runs server-side.
-          if (isApiConfigured() && consumerKey.trim() && consumerSecret.trim()) {
+          if (isApiConfigured() && connectionMode === 'plugin') {
+            const pairing = (site as SiteConnection & { pluginPairing?: PluginConnectionStartResult }).pluginPairing;
+            if (pairing?.signingSecret && pairing.tenantId && pairing.deliveryBaseUrl) {
+              setPluginPairing({
+                siteId: pairing.siteId,
+                tenantId: pairing.tenantId,
+                connectionId: pairing.connectionId ?? '',
+                mode: 'plugin',
+                deliveryBaseUrl: pairing.deliveryBaseUrl,
+                signingSecret: pairing.signingSecret,
+              });
+            }
+          } else if (isApiConfigured() && consumerKey.trim() && consumerSecret.trim()) {
             try {
               setVerifying(true);
               await verifyWooConnection(site.id, consumerKey.trim(), consumerSecret.trim());
@@ -268,10 +281,30 @@ export function ConnectSiteScreen(): React.JSX.Element {
         {isApiConfigured() ? (
           <View style={{ gap: tokens.spacing.sm }}>
             <Text variant="caption" tone="muted">
-              اعتبارنامه REST ووکامرس (اختیاری برای اتصال مستقیم). از مسیر ووکامرس ← تنظیمات ←
-              پیشرفته ← REST API یک کلید با دسترسی خواندن/نوشتن بسازید.
+              {t('connectSite.modeLabel')}
             </Text>
-            <FormField label="Consumer key (ck_…)">
+            <View style={{ flexDirection: rowDirection, gap: tokens.spacing.sm }}>
+              <Button
+                label={t('connectSite.modePlugin')}
+                variant={connectionMode === 'plugin' ? 'primary' : 'secondary'}
+                size="sm"
+                onPress={() => setConnectionMode('plugin')}
+              />
+              <Button
+                label={t('connectSite.modeRest')}
+                variant={connectionMode === 'woo_rest' ? 'primary' : 'secondary'}
+                size="sm"
+                onPress={() => setConnectionMode('woo_rest')}
+              />
+            </View>
+          </View>
+        ) : null}
+        {isApiConfigured() && connectionMode === 'woo_rest' ? (
+          <View style={{ gap: tokens.spacing.sm }}>
+            <Text variant="caption" tone="muted">
+              {t('connectSite.restCredHint')}
+            </Text>
+            <FormField label={t('connectSite.consumerKeyLabel')}>
               <Input
                 value={consumerKey}
                 onChangeText={setConsumerKey}
@@ -280,7 +313,7 @@ export function ConnectSiteScreen(): React.JSX.Element {
                 editable={!mutating}
               />
             </FormField>
-            <FormField label="Consumer secret (cs_…)" error={verifyError ?? undefined}>
+            <FormField label={t('connectSite.consumerSecretLabel')} error={verifyError ?? undefined}>
               <Input
                 value={consumerSecret}
                 onChangeText={setConsumerSecret}
@@ -291,6 +324,11 @@ export function ConnectSiteScreen(): React.JSX.Element {
               />
             </FormField>
           </View>
+        ) : null}
+        {isApiConfigured() && connectionMode === 'plugin' ? (
+          <Text variant="caption" tone="muted">
+            {t('connectSite.plugin.modeHint')}
+          </Text>
         ) : null}
         <Button
           label={
@@ -303,6 +341,15 @@ export function ConnectSiteScreen(): React.JSX.Element {
           leading={<Ionicons name="add" size={16} color={tokens.color.onPrimary} />}
         />
       </Card>
+
+      {pluginPairing ? (
+        <PluginPairingCard
+          pairing={pluginPairing}
+          onConnected={() => {
+            void sitesQuery.refetch();
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }

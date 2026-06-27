@@ -25,7 +25,45 @@ if (!class_exists('WCOS_Settings')) {
         const OPT_SIGNING_SECRET = 'wcos_signing_secret';
 
         public static function get_backend_url() {
-            return rtrim((string) get_option(self::OPT_BACKEND_URL, ''), '/');
+            return self::normalize_backend_url((string) get_option(self::OPT_BACKEND_URL, ''));
+        }
+
+        /**
+         * Normalize backend URL: ensure it ends with /plugin exactly once; require HTTPS in production.
+         *
+         * @param string $url Raw URL.
+         * @return string
+         */
+        public static function normalize_backend_url($url) {
+            $url = rtrim(trim((string) $url), '/');
+            if ($url === '') {
+                return '';
+            }
+            // Strip trailing /plugin segments then append one /plugin path.
+            $url = preg_replace('#(/plugin)+$#', '', $url);
+            $url = rtrim($url, '/');
+            return $url . '/plugin';
+        }
+
+        /** @return bool */
+        public static function requires_https() {
+            return !(defined('WP_DEBUG') && WP_DEBUG);
+        }
+
+        /** @return bool */
+        public static function backend_url_is_valid() {
+            $url = self::get_backend_url();
+            if ($url === '') {
+                return false;
+            }
+            $parsed = wp_parse_url($url);
+            if (!is_array($parsed) || empty($parsed['scheme']) || empty($parsed['host'])) {
+                return false;
+            }
+            if (self::requires_https() && strtolower($parsed['scheme']) !== 'https') {
+                return false;
+            }
+            return true;
         }
 
         public static function get_site_id() {
@@ -66,7 +104,8 @@ if (!class_exists('WCOS_Settings')) {
          */
         public static function save(array $input) {
             if (isset($input['backend_url'])) {
-                update_option(self::OPT_BACKEND_URL, esc_url_raw(rtrim(trim($input['backend_url']), '/')), false);
+                $normalized = self::normalize_backend_url(trim($input['backend_url']));
+                update_option(self::OPT_BACKEND_URL, esc_url_raw($normalized), false);
             }
             if (isset($input['site_id'])) {
                 update_option(self::OPT_SITE_ID, sanitize_text_field($input['site_id']));

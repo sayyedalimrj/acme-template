@@ -284,6 +284,41 @@ function safeHost(url: string): string {
   }
 }
 
+/** Rotate the plugin signing secret; returns the new secret ONCE. Old secret is revoked. */
+export async function rotatePluginSigningSecret(
+  siteId: string,
+  tenantId: string,
+): Promise<string> {
+  const site = await getSite(siteId);
+  if (!site) throw notFound('فروشگاه یافت نشد.');
+  if (site.tenant_id !== tenantId) throw notFound('فروشگاه یافت نشد.');
+  if (site.connection_mode !== 'plugin') {
+    throw badRequest('چرخش کلید فقط برای اتصال افزونه است.');
+  }
+
+  const signingSecret = randomBytes(32).toString('base64url');
+  const sealed = sealSecret({ signingSecret });
+
+  await query(`UPDATE site_credential SET status = 'revoked' WHERE site_id = $1 AND kind = 'plugin_signing'`, [
+    siteId,
+  ]);
+  await query(
+    `INSERT INTO site_credential (site_id, tenant_id, kind, key_version, iv, auth_tag, ciphertext)
+       VALUES ($1, $2, 'plugin_signing', $3, $4, $5, $6)`,
+    [siteId, tenantId, sealed.keyVersion, sealed.iv, sealed.authTag, sealed.ciphertext],
+  );
+  await query(
+    `UPDATE plugin_connection SET status = 'pending', plugin_version = NULL WHERE site_id = $1`,
+    [siteId],
+  );
+  await query(
+    `UPDATE site SET status = 'pending', updated_at = now() WHERE id = $1 AND status <> 'disconnected'`,
+    [siteId],
+  );
+
+  return signingSecret;
+}
+
 /** Disconnect a site: revoke credentials + connections; keep read-models for history. */
 export async function disconnectSite(siteId: string): Promise<void> {
   const client = await pool.connect();

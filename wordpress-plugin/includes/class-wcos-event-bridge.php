@@ -168,7 +168,19 @@ if (!class_exists('WCOS_Event_Bridge')) {
             add_action('woocommerce_new_order', array(__CLASS__, 'on_new_order'), 10, 1);
             add_action('woocommerce_order_status_changed', array(__CLASS__, 'on_order_status_changed'), 10, 3);
             add_action('woocommerce_product_set_stock', array(__CLASS__, 'on_product_stock'), 10, 1);
+            add_action('save_post_product', array(__CLASS__, 'on_product_save'), 20, 1);
+            add_action('before_delete_post', array(__CLASS__, 'on_product_delete'), 10, 1);
+            add_action('save_post_shop_coupon', array(__CLASS__, 'on_coupon_save'), 20, 1);
+            add_action('profile_update', array(__CLASS__, 'on_customer_update'), 10, 1);
             add_action('user_register', array(__CLASS__, 'on_user_register'), 10, 1);
+        }
+
+        /** @return void */
+        private static function enqueue_and_schedule($event_type, $resource_id, $summary = array()) {
+            WCOS_Event_Store::add_event(self::build_event_envelope($event_type, $resource_id, $summary));
+            if (class_exists('WCOS_Sync_Engine') && WCOS_Settings::is_configured()) {
+                WCOS_Sync_Engine::schedule_event_delivery(5);
+            }
         }
 
         /**
@@ -184,7 +196,7 @@ if (!class_exists('WCOS_Event_Bridge')) {
             try {
                 $order   = wc_get_order($order_id);
                 $summary = WCOS_Event_Sanitizer::sanitize_order_event_summary($order);
-                WCOS_Event_Store::add_event(self::build_event_envelope('order.created', (string) $order_id, $summary));
+                self::enqueue_and_schedule('order.created', (string) $order_id, $summary);
             } catch (\Throwable $e) {
                 // Swallow safely — event capture must never disrupt the store.
                 return;
@@ -208,7 +220,7 @@ if (!class_exists('WCOS_Event_Bridge')) {
                     'status_from' => is_string($from) ? $from : '',
                     'status_to'   => is_string($to) ? $to : '',
                 );
-                WCOS_Event_Store::add_event(self::build_event_envelope('order.updated', (string) $order_id, $summary));
+                self::enqueue_and_schedule('order.updated', (string) $order_id, $summary);
             } catch (\Throwable $e) {
                 return;
             }
@@ -227,7 +239,7 @@ if (!class_exists('WCOS_Event_Bridge')) {
             try {
                 $resource_id = is_object($product) && method_exists($product, 'get_id') ? (string) $product->get_id() : '';
                 $summary     = WCOS_Event_Sanitizer::sanitize_product_event_summary($product);
-                WCOS_Event_Store::add_event(self::build_event_envelope('product.stock_changed', $resource_id, $summary));
+                self::enqueue_and_schedule('product.stock_changed', $resource_id, $summary);
             } catch (\Throwable $e) {
                 return;
             }
@@ -245,10 +257,53 @@ if (!class_exists('WCOS_Event_Bridge')) {
             }
             try {
                 $summary = array('label' => 'Customer #' . (int) $user_id);
-                WCOS_Event_Store::add_event(self::build_event_envelope('customer.created', (string) $user_id, $summary));
+                self::enqueue_and_schedule('customer.created', (string) $user_id, $summary);
             } catch (\Throwable $e) {
                 return;
             }
+        }
+
+        /** @param int $post_id Post id. */
+        public static function on_product_save($post_id) {
+            if (!WCOS_WooCommerce::is_active() || get_post_type($post_id) !== 'product') {
+                return;
+            }
+            try {
+                $product = function_exists('wc_get_product') ? wc_get_product($post_id) : null;
+                $summary = WCOS_Event_Sanitizer::sanitize_product_event_summary($product);
+                $type    = get_post_status($post_id) === 'auto-draft' ? 'product.created' : 'product.updated';
+                self::enqueue_and_schedule($type, (string) $post_id, $summary);
+            } catch (\Throwable $e) {
+                return;
+            }
+        }
+
+        /** @param int $post_id Post id. */
+        public static function on_product_delete($post_id) {
+            if (get_post_type($post_id) !== 'product') {
+                return;
+            }
+            self::enqueue_and_schedule('product.updated', (string) $post_id, array('status' => 'deleted'));
+        }
+
+        /** @param int $post_id Post id. */
+        public static function on_coupon_save($post_id) {
+            if (get_post_type($post_id) !== 'shop_coupon') {
+                return;
+            }
+            self::enqueue_and_schedule('coupon.updated', (string) $post_id, array('status' => get_post_status($post_id)));
+        }
+
+        /** @param int $user_id User id. */
+        public static function on_customer_update($user_id) {
+            if (!WCOS_WooCommerce::is_active()) {
+                return;
+            }
+            $user = get_userdata($user_id);
+            if (!$user || !in_array('customer', (array) $user->roles, true)) {
+                return;
+            }
+            self::enqueue_and_schedule('customer.updated', (string) $user_id, array('label' => 'Customer #' . (int) $user_id));
         }
     }
 }

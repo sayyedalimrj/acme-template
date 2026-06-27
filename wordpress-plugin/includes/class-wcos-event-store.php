@@ -19,7 +19,7 @@ if (!class_exists('WCOS_Event_Store')) {
     final class WCOS_Event_Store {
 
         const OPTION = 'wcos_event_queue';
-        const MAX_QUEUE = 50;
+        const MAX_QUEUE = 200;
 
         /**
          * Read the raw queue.
@@ -90,6 +90,32 @@ if (!class_exists('WCOS_Event_Store')) {
         }
 
         /**
+         * Remove an event by event_id after successful delivery.
+         *
+         * @param string $event_id Event id.
+         * @return void
+         */
+        public static function remove_event($event_id) {
+            $queue = self::read();
+            $out   = array();
+            foreach ($queue as $evt) {
+                if (!is_array($evt)) {
+                    continue;
+                }
+                if (isset($evt['event_id']) && (string) $evt['event_id'] === (string) $event_id) {
+                    continue;
+                }
+                $out[] = $evt;
+            }
+            self::write($out);
+        }
+
+        /** @return int */
+        public static function count() {
+            return count(self::read());
+        }
+
+        /**
          * Non-secret queue summary.
          *
          * @return array<string,mixed>
@@ -101,7 +127,7 @@ if (!class_exists('WCOS_Event_Store')) {
             return array(
                 'count'           => $count,
                 'max'             => self::MAX_QUEUE,
-                'delivery_status' => 'local_only',
+                'delivery_status' => WCOS_Settings::is_configured() ? 'queued_for_delivery' : 'local_only',
                 'oldest_at'       => $count > 0 && isset($queue[0]['occurred_at']) ? $queue[0]['occurred_at'] : null,
                 'newest_at'       => $count > 0 && isset($queue[$count - 1]['occurred_at']) ? $queue[$count - 1]['occurred_at'] : null,
             );

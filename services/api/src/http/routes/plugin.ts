@@ -17,9 +17,10 @@ import rateLimit from 'express-rate-limit';
 import { audit } from '../../services/audit';
 import { getPluginSigningSecret, getSite } from '../../services/sites';
 import { ingestEvents, ingestSyncEnvelope, type SyncEnvelope } from '../../services/plugin/ingest';
+import { processPluginEvents } from '../../services/plugin/eventProcessor';
 import { verifySignature, type SignatureInput } from '../../services/plugin/signature';
 import { consumeNonce, isTimestampFresh, pruneExpiredNonces } from '../../services/plugin/replayGuard';
-import { query } from '../../db';
+import { query, queryOne } from '../../db';
 import { badRequest, forbidden, unauthorized } from '../../util/errors';
 import { asyncHandler } from '../asyncHandler';
 import type { AuthedRequest } from '../middleware/auth';
@@ -61,14 +62,26 @@ async function verifyRequest(req: AuthedRequest): Promise<VerifiedContext> {
   const site = await getSite(siteId);
   if (!site) throw forbidden('فروشگاه ناشناخته است.');
   if (site.connection_mode !== 'plugin') throw forbidden('این فروشگاه در حالت افزونه نیست.');
+  if (site.status === 'disconnected') throw forbidden('اتصال این فروشگاه لغو شده است.');
+
+  const pluginConn = await queryOne<{ status: string }>(
+    `SELECT status FROM plugin_connection WHERE site_id = $1`,
+    [siteId],
+  );
+  if (pluginConn?.status === 'revoked') throw forbidden('اتصال افزونه لغو شده است.');
 
   const secret = await getPluginSigningSecret(siteId);
   if (!secret) throw forbidden('کلید امضای افزونه تنظیم نشده است.');
 
+  const tenantId = tenantHeader ?? site.tenant_id;
+  if (tenantHeader && tenantHeader !== site.tenant_id) {
+    throw forbidden('شناسه مستأجر با فروشگاه مطابقت ندارد.');
+  }
+
   const bodyString = typeof req.body === 'string' ? req.body : '';
   const input: SignatureInput = {
     siteId,
-    tenantId: tenantHeader ?? site.tenant_id,
+    tenantId,
     timestamp,
     nonce,
     pluginVersion,
@@ -91,7 +104,7 @@ async function verifyRequest(req: AuthedRequest): Promise<VerifiedContext> {
       throw badRequest('بدنه درخواست JSON معتبر نیست.');
     }
   }
-  return { siteId, tenantId: site.tenant_id, body: parsed };
+  return { siteId, tenantId, body: parsed };
 }
 
 pluginRouter.post(
@@ -132,9 +145,24 @@ pluginRouter.post(
     const ctx = await verifyRequest(req);
     const envelope = ctx.body as unknown as SyncEnvelope;
     if (!envelope.schemaVersion) throw badRequest('نسخه طرح‌واره ارسال نشده است.');
-    const stats = await ingestSyncEnvelope(ctx.siteId, ctx.tenantId, envelope);
-    await query(`UPDATE plugin_connection SET last_seen_at=now() WHERE site_id=$1`, [ctx.siteId]);
-    res.json({ ok: true, stats });
+    const result = await ingestSyncEnvelope(ctx.siteId, ctx.tenantId, envelope);
+    await query(
+      `UPDATE plugin_connection SET last_seen_at=now(), last_sync_at=now() WHERE site_id=$1`,
+      [ctx.siteId],
+    );
+    await audit({
+      action: result.ok ? 'plugin.sync.success' : 'plugin.sync.failure',
+      targetType: 'site',
+      targetId: ctx.siteId,
+      requestIp: req.ip,
+      meta: {
+        syncRunId: result.syncRunId,
+        entity: envelope.chunk?.entity ?? null,
+        chunkNumber: envelope.chunk?.chunkNumber ?? null,
+        stats: result.stats,
+      },
+    });
+    res.json({ ok: true, syncRunId: result.syncRunId, stats: result.stats });
   }),
 );
 
@@ -143,9 +171,17 @@ pluginRouter.post(
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const ctx = await verifyRequest(req);
     const events = Array.isArray(ctx.body.events)
-      ? (ctx.body.events as Array<{ idempotencyKey: string; type: string; summary?: unknown }>)
+      ? (ctx.body.events as Array<{
+          idempotencyKey: string;
+          type: string;
+          entityType?: string;
+          entityExternalId?: string;
+          occurredAt?: string;
+          summary?: unknown;
+        }>)
       : [];
     const recorded = await ingestEvents(ctx.siteId, ctx.tenantId, events);
+    await processPluginEvents(ctx.siteId, ctx.tenantId, events, recorded);
     await query(`UPDATE plugin_connection SET last_seen_at=now() WHERE site_id=$1`, [ctx.siteId]);
     res.json({ ok: true, received: events.length, recorded });
   }),

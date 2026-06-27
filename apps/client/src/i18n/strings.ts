@@ -81,6 +81,26 @@ export const en = {
     'Security: only your store name and URL are stored. Store keys/secrets and site application passwords are never entered or stored in this app — connections are handled securely.',
   'connectSite.nameRequired': 'Store name is required.',
   'connectSite.urlRequired': 'A valid store URL (http/https) is required.',
+  'connectSite.modeLabel': 'Connection method',
+  'connectSite.modePlugin': 'WordPress plugin',
+  'connectSite.modeRest': 'WooCommerce REST',
+  'connectSite.restCredHint':
+    'Optional WooCommerce REST credentials for direct API connection. Create a read/write key under WooCommerce → Settings → Advanced → REST API.',
+  'connectSite.consumerKeyLabel': 'Consumer key (ck_…)',
+  'connectSite.consumerSecretLabel': 'Consumer secret (cs_…)',
+  'connectSite.plugin.modeHint':
+    'After connecting, copy the one-time credentials into the WordPress Commerce OS Companion plugin on your store.',
+  'connectSite.plugin.pairingTitle': 'Plugin connection credentials',
+  'connectSite.plugin.pairingIntro':
+    'Install the companion plugin on your WordPress site, then paste these values on the plugin settings page and click Connect.',
+  'connectSite.plugin.secretOnce': 'Signing secret is shown only once — copy it now.',
+  'connectSite.plugin.backendUrl': 'Backend URL',
+  'connectSite.plugin.siteId': 'Site ID',
+  'connectSite.plugin.tenantId': 'Tenant ID',
+  'connectSite.plugin.signingSecret': 'Signing secret',
+  'connectSite.plugin.steps':
+    'In WordPress: WooCommerce → WordPress Commerce OS → paste values → Test connection → Full sync.',
+  'connectSite.plugin.waiting': 'Waiting for plugin handshake',
   // Store settings (edit a connected store)
   'storeSettings.title': 'Store settings',
   'storeSettings.subtitle': 'Edit your connected store and check its connection.',
@@ -122,7 +142,12 @@ export const en = {
   'storeSettings.plugin.version': 'Plugin version',
   'storeSettings.plugin.lastSeen': 'Last seen',
   'storeSettings.plugin.repairNote':
-    'To re-pair, open the JetWeb connector in your WordPress admin and use its "reconnect" action with a fresh pairing code.',
+    'To re-pair, paste a rotated signing secret in the WordPress Commerce OS Companion plugin settings.',
+  'storeSettings.plugin.syncedCounts': 'Synced data',
+  'storeSettings.plugin.countsLine': 'Products: {products} · Orders: {orders} · Customers: {customers} · Coupons: {coupons}',
+  'storeSettings.plugin.backendUrl': 'Backend URL',
+  'storeSettings.plugin.rotateSecret': 'Rotate signing secret',
+  'storeSettings.plugin.newSecretOnce': 'New signing secret (shown once — paste into WordPress plugin):',
   'storeSettings.sync.button': 'Sync now',
   'storeSettings.sync.started': 'Sync started — this runs in the background. Refresh to see progress.',
   'storeSettings.sync.running': 'Syncing…',
@@ -1511,6 +1536,26 @@ export const fa: Record<StringKey, string> = {
     'امنیت: فقط نام و نشانی فروشگاه ذخیره می‌شود. کلیدها/رمزهای فروشگاه و رمزهای برنامه سایت هرگز در این برنامه وارد یا ذخیره نمی‌شوند و اتصال‌ها به‌صورت امن انجام می‌شود.',
   'connectSite.nameRequired': 'نام فروشگاه الزامی است.',
   'connectSite.urlRequired': 'نشانی معتبر فروشگاه (http/https) الزامی است.',
+  'connectSite.modeLabel': 'روش اتصال',
+  'connectSite.modePlugin': 'افزونه وردپرس',
+  'connectSite.modeRest': 'REST ووکامرس',
+  'connectSite.restCredHint':
+    'اعتبارنامه REST ووکامرس (اختیاری برای اتصال مستقیم). از مسیر ووکامرس ← تنظیمات ← پیشرفته ← REST API یک کلید با دسترسی خواندن/نوشتن بسازید.',
+  'connectSite.consumerKeyLabel': 'Consumer key (ck_…)',
+  'connectSite.consumerSecretLabel': 'Consumer secret (cs_…)',
+  'connectSite.plugin.modeHint':
+    'پس از اتصال، اطلاعات یک‌بارمصرف را در افزونه WordPress Commerce OS Companion روی فروشگاه خود وارد کنید.',
+  'connectSite.plugin.pairingTitle': 'اطلاعات اتصال افزونه',
+  'connectSite.plugin.pairingIntro':
+    'افزونه را روی وردپرس نصب کنید، سپس این مقادیر را در صفحه تنظیمات افزونه بچسبانید و اتصال را بزنید.',
+  'connectSite.plugin.secretOnce': 'کلید امضا فقط یک‌بار نمایش داده می‌شود — همین الان کپی کنید.',
+  'connectSite.plugin.backendUrl': 'آدرس بک‌اند',
+  'connectSite.plugin.siteId': 'شناسه فروشگاه',
+  'connectSite.plugin.tenantId': 'شناسه مستأجر',
+  'connectSite.plugin.signingSecret': 'کلید امضا',
+  'connectSite.plugin.steps':
+    'در وردپرس: WordPress Commerce OS → چسباندن مقادیر → تست اتصال → همگام‌سازی کامل.',
+  'connectSite.plugin.waiting': 'در انتظار Handshake افزونه',
   // Store settings (edit a connected store)
   'storeSettings.title': 'تنظیمات فروشگاه',
   'storeSettings.subtitle': 'فروشگاه متصل خود را ویرایش کنید و وضعیت اتصال را ببینید.',
@@ -1552,7 +1597,12 @@ export const fa: Record<StringKey, string> = {
   'storeSettings.plugin.version': 'نسخه افزونه',
   'storeSettings.plugin.lastSeen': 'آخرین بازدید',
   'storeSettings.plugin.repairNote':
-    'برای اتصال مجدد، رابط جت‌وب را در پیشخوان وردپرس باز کنید و با یک کد اتصال تازه از گزینه «اتصال مجدد» استفاده کنید.',
+    'برای اتصال مجدد، کلید امضای چرخانده‌شده را در تنظیمات افزونه WordPress Commerce OS Companion بچسبانید.',
+  'storeSettings.plugin.syncedCounts': 'داده‌های همگام‌شده',
+  'storeSettings.plugin.countsLine': 'محصولات: {products} · سفارش‌ها: {orders} · مشتریان: {customers} · کوپن‌ها: {coupons}',
+  'storeSettings.plugin.backendUrl': 'آدرس بک‌اند',
+  'storeSettings.plugin.rotateSecret': 'چرخش کلید امضا',
+  'storeSettings.plugin.newSecretOnce': 'کلید امضای جدید (فقط یک‌بار — در افزونه وردپرس بچسبانید):',
   'storeSettings.sync.button': 'همگام‌سازی',
   'storeSettings.sync.started': 'همگام‌سازی شروع شد و در پس‌زمینه انجام می‌شود. برای دیدن وضعیت، به‌روزرسانی کنید.',
   'storeSettings.sync.running': 'در حال همگام‌سازی…',

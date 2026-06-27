@@ -49,6 +49,42 @@ export function verifyWooConnection(
   });
 }
 
+export interface PluginConnectionStartResult {
+  siteId: string;
+  tenantId: string;
+  connectionId: string;
+  mode: 'plugin';
+  deliveryBaseUrl: string;
+  signingSecret: string;
+}
+
+/** Start a plugin-mode site connection; signing secret is returned exactly once. */
+export function startPluginConnection(
+  name: string,
+  url: string,
+): Promise<PluginConnectionStartResult> {
+  return http.post<PluginConnectionStartResult>('/merchant/sites/connect/start', {
+    name,
+    url,
+    mode: 'plugin',
+  });
+}
+
+/** Rotate the plugin signing secret; new secret returned exactly once. */
+export function rotatePluginSecret(siteId: string): Promise<PluginConnectionStartResult> {
+  return http.post<PluginConnectionStartResult>(
+    `/merchant/sites/${encodeURIComponent(siteId)}/plugin/rotate-secret`,
+  );
+}
+
+export interface SyncedCounts {
+  products: number;
+  orders: number;
+  customers: number;
+  coupons: number;
+  categories: number;
+}
+
 /** Frontend-safe site metadata returned by the status endpoint (never includes secrets). */
 export interface SiteStatusSite {
   id: string;
@@ -83,6 +119,8 @@ export interface SiteStatusResult {
   plugin: PluginConnectionStatus | null;
   /** The most recent sync run (REST or plugin), or null if none has run yet. */
   lastSync: LastSyncStatus | null;
+  syncedCounts?: SyncedCounts;
+  deliveryBaseUrl?: string;
 }
 
 /**

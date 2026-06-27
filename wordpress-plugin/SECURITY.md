@@ -1,31 +1,20 @@
 # Companion Plugin — Security Rules (binding)
 
-Extends `.kiro/steering/security.md` and
-`.kiro/specs/wordpress-commerce-os-platform/security-model.md` to the future companion
-plugin. Binding for all current and future work in this package.
+Extends `.kiro/steering/security.md` and platform security model. **Production transport is live:**
+the plugin stores one backend-issued **signing secret** (non-autoloaded option) for HMAC requests.
+It never stores WooCommerce REST keys or WordPress application passwords.
 
 ## Hard rules (no exceptions)
 
-1. **No secrets anywhere** — not in code, contracts, mocks, examples, docs, config, or env.
-   This includes WordPress admin passwords, WordPress application passwords, WooCommerce
-   consumer keys/secrets, webhook secrets, API provider keys, and hosting/cPanel/FTP creds.
-2. **The client never receives secrets.** The merchant dashboard only ever holds a non-secret
-   site reference and frontend-safe status. Credential material is exchanged and stored
-   **server-side only** (`apps/api`), encrypted at rest (later).
-3. **No raw credential transfer through the contract.** Handshake/health/event/diagnostic
-   payloads carry only non-secret metadata, opaque references, and summaries.
-4. **Summary-only events.** No raw full order payloads and no full customer PII ever leave the
-   site through the event bridge — only minimal, redacted summaries with opaque references.
-5. **Diagnostics are redacted.** Every diagnostic string passes through
-   `redactPluginDiagnosticText` (see `src/redaction-contract.ts`), which removes passwords,
-   application passwords, consumer keys/secrets, API keys, tokens, authorization/bearer/basic
-   headers, cookies, nonces, and webhook secrets.
-6. **Reserved capabilities are disabled by default.** `mutate_products_later`,
-   `mutate_orders_later`, and `send_notifications_later` are never enabled in this phase.
-7. **No real writes / mutations** to any store until the mock UI, adapter interfaces, and the
-   platform security model are reviewed and approved.
+1. **No WooCommerce REST keys in the plugin.** Consumer key/secret stay server-side (REST mode) or are not used (plugin mode).
+2. **Signing secret only** — provisioned once by `services/api`, stored in `wcos_signing_secret`, never echoed to browsers after save, never logged.
+3. **The merchant dashboard never receives store credentials.** Plugin pairing shows `signingSecret` exactly once; rotate via merchant portal if lost.
+4. **HMAC on every outbound request** — raw JSON body hash + timestamp + nonce; backend enforces replay protection.
+5. **Summary-only event payloads** to `/plugin/events` with idempotency keys; full PII sync is tenant-scoped server-side only.
+6. **Diagnostics redacted** via `WCOS_Redaction` before admin/REST display.
+7. **No WooCommerce mutations** unless controlled actions are explicitly enabled later from backend policy.
 
-## Runtime security (Plugin PR 2 — secure connection state + read-only bridge)
+## Runtime security (production)
 
 The installable PHP runtime in this package is bound by these additional rules:
 

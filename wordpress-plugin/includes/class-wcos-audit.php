@@ -28,6 +28,11 @@ if (!class_exists('WCOS_Audit')) {
          */
         public static function allowed_actions() {
             return array(
+                'settings.saved',
+                'backend.handshake',
+                'backend.sync',
+                'backend.events',
+                'backend.health',
                 'event.queued',
                 'event.queue_cleared',
                 'webhook.delivery.placeholder.updated',

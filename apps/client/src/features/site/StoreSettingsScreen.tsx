@@ -34,6 +34,7 @@ import {
 } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
 import {
+  rotatePluginSecret,
   deleteSite,
   getSiteStatus,
   getSyncStatus,
@@ -148,7 +149,7 @@ function StoreSettingsForm({
   const fmt = useFormatters();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { site, plugin, lastSync } = data;
+  const { site, plugin, lastSync, syncedCounts, deliveryBaseUrl } = data;
 
   const [name, setName] = useState(() => site.name);
   const [url, setUrl] = useState(() => site.url);
@@ -161,6 +162,7 @@ function StoreSettingsForm({
   const [credOk, setCredOk] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [syncNote, setSyncNote] = useState<string | undefined>();
+  const [rotatedSecret, setRotatedSecret] = useState<string | null>(null);
 
   const isRest = site.connection_mode === 'woo_rest';
   const hasPlugin = site.connection_mode === 'plugin' || Boolean(plugin);
@@ -198,6 +200,14 @@ function StoreSettingsForm({
       await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'status'] });
     },
     onError: (e: unknown) => setSyncNote(wooConnectErrorMessage(e)),
+  });
+
+  const rotateSecret = useMutation({
+    mutationFn: () => rotatePluginSecret(siteId),
+    onSuccess: (res) => {
+      setRotatedSecret(res.signingSecret);
+      void queryClient.invalidateQueries({ queryKey: ['site', siteId, 'status'] });
+    },
   });
 
   // Live sync progress: poll every 2.5s while a run is queued/running; stop when it settles.
@@ -469,9 +479,43 @@ function StoreSettingsForm({
               <Text variant="label">{fmt.dateTime(plugin.last_seen_at)}</Text>
             </View>
           ) : null}
+          {syncedCounts ? (
+            <View style={{ gap: tokens.spacing.xs, marginTop: tokens.spacing.sm }}>
+              <Text variant="label" tone="muted">
+                {t('storeSettings.plugin.syncedCounts')}
+              </Text>
+              <Text variant="caption">
+                {`${t('storeSettings.sync.products')}: ${syncedCounts.products} · ${t('storeSettings.sync.orders')}: ${syncedCounts.orders} · ${t('nav.customers')}: ${syncedCounts.customers} · Coupons: ${syncedCounts.coupons}`}
+              </Text>
+            </View>
+          ) : null}
+          {deliveryBaseUrl ? (
+            <Text variant="caption" tone="muted" selectable style={{ marginTop: tokens.spacing.xs }}>
+              {t('storeSettings.plugin.backendUrl')}: {deliveryBaseUrl}
+            </Text>
+          ) : null}
           <Text variant="caption" tone="muted" style={{ marginTop: tokens.spacing.xs }}>
             {t('storeSettings.plugin.repairNote')}
           </Text>
+          <View style={{ alignItems: 'flex-start', marginTop: tokens.spacing.sm }}>
+            <Button
+              label={t('storeSettings.plugin.rotateSecret')}
+              variant="secondary"
+              size="sm"
+              onPress={() => rotateSecret.mutate()}
+              loading={rotateSecret.isPending}
+            />
+          </View>
+          {rotatedSecret ? (
+            <Surface variant="surfaceAlt" bordered padding="sm" style={{ marginTop: tokens.spacing.sm }}>
+              <Text variant="caption" tone="warning">
+                {t('storeSettings.plugin.newSecretOnce')}
+              </Text>
+              <Text variant="label" selectable>
+                {rotatedSecret}
+              </Text>
+            </Surface>
+          ) : null}
         </Card>
       ) : null}
 

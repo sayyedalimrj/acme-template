@@ -20,6 +20,7 @@ import {
   getWooCredentials,
   listSites,
   resyncProduct,
+  rotatePluginSigningSecret,
   setWooWebhookSecret,
   startConnection,
   startSiteSync,
@@ -235,15 +236,37 @@ merchantRouter.get(
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const site = await siteFor(req, req.params.siteId);
     const plugin = await queryOne(
-      `SELECT status, plugin_version, last_seen_at FROM plugin_connection WHERE site_id = $1`,
+      `SELECT status, plugin_version, last_seen_at, last_sync_at, last_event_at
+         FROM plugin_connection WHERE site_id = $1`,
       [site.id],
     );
     const lastSync = await queryOne(
-      `SELECT status, stats, error, started_at, finished_at FROM sync_run
-         WHERE site_id = $1 ORDER BY started_at DESC LIMIT 1`,
+      `SELECT status, stats, error, started_at, finished_at, phase, progress_percent
+         FROM sync_run WHERE site_id = $1 ORDER BY started_at DESC LIMIT 1`,
       [site.id],
     );
-    res.json({ site, plugin, lastSync });
+    const counts = await queryOne<{
+      products: number;
+      orders: number;
+      customers: number;
+      coupons: number;
+      categories: number;
+    }>(
+      `SELECT
+         (SELECT count(*)::int FROM synced_product WHERE site_id = $1) AS products,
+         (SELECT count(*)::int FROM synced_order WHERE site_id = $1) AS orders,
+         (SELECT count(*)::int FROM synced_customer WHERE site_id = $1) AS customers,
+         (SELECT count(*)::int FROM synced_coupon WHERE site_id = $1) AS coupons,
+         (SELECT count(*)::int FROM synced_category WHERE site_id = $1) AS categories`,
+      [site.id],
+    );
+    res.json({
+      site,
+      plugin,
+      lastSync,
+      syncedCounts: counts ?? { products: 0, orders: 0, customers: 0, coupons: 0, categories: 0 },
+      deliveryBaseUrl: `${env.PUBLIC_API_BASE_URL || ''}/plugin`,
+    });
   }),
 );
 
@@ -291,6 +314,32 @@ merchantRouter.post(
     });
     invalidate(`merchant:overview:${site.tenant_id}`);
     res.json({ ok: true });
+  }),
+);
+
+merchantRouter.post(
+  '/sites/:siteId/plugin/rotate-secret',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    ensureManage(req);
+    const site = await siteFor(req, req.params.siteId);
+    if (site.connection_mode !== 'plugin') {
+      throw badRequest('چرخش کلید فقط برای اتصال افزونه است.');
+    }
+    const signingSecret = await rotatePluginSigningSecret(site.id, site.tenant_id);
+    await audit({
+      actorUserId: req.auth!.sub,
+      action: 'plugin.secret.rotated',
+      targetType: 'site',
+      targetId: site.id,
+      requestIp: req.ip,
+    });
+    invalidate(`merchant:overview:${site.tenant_id}`);
+    res.json({
+      signingSecret,
+      siteId: site.id,
+      tenantId: site.tenant_id,
+      deliveryBaseUrl: `${env.PUBLIC_API_BASE_URL || ''}/plugin`,
+    });
   }),
 );
 

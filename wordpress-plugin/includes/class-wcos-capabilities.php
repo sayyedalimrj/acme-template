@@ -27,14 +27,12 @@ if (!class_exists('WCOS_Capabilities')) {
             return defined('WCOS_REQUIRED_CAPABILITY') ? WCOS_REQUIRED_CAPABILITY : 'manage_options';
         }
 
-        /**
-         * Whether the current user may manage the plugin.
-         *
-         * @return bool
-         */
+        /** @return bool */
         public static function current_user_can_manage() {
-            return function_exists('current_user_can')
-                && current_user_can(self::required_admin_capability());
+            if (!function_exists('current_user_can')) {
+                return false;
+            }
+            return current_user_can('manage_woocommerce') || current_user_can('manage_options');
         }
 
         /**
