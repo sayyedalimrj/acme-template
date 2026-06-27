@@ -112,7 +112,7 @@ export function createHttpOnboardingAdapter(): OnboardingAdapter {
 
     async listPlans(): Promise<SubscriptionPlan[]> {
       try {
-        const res = await http.get<{ items: Array<{ code: string; name: string; price_minor: number }> }>(
+        const res = await http.get<{ items: { code: string; name: string; price_minor: number }[] }>(
           '/merchant/onboarding/plans',
         );
         if (res.items.length === 0) return subscriptionPlans;

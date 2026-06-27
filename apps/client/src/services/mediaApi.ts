@@ -46,6 +46,6 @@ export function uploadMedia(
 }
 
 /** Convert a gallery image list into the ordered ref payload (prefer media id, else URL). */
-export function toMediaRefs(images: ReadonlyArray<ProductMediaImage>): MediaRef[] {
+export function toMediaRefs(images: readonly ProductMediaImage[]): MediaRef[] {
   return images.map((img) => (img.id ? { id: img.id } : { src: img.src }));
 }

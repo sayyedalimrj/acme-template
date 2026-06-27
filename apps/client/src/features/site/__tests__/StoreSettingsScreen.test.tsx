@@ -27,6 +27,8 @@ import type {
   VerifyWooResult,
 } from '@/services/connectionApi';
 
+import { StoreSettingsScreen } from '@/features/site/StoreSettingsScreen';
+
 jest.mock('@/config/api.config', () => ({
   isApiConfigured: () => true,
   getApiBaseUrl: () => 'https://api.example',
@@ -51,8 +53,6 @@ jest.mock('@/services/connectionApi', () => ({
   updateSiteSettings: (...a: [string, { name?: string; url?: string }]) => mockUpdateSiteSettings(...a),
   verifyWooConnection: (...a: [string, string, string]) => mockVerifyWooConnection(...a),
 }));
-
-import { StoreSettingsScreen } from '@/features/site/StoreSettingsScreen';
 
 const metrics: Metrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },

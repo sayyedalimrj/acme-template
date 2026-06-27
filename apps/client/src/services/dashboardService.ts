@@ -11,8 +11,8 @@ import { getActiveHttpSiteId } from '@/adapters/http/httpActiveSite';
 export interface OverviewSeriesResponse {
   range: string;
   currency: string;
-  sales: Array<{ day: string; orders: number; revenue_minor: number | string }>;
-  customers: Array<{ day: string; new_customers: number }>;
+  sales: { day: string; orders: number; revenue_minor: number | string }[];
+  customers: { day: string; new_customers: number }[];
 }
 
 export const dashboardService = {
