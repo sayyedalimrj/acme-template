@@ -35,6 +35,7 @@ import {
 import { isApiConfigured } from '@/config/api.config';
 import { verifyWooConnection, wooConnectErrorMessage, type PluginConnectionStartResult } from '@/services/connectionApi';
 import { PluginPairingCard } from '@/features/connect-site/PluginPairingCard';
+import { ConnectionMethodCompare } from '@/features/connect-site/ConnectionMethodCompare';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
 import type { SiteConnection, SiteStatus } from '@/domain/types';
@@ -222,6 +223,13 @@ export function ConnectSiteScreen(): React.JSX.Element {
     >
 
       <SecurityNote />
+
+      {isApiConfigured() ? (
+        <ConnectionMethodCompare
+          selected={connectionMode}
+          onSelect={setConnectionMode}
+        />
+      ) : null}
 
       <Card title={t('connectSite.connectedHeading')}>
         {sitesQuery.isPending ? (

@@ -135,6 +135,12 @@ export const FEATURE_SECTIONS: readonly FeatureSection[] = [
         icon: 'pricetag-outline',
         href: '/plans',
       },
+      {
+        key: 'social',
+        labelKey: 'more.socialChannels',
+        icon: 'share-social-outline',
+        href: '/social-channels',
+      },
     ],
   },
   {

@@ -1,22 +1,19 @@
 /**
- * Product list screen (mobile-first).
- *
- * Clean, calm catalog: a soft search field, a single low-density stock filter row, and tidy
- * product rows (thumbnail placeholder, name, meta, one stock chip, price, chevron). Long
- * English names truncate cleanly; Persian labels align RTL. Mock-only data via useProducts;
- * rows deep-link to product detail.
+ * Product list screen (mobile-first) with server-side pagination and stable scroll.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Image, View } from 'react-native';
+import { View } from 'react-native';
 
+import { ListPaginationFooter } from '@/components/ui/ListPaginationFooter';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { Text } from '@/components/ui';
 import {
   AnimatedSection,
   EmptySiteCard,
   FilterChipRow,
-  MobilePage,
+  MobileListPage,
   MobileSearchField,
   MobileTabHeader,
   PressableScale,
@@ -29,16 +26,25 @@ import {
   useMobileColors,
   useMobileShadow,
 } from '@/features/mobile/mobileTokens';
+import { useInfinitePagedQuery } from '@/hooks/useInfinitePagedQuery';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
+import { productService, queryKeys } from '@/services';
 import { useTheme } from '@/theme';
 import type { BadgeTone } from '@/components/ui';
-import type { Product } from '@/domain/types';
+import type { Product, StockStatus } from '@/domain/types';
 import type { StringKey } from '@/i18n/strings';
 
-import { filterProducts, stockBadge, type StockFilter } from './productHelpers';
-import { useProducts } from './useProducts';
+import {
+  filterProducts,
+  productTypeLabelKey,
+  stockBadge,
+  syncSourceLabelKey,
+  type StockFilter,
+} from './productHelpers';
+
+const PAGE_SIZE = 20;
 
 function toStatusTone(tone: BadgeTone): StatusTone {
   if (tone === 'success' || tone === 'warning' || tone === 'danger' || tone === 'info') {
@@ -53,6 +59,12 @@ const STOCK_FILTERS: readonly { value: StockFilter; labelKey: StringKey }[] = [
   { value: 'low', labelKey: 'products.filter.lowStock' },
   { value: 'outofstock', labelKey: 'products.filter.outOfStock' },
 ];
+
+function stockToApi(stock: StockFilter): StockStatus | undefined {
+  if (stock === 'instock') return 'instock';
+  if (stock === 'outofstock') return 'outofstock';
+  return undefined;
+}
 
 function ScreenTitle({
   title,
@@ -115,30 +127,17 @@ function ProductRow({
         gap: 12,
         minHeight: mobileMetrics.listRowHeight,
         paddingVertical: 12,
+        paddingHorizontal: 16,
       }}
     >
-      <View
-        style={{
-          width: 46,
-          height: 46,
-          borderRadius: 13,
-          backgroundColor: colors.tile,
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-        }}
-      >
-        {product.images[0]?.src ? (
-          <Image
-            source={{ uri: product.images[0].src }}
-            accessibilityIgnoresInvertColors
-            style={{ width: 46, height: 46 }}
-            resizeMode="cover"
-          />
-        ) : (
-          <Ionicons name="cube-outline" size={20} color={colors.muted} />
-        )}
-      </View>
+      <ProductImage
+        uri={product.images[0]?.src}
+        alt={product.images[0]?.alt ?? product.name}
+        width={46}
+        height={46}
+        fit="cover"
+        borderRadius={13}
+      />
 
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         <Text
@@ -152,29 +151,48 @@ function ProductRow({
         >
           {product.name}
         </Text>
-        <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
+        <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <StatusBadge tone={toStatusTone(stock.tone)} label={t(stock.labelKey)} />
-          <Text
-            style={{ fontSize: mobileType.captionSize, color: colors.muted }}
-            numberOfLines={1}
-          >
-            {product.sku}
+          {product.sku ? (
+            <Text style={{ fontSize: mobileType.captionSize, color: colors.muted }} numberOfLines={1}>
+              {product.sku}
+            </Text>
+          ) : null}
+        </View>
+        <View style={{ flexDirection: rowDirection, gap: 8, flexWrap: 'wrap' }}>
+          <Text style={{ fontSize: mobileType.captionSize, color: colors.muted }}>
+            {t(productTypeLabelKey(product.type))}
           </Text>
+          {product.syncSource ? (
+            <Text style={{ fontSize: mobileType.captionSize, color: colors.muted }}>
+              · {t(syncSourceLabelKey(product.syncSource))}
+            </Text>
+          ) : null}
+          {typeof product.variationsCount === 'number' && product.variationsCount > 0 ? (
+            <Text style={{ fontSize: mobileType.captionSize, color: colors.muted }}>
+              · {t('product.meta.variations', { count: String(product.variationsCount) })}
+            </Text>
+          ) : null}
         </View>
       </View>
 
       <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end', gap: 2 }}>
-        <Text
-          style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: colors.text }}
-        >
+        <Text style={{ fontSize: mobileType.labelSize, fontWeight: '700', color: colors.text }}>
           {fmt.money(product.price, product.currency)}
         </Text>
+        {product.salePrice ? (
+          <Text
+            style={{
+              fontSize: mobileType.captionSize,
+              color: colors.muted,
+              textDecorationLine: 'line-through',
+            }}
+          >
+            {fmt.money(product.regularPrice, product.currency)}
+          </Text>
+        ) : null}
       </View>
-      <Ionicons
-        name={isRTL ? 'chevron-back' : 'chevron-forward'}
-        size={16}
-        color={colors.mutedSoft}
-      />
+      <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.mutedSoft} />
     </PressableScale>
   );
 }
@@ -185,34 +203,97 @@ export function ProductListScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { isRTL } = useTheme();
-
   const activeSite = useActiveSite();
-  const productsQuery = useProducts();
+  const siteId = activeSite.data?.id;
 
   const [search, setSearch] = useState('');
   const [stock, setStock] = useState<StockFilter>('all');
 
-  const items = productsQuery.data?.items;
-  const filtered = useMemo(
-    () => filterProducts(items ?? [], { search, stock }),
-    [items, search, stock],
-  );
+  const listQuery = useInfinitePagedQuery({
+    queryKey: queryKeys.products(siteId ?? 'none'),
+    queryFn: (q) => productService.listProducts(q),
+    query: {
+      search: search.trim() || undefined,
+      stockStatus: stockToApi(stock),
+    },
+    pageSize: PAGE_SIZE,
+    enabled: Boolean(siteId),
+  });
+
+  const filtered = useMemo(() => {
+    if (stock === 'low') {
+      return filterProducts(listQuery.items, { search: '', stock: 'low' });
+    }
+    return listQuery.items;
+  }, [listQuery.items, stock]);
 
   if (!activeSite.isPending && !activeSite.data) {
     return (
-      <MobilePage testID="product-list-screen" header={<ScreenTitle title={t('products.title')} />}>
-        <View style={{ paddingHorizontal: mobileMetrics.screenPadding }}>
-          <EmptySiteCard
-            onPrimary={() => router.navigate('/onboarding' as never)}
-            onSecondary={() => router.navigate('/connect-site' as never)}
-          />
-        </View>
-      </MobilePage>
+      <MobileListPage
+        testID="product-list-screen"
+        header={<ScreenTitle title={t('products.title')} />}
+        data={[]}
+        keyExtractor={() => 'empty'}
+        renderItem={() => null}
+        ListEmptyComponent={
+          <View style={{ paddingHorizontal: mobileMetrics.screenPadding }}>
+            <EmptySiteCard
+              onPrimary={() => router.navigate('/onboarding' as never)}
+              onSecondary={() => router.navigate('/connect-site' as never)}
+            />
+          </View>
+        }
+      />
     );
   }
 
+  const listHeader = (
+    <View style={{ paddingHorizontal: mobileMetrics.screenPadding, gap: 16, paddingBottom: 8 }}>
+      <AnimatedSection index={0}>
+        <View style={{ gap: 12 }}>
+          <MobileSearchField
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('products.searchPlaceholder')}
+            testID="product-search"
+          />
+          <FilterChipRow
+            options={STOCK_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+            value={stock}
+            onChange={setStock}
+          />
+        </View>
+      </AnimatedSection>
+    </View>
+  );
+
+  const listFooter = (
+    <View style={{ paddingHorizontal: mobileMetrics.screenPadding }}>
+      {listQuery.isError ? (
+        <PressableScale
+          onPress={listQuery.refetch}
+          accessibilityLabel={t('common.retry')}
+          style={{ paddingVertical: 24, alignItems: 'center' }}
+        >
+          <Text style={{ color: colors.primary, fontWeight: '700' }}>
+            {t('products.error')} · {t('common.retry')}
+          </Text>
+        </PressableScale>
+      ) : (
+        <ListPaginationFooter
+          mode="infinite"
+          page={listQuery.page}
+          pageSize={PAGE_SIZE}
+          total={listQuery.total}
+          loading={listQuery.isFetchingNextPage}
+          onLoadMore={listQuery.fetchNextPage}
+        />
+      )}
+    </View>
+  );
+
   return (
-    <MobilePage
+    <MobileListPage
       testID="product-list-screen"
       header={
         <ScreenTitle
@@ -221,72 +302,46 @@ export function ProductListScreen(): React.JSX.Element {
           addLabel={t('products.addNew')}
         />
       }
-    >
-      <View style={{ paddingHorizontal: mobileMetrics.screenPadding, gap: 16 }}>
-        <AnimatedSection index={0}>
-          <View style={{ gap: 12 }}>
-            <MobileSearchField
-              value={search}
-              onChangeText={setSearch}
-              placeholder={t('products.searchPlaceholder')}
-              testID="product-search"
-            />
-            <FilterChipRow
-              options={STOCK_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
-              value={stock}
-              onChange={setStock}
-            />
-          </View>
-        </AnimatedSection>
-
-        {productsQuery.isPending ? (
-          <Text style={{ color: colors.muted, textAlign: isRTL ? 'right' : 'left' }}>
+      data={filtered}
+      keyExtractor={(p) => p.id}
+      renderItem={({ item, index }) => (
+        <View
+          style={[
+            {
+              marginHorizontal: mobileMetrics.screenPadding,
+              borderRadius: mobileMetrics.cardRadius,
+              backgroundColor: colors.card,
+            },
+            index === 0 ? shadow : null,
+          ]}
+        >
+          {index > 0 ? (
+            <View style={{ height: 1, backgroundColor: colors.separator, marginHorizontal: 16 }} />
+          ) : null}
+          <ProductRow product={item} onPress={() => router.navigate(`/products/${item.id}` as never)} />
+        </View>
+      )}
+      ListHeaderComponent={listHeader}
+      ListFooterComponent={listFooter}
+      ListEmptyComponent={
+        listQuery.isPending ? (
+          <Text
+            style={{
+              color: colors.muted,
+              textAlign: isRTL ? 'right' : 'left',
+              paddingHorizontal: mobileMetrics.screenPadding,
+            }}
+          >
             {t('common.loading')}
           </Text>
-        ) : productsQuery.isError ? (
-          <PressableScale
-            onPress={() => productsQuery.refetch()}
-            accessibilityLabel={t('common.retry')}
-            style={{ paddingVertical: 24, alignItems: 'center' }}
-          >
-            <Text style={{ color: colors.primary, fontWeight: '700' }}>
-              {t('products.error')} · {t('common.retry')}
-            </Text>
-          </PressableScale>
-        ) : filtered.length === 0 ? (
+        ) : (
           <View style={{ paddingVertical: 32, alignItems: 'center' }}>
             <Ionicons name="cube-outline" size={34} color={colors.mutedSoft} />
             <Text style={{ color: colors.muted, marginTop: 10 }}>{t('products.empty')}</Text>
           </View>
-        ) : (
-          <AnimatedSection index={1}>
-            <View
-              testID="product-list"
-              style={[
-                {
-                  borderRadius: mobileMetrics.cardRadius,
-                  backgroundColor: colors.card,
-                  paddingHorizontal: 16,
-                  paddingVertical: 4,
-                },
-                shadow,
-              ]}
-            >
-              {filtered.map((product, index) => (
-                <View key={product.id}>
-                  {index > 0 ? (
-                    <View style={{ height: 1, backgroundColor: colors.separator }} />
-                  ) : null}
-                  <ProductRow
-                    product={product}
-                    onPress={() => router.navigate(`/products/${product.id}` as never)}
-                  />
-                </View>
-              ))}
-            </View>
-          </AnimatedSection>
-        )}
-      </View>
-    </MobilePage>
+        )
+      }
+      onEndReached={listQuery.fetchNextPage}
+    />
   );
 }

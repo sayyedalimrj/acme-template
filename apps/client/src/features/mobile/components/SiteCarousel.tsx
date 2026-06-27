@@ -22,16 +22,19 @@ import {
 
 import { Text } from '@/components/ui';
 import { useT } from '@/i18n/I18nProvider';
-import type { SiteConnection } from '@/domain/types';
+import type { PendingSiteCard as PendingSiteCardType, SiteConnection } from '@/domain/types';
 
 import { mobileMetrics, useMobileColors, useMobileType } from '../mobileTokens';
 import { easing, motionDuration, useReducedMotion } from '../motion';
 import { HeroSiteCard } from './HeroSiteCard';
+import { PendingSiteCard } from './PendingSiteCard';
 
 const PAGE_GAP = 14;
 
 export interface SiteCarouselProps {
   sites: SiteConnection[];
+  /** Pending site build requests shown alongside connected stores. */
+  pendingRequests?: PendingSiteCardType[];
   /** Store shown first (usually the active store). */
   initialActiveSiteId?: string;
   /** The currently-active store id (drives the per-card "Active store" indicator). */
@@ -44,6 +47,8 @@ export interface SiteCarouselProps {
   onPressSite: (site: SiteConnection) => void;
   /** Called when the "add a store" card is pressed. */
   onPressAdd: () => void;
+  /** Called when a pending site build card is pressed. */
+  onPressPending?: (requestId: string) => void;
   renewalFor: (site: SiteConnection) => string | undefined;
 }
 
@@ -108,18 +113,20 @@ function AddSiteCard({ onPress }: { onPress: () => void }): React.JSX.Element {
 
 export function SiteCarousel({
   sites,
+  pendingRequests = [],
   initialActiveSiteId,
   activeSiteId,
   onSelectSite,
   onActivateSite,
   onPressSite,
   onPressAdd,
+  onPressPending,
   renewalFor,
 }: SiteCarouselProps): React.JSX.Element {
   const colors = useMobileColors();
   const reduced = useReducedMotion();
 
-  const pageCount = sites.length + 1; // stores + the add card
+  const pageCount = sites.length + pendingRequests.length + 1; // stores + pending + add card
   const initialIndex = Math.max(
     0,
     sites.findIndex((s) => s.id === initialActiveSiteId),
@@ -151,7 +158,7 @@ export function SiteCarousel({
       const clamped = Math.max(0, Math.min(pageCount - 1, next));
       setPage(clamped);
       animateTo(clamped);
-      // Notify only for STORE pages (the last page is the add card).
+      // Notify only for STORE pages (pending + add card do not change active site preview).
       if (clamped < sites.length) {
         const site = sites[clamped];
         if (site) {
@@ -213,6 +220,14 @@ export function SiteCarousel({
                 />
               </View>
             ))}
+            {pendingRequests.map((req) => (
+              <View key={req.id} style={{ width: pageWidth, marginRight: PAGE_GAP }}>
+                <PendingSiteCard
+                  request={req}
+                  onPress={() => onPressPending?.(req.requestId)}
+                />
+              </View>
+            ))}
             <View style={{ width: pageWidth }}>
               <AddSiteCard onPress={onPressAdd} />
             </View>
@@ -234,7 +249,7 @@ export function SiteCarousel({
       >
         {Array.from({ length: pageCount }).map((_, index) => {
           const active = index === page;
-          const isAdd = index === sites.length;
+          const isAdd = index === sites.length + pendingRequests.length;
           return (
             <Pressable
               key={index}

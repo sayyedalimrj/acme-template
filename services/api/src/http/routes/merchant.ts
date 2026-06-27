@@ -61,6 +61,15 @@ import {
   unreadNotificationCount,
   validateReferralCode,
 } from '../../services/onboardingService';
+import {
+  createSocialConnection,
+  disconnectSocialConnection,
+  enqueueProductPublishJob,
+  listPublishJobs,
+  listSocialConnections,
+  testSocialConnection,
+  type SocialPlatform,
+} from '../../services/social/socialService';
 
 export const merchantRouter = Router();
 merchantRouter.use(authenticate, requirePortal('merchant'));
@@ -482,22 +491,44 @@ merchantRouter.get(
     const site = await siteFor(req, req.params.siteId);
     const { page, pageSize, offset } = parsePagination(req.query as Record<string, unknown>);
     const search = req.query.search ? `%${String(req.query.search)}%` : null;
+    const stockStatus = req.query.stockStatus ? String(req.query.stockStatus) : null;
     const items = await query(
       `SELECT p.external_id, p.name, p.sku, p.status, p.type, p.price_minor, p.currency,
-              p.stock_status, p.stock_qty, p.updated_at,
+              p.stock_status, p.stock_qty, p.updated_at, p.permalink,
               (SELECT src FROM synced_product_image i WHERE i.product_id = p.id
-                 ORDER BY i.position ASC LIMIT 1) AS image_src
+                 ORDER BY i.position ASC LIMIT 1) AS image_src,
+              (SELECT count(*)::int FROM synced_product_variant v WHERE v.product_id = p.id) AS variations_count,
+              (SELECT count(*)::int FROM synced_product_image i2 WHERE i2.product_id = p.id) AS images_count,
+              COALESCE(
+                (SELECT sc.connection_mode FROM site_connection sc
+                   WHERE sc.site_id = p.site_id AND sc.status = 'connected'
+                   ORDER BY sc.updated_at DESC LIMIT 1),
+                'woo_rest'
+              ) AS sync_source,
+              'synced' AS sync_status,
+              p.updated_at AS last_synced_at
          FROM synced_product p
-        WHERE p.site_id = $1 AND ($2::text IS NULL OR p.name ILIKE $2 OR p.sku ILIKE $2)
+        WHERE p.site_id = $1
+          AND ($2::text IS NULL OR p.name ILIKE $2 OR p.sku ILIKE $2)
+          AND ($5::text IS NULL OR p.stock_status = $5)
         ORDER BY p.updated_at DESC LIMIT $3 OFFSET $4`,
-      [site.id, search, pageSize, offset],
+      [site.id, search, pageSize, offset, stockStatus],
     );
     const total = await queryOne<{ count: number }>(
       `SELECT count(*)::int AS count FROM synced_product
-         WHERE site_id = $1 AND ($2::text IS NULL OR name ILIKE $2 OR sku ILIKE $2)`,
-      [site.id, search],
+         WHERE site_id = $1
+           AND ($2::text IS NULL OR name ILIKE $2 OR sku ILIKE $2)
+           AND ($3::text IS NULL OR stock_status = $3)`,
+      [site.id, search, stockStatus],
     );
-    res.json({ items, page, pageSize, total: total?.count ?? 0 });
+    const count = total?.count ?? 0;
+    res.json({
+      items,
+      page,
+      pageSize,
+      total: count,
+      hasNext: page * pageSize < count,
+    });
   }),
 );
 
@@ -531,37 +562,73 @@ merchantRouter.get(
       });
       return;
     }
-    const product = await queryOne<{ id: string }>(
-      `SELECT id, external_id, name, sku, status, type, permalink, price_minor, currency, stock_status, stock_qty
+    const product = await queryOne<{ id: string } & Record<string, unknown>>(
+      `SELECT id, external_id, name, sku, status, type, permalink, price_minor, currency,
+              stock_status, stock_qty, meta, raw, updated_at
          FROM synced_product WHERE site_id = $1 AND external_id = $2`,
       [site.id, req.params.productId],
     );
     if (!product) throw notFound('محصول یافت نشد.');
+    const productId = product.id as string;
     const images = await query(
       `SELECT external_id, src, alt, position FROM synced_product_image
          WHERE product_id = $1 ORDER BY position ASC`,
-      [(product as { id: string }).id],
+      [productId],
     );
     const categories = await query(
       `SELECT c.external_id, c.name FROM synced_product_category pc
          JOIN synced_category c ON c.id = pc.category_id
         WHERE pc.product_id = $1`,
-      [(product as { id: string }).id],
+      [productId],
     );
     const tags = await query(
       `SELECT t.external_id, t.name FROM synced_product_tag pt
          JOIN synced_tag t ON t.id = pt.tag_id
         WHERE pt.product_id = $1`,
-      [(product as { id: string }).id],
+      [productId],
+    );
+    const attributes = await query(
+      `SELECT external_id, name, options, is_visible, is_variation
+         FROM synced_product_attribute WHERE product_id = $1 ORDER BY position ASC`,
+      [productId],
     );
     const variants = await query(
       `SELECT external_id, sku, price_minor, currency, stock_status, stock_qty, attributes
          FROM synced_product_variant WHERE product_id = $1 ORDER BY updated_at DESC`,
-      [(product as { id: string }).id],
+      [productId],
     );
-    const { id: _id, ...productPublic } = product as { id: string } & Record<string, unknown>;
+    const connection = await queryOne<{ connection_mode: string }>(
+      `SELECT connection_mode FROM site_connection
+         WHERE site_id = $1 AND status = 'connected' ORDER BY updated_at DESC LIMIT 1`,
+      [site.id],
+    );
+    const meta = (product.meta ?? {}) as Record<string, unknown>;
+    const raw = (product.raw ?? {}) as Record<string, unknown>;
+    const { id: _id, meta: _m, raw: _r, ...productPublic } = product;
     void _id;
-    res.json({ product: { ...productPublic, admin_edit_url: adminEditUrl, images, categories, tags, variants } });
+    void _m;
+    void _r;
+    res.json({
+      product: {
+        ...productPublic,
+        admin_edit_url: adminEditUrl,
+        regular_price_minor: meta.regular_price_minor ?? raw.regular_price ?? product.price_minor,
+        sale_price_minor: meta.sale_price_minor ?? raw.sale_price ?? null,
+        total_sales: meta.total_sales ?? raw.total_sales ?? null,
+        average_rating: meta.average_rating ?? raw.average_rating ?? null,
+        rating_count: meta.rating_count ?? raw.rating_count ?? null,
+        variations_count: variants.length,
+        images_count: images.length,
+        sync_source: connection?.connection_mode ?? 'plugin',
+        sync_status: 'synced',
+        last_synced_at: product.updated_at,
+        images,
+        categories,
+        tags,
+        attributes,
+        variants,
+      },
+    });
   }),
 );
 
@@ -1290,5 +1357,121 @@ merchantRouter.patch(
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     await markNotificationRead(req.params.id, req.auth!.sub);
     res.json({ ok: true });
+  }),
+);
+
+const socialPlatformSchema = z.enum([
+  'instagram',
+  'telegram',
+  'bale',
+  'eitaa',
+  'rubika',
+  'whatsapp_business',
+  'webhook',
+  'website',
+]);
+
+merchantRouter.get(
+  '/sites/:siteId/social/connections',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    const items = await listSocialConnections(site.id);
+    res.json({ items });
+  }),
+);
+
+merchantRouter.post(
+  '/sites/:siteId/social/connections',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    const tenantId = await tenantFor(req);
+    const parsed = z
+      .object({
+        platform: socialPlatformSchema,
+        displayName: z.string().min(1),
+        handleUrl: z.string().optional(),
+        authType: z.string().min(1),
+        token: z.string().optional(),
+        autoPublishEnabled: z.boolean().optional(),
+        captionTemplate: z.string().optional(),
+      })
+      .safeParse(req.body);
+    if (!parsed.success) throw badRequest('اطلاعات کانال ناقص است.');
+    const created = await createSocialConnection({
+      tenantId,
+      siteId: site.id,
+      platform: parsed.data.platform as SocialPlatform,
+      displayName: parsed.data.displayName,
+      handleUrl: parsed.data.handleUrl,
+      authType: parsed.data.authType,
+      token: parsed.data.token,
+      autoPublishEnabled: parsed.data.autoPublishEnabled,
+      captionTemplate: parsed.data.captionTemplate,
+      actorUserId: req.auth!.sub,
+    });
+    res.status(201).json({ connection: created });
+  }),
+);
+
+merchantRouter.post(
+  '/sites/:siteId/social/connections/:connectionId/test',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    const result = await testSocialConnection(req.params.connectionId, site.id);
+    res.json(result);
+  }),
+);
+
+merchantRouter.delete(
+  '/sites/:siteId/social/connections/:connectionId',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    await disconnectSocialConnection(req.params.connectionId, site.id, req.auth!.sub);
+    res.json({ ok: true });
+  }),
+);
+
+merchantRouter.get(
+  '/sites/:siteId/social/publish-jobs',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    const productId = req.query.productId ? String(req.query.productId) : undefined;
+    const items = await listPublishJobs(site.id, productId);
+    res.json({ items });
+  }),
+);
+
+merchantRouter.post(
+  '/sites/:siteId/social/publish-jobs',
+  asyncHandler(async (req: AuthedRequest, res: Response) => {
+    const site = await siteFor(req, req.params.siteId);
+    const tenantId = await tenantFor(req);
+    const parsed = z
+      .object({
+        connectionId: z.string().uuid(),
+        productExternalId: z.string().min(1),
+        action: z.enum(['publish', 'update']).optional(),
+        payload: z.object({
+          productId: z.string(),
+          name: z.string(),
+          description: z.string().optional(),
+          price: z.string(),
+          currency: z.string(),
+          permalink: z.string().optional(),
+          imageUrls: z.array(z.string()),
+        }),
+      })
+      .safeParse(req.body);
+    if (!parsed.success) throw badRequest('اطلاعات انتشار ناقص است.');
+    const job = await enqueueProductPublishJob({
+      tenantId,
+      siteId: site.id,
+      connectionId: parsed.data.connectionId,
+      productExternalId: parsed.data.productExternalId,
+      payload: parsed.data.payload,
+      action: parsed.data.action,
+      actorUserId: req.auth!.sub,
+    });
+    res.status(201).json({ job });
   }),
 );

@@ -29,6 +29,7 @@ export interface Paged<T> {
   total: number;
   page: number;
   pageSize: number;
+  hasNext?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,7 +57,38 @@ export interface ProductImage {
   id: string;
   src: string;
   alt: string;
+  /** Original width when synced from WooCommerce/plugin. */
+  width?: number;
+  /** Original height when synced from WooCommerce/plugin. */
+  height?: number;
 }
+
+export interface ProductTag {
+  id: string;
+  name: string;
+}
+
+export interface ProductAttribute {
+  id: string;
+  name: string;
+  options: string[];
+  visible: boolean;
+  variation: boolean;
+}
+
+export interface ProductVariation {
+  id: string;
+  sku: string;
+  price: Money;
+  regularPrice?: Money;
+  salePrice?: Money;
+  stockStatus: StockStatus;
+  stockQuantity?: number;
+  attributes: Record<string, string>;
+}
+
+export type ProductSyncSource = 'woo_rest' | 'plugin';
+export type ProductSyncStatus = 'synced' | 'stale' | 'error' | 'pending';
 
 /**
  * Future-facing bulk/tiered pricing (BigCommerce-like). Not populated heavily in the MVP;
@@ -90,6 +122,18 @@ export interface Product {
   adminEditUrl?: string;
   /** Lifetime units sold — useful for catalog insights and top-product widgets. */
   totalSales?: number;
+  /** Average rating (0–5) when synced. */
+  averageRating?: number;
+  ratingCount?: number;
+  tags?: ProductTag[];
+  attributes?: ProductAttribute[];
+  variations?: ProductVariation[];
+  variationsCount?: number;
+  imagesCount?: number;
+  /** Where the read-model came from. */
+  syncSource?: ProductSyncSource;
+  syncStatus?: ProductSyncStatus;
+  lastSyncedAt?: ISODate;
   /** Future: tiered/bulk pricing. */
   priceTiers?: PriceTier[];
   dateCreated: ISODate;
@@ -225,6 +269,32 @@ export interface SiteConnection {
   timezone?: string;
   lastSyncedAt?: ISODate;
 }
+
+/** Pending site build request shown on merchant dashboard before admin delivery. */
+export type PendingSiteStatus =
+  | 'pending_build'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'ready'
+  | 'connected';
+
+export interface PendingSiteCard {
+  kind: 'pending_request';
+  id: string;
+  requestId: string;
+  title: string;
+  domainOrUrl: string;
+  status: PendingSiteStatus;
+  requestDate: ISODate;
+  nextStepMessage: string;
+  type: OnboardingType;
+}
+
+/** Union item for home carousel — connected site or pending build request. */
+export type DashboardSiteItem =
+  | ({ kind: 'site' } & SiteConnection)
+  | PendingSiteCard;
 
 /** Input accepted by the connect-site flow. Intentionally has no secret fields. */
 export interface ConnectSiteInput {
@@ -1873,4 +1943,88 @@ export interface SupportConversation {
   subject: string;
   status: SupportConversationStatus;
   messages: SupportChatMessage[];
+}
+
+// ---------------------------------------------------------------------------
+// Social channel publishing
+// ---------------------------------------------------------------------------
+
+export type SocialPlatform =
+  | 'instagram'
+  | 'telegram'
+  | 'bale'
+  | 'eitaa'
+  | 'rubika'
+  | 'whatsapp_business'
+  | 'webhook'
+  | 'website';
+
+export type SocialAuthType =
+  | 'api_token'
+  | 'bot_token'
+  | 'webhook'
+  | 'manual'
+  | 'oauth_future';
+
+export type SocialConnectionStatus =
+  | 'connected'
+  | 'disconnected'
+  | 'error'
+  | 'pending'
+  | 'revoked';
+
+export interface SocialCapabilities {
+  createPost: boolean;
+  editPost: boolean;
+  deletePost: boolean;
+  uploadImage: boolean;
+  publishStory: boolean;
+  publishCarousel: boolean;
+  publishProductCard: boolean;
+}
+
+export interface SocialConnection {
+  id: string;
+  siteId: string;
+  platform: SocialPlatform;
+  displayName: string;
+  handleUrl?: string;
+  status: SocialConnectionStatus;
+  authType: SocialAuthType;
+  capabilities: SocialCapabilities;
+  lastSyncAt?: ISODate;
+  lastError?: string;
+  autoPublishEnabled: boolean;
+}
+
+export type SocialPublishJobStatus =
+  | 'queued'
+  | 'running'
+  | 'published'
+  | 'failed'
+  | 'updated'
+  | 'edit_not_supported';
+
+export interface SocialPublishJob {
+  id: string;
+  siteId: string;
+  productId: string;
+  connectionId: string;
+  platform: SocialPlatform;
+  status: SocialPublishJobStatus;
+  externalPostId?: string;
+  externalPostUrl?: string;
+  error?: string;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
+export interface PlatformNotification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: ISODate;
+  payload?: Record<string, unknown>;
 }

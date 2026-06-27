@@ -97,3 +97,35 @@ export function statusBadge(status: ProductStatus): BadgeSpec {
       return { tone: 'neutral', labelKey: 'product.status.private' };
   }
 }
+
+export function productTypeLabelKey(type: Product['type']): StringKey {
+  switch (type) {
+    case 'variable':
+      return 'product.type.variable';
+    case 'grouped':
+      return 'product.type.grouped';
+    case 'external':
+      return 'product.type.external';
+    case 'simple':
+    default:
+      return 'product.type.simple';
+  }
+}
+
+export function syncSourceLabelKey(source: NonNullable<Product['syncSource']>): StringKey {
+  return source === 'plugin' ? 'product.syncSource.plugin' : 'product.syncSource.wooRest';
+}
+
+export function syncStatusBadge(status: NonNullable<Product['syncStatus']>): BadgeSpec {
+  switch (status) {
+    case 'synced':
+      return { tone: 'success', labelKey: 'product.syncStatus.synced' };
+    case 'stale':
+      return { tone: 'warning', labelKey: 'product.syncStatus.stale' };
+    case 'error':
+      return { tone: 'danger', labelKey: 'product.syncStatus.error' };
+    case 'pending':
+    default:
+      return { tone: 'neutral', labelKey: 'product.syncStatus.pending' };
+  }
+}

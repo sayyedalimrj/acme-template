@@ -25,7 +25,7 @@ import { catalog, en, type Locale, type StringKey } from './strings';
 
 export interface I18nContextValue {
   locale: Locale;
-  t: (key: StringKey) => string;
+  t: (key: StringKey, vars?: Record<string, string | number>) => string;
   setLocale: (locale: Locale) => void;
 }
 
@@ -41,6 +41,16 @@ export interface I18nProviderProps {
   locale?: string;
 }
 
+function formatTemplate(template: string, vars?: Record<string, string | number>): string {
+  if (!vars) return template;
+  return Object.entries(vars).reduce(
+    (result, [key, value]) => result.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value)),
+    template,
+  );
+}
+
+export { formatTemplate };
+
 export function I18nProvider({
   children,
   locale = appConfig.defaultLocale,
@@ -55,7 +65,8 @@ export function I18nProvider({
     const dictionary = catalog[activeLocale] ?? en;
     return {
       locale: activeLocale,
-      t: (key: StringKey) => dictionary[key] ?? en[key] ?? key,
+      t: (key: StringKey, vars?: Record<string, string | number>) =>
+        formatTemplate(dictionary[key] ?? en[key] ?? key, vars),
       setLocale,
     };
   }, [activeLocale, setLocale]);
