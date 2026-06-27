@@ -26,3 +26,6 @@ export * from './LoadingState';
 export * from './EmptyState';
 export * from './ErrorState';
 export * from './ThemeToggleButton';
+export * from './ProductImage';
+export * from './ProductGalleryModal';
+export * from './ListPaginationFooter';

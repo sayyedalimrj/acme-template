@@ -23,6 +23,9 @@ import {
   SegmentedControl,
   Text,
 } from '@/components/ui';
+import { ListPaginationFooter } from '@/components/ui/ListPaginationFooter';
+import { useInfinitePagedQuery } from '@/hooks/useInfinitePagedQuery';
+import { customerService, queryKeys } from '@/services';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
@@ -37,7 +40,6 @@ import {
   segmentBadge,
   type SegmentFilter,
 } from './customerHelpers';
-import { useCustomers } from './useCustomers';
 
 interface CustomerRowProps {
   customer: Customer;
@@ -131,21 +133,26 @@ const SEGMENT_FILTERS: { value: SegmentFilter; labelKey: StringKey }[] = [
 export function CustomerListScreen(): React.JSX.Element {
   const { tokens, direction } = useTheme();
   const t = useT();
-  const fmt = useFormatters();
   const router = useRouter();
 
   const activeSite = useActiveSite();
-  const customersQuery = useCustomers();
 
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState<SegmentFilter>('all');
 
-  const items = customersQuery.data?.items;
+  const listQuery = useInfinitePagedQuery({
+    queryKey: queryKeys.customers(activeSite.data?.id ?? 'none'),
+    queryFn: (q) => customerService.listCustomers(q),
+    query: { search: search.trim() || undefined },
+    pageSize: 20,
+    enabled: Boolean(activeSite.data?.id),
+  });
+
   const filtered = useMemo(
-    () => filterCustomers(items ?? [], { search, segment }),
-    [items, search, segment],
+    () => filterCustomers(listQuery.items, { search: '', segment }),
+    [listQuery.items, segment],
   );
-  const total = items?.length ?? 0;
+  const total = listQuery.total;
 
   if (!activeSite.isPending && !activeSite.data) {
     return (
@@ -192,21 +199,18 @@ export function CustomerListScreen(): React.JSX.Element {
         />
       </Card>
 
-      {customersQuery.isPending ? (
+      {listQuery.isPending ? (
         <LoadingState label={t('common.loading')} />
-      ) : customersQuery.isError ? (
+      ) : listQuery.isError ? (
         <ErrorState
           title={t('customers.error')}
           retryLabel={t('common.retry')}
-          onRetry={() => customersQuery.refetch()}
+          onRetry={listQuery.refetch}
         />
       ) : filtered.length === 0 ? (
         <EmptyState title={t('customers.empty')} icon="people-outline" fill={false} />
       ) : (
         <View style={{ gap: tokens.spacing.sm }} testID="customer-list">
-          <Text variant="caption" tone="muted">
-            {fmt.num(filtered.length)} / {fmt.num(total)}
-          </Text>
           {filtered.map((customer) => (
             <CustomerRow
               key={customer.id}
@@ -214,6 +218,14 @@ export function CustomerListScreen(): React.JSX.Element {
               onPress={() => router.navigate(`/customers/${customer.id}` as never)}
             />
           ))}
+          <ListPaginationFooter
+            mode="infinite"
+            page={listQuery.page}
+            pageSize={20}
+            total={total}
+            loading={listQuery.isFetchingNextPage}
+            onLoadMore={listQuery.fetchNextPage}
+          />
         </View>
       )}
     </Screen>

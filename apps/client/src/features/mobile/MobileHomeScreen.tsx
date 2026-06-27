@@ -23,6 +23,11 @@ import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useActiveSite, useSites } from '@/features/site/useSites';
 import { useSetActiveSite } from '@/features/site/useSiteMutations';
+import {
+  isPendingOnboardingRequest,
+  onboardingToPendingCard,
+} from '@/features/onboarding/pendingSiteHelpers';
+import { useOnboardingRequests } from '@/features/onboarding/useOnboarding';
 import { useTheme } from '@/theme';
 import type { DashboardOverview, SiteConnection } from '@/domain/types';
 
@@ -406,6 +411,7 @@ export function MobileHomeScreen(): React.JSX.Element {
   const go = (href: string): void => router.navigate(href as never);
   const { data: sites, isPending } = useSites();
   const { data: activeSite } = useActiveSite();
+  const onboardingQuery = useOnboardingRequests();
   const setActiveSite = useSetActiveSite();
   // The store being VIEWED in the carousel (drives the overview instantly); defaults to active.
   const [viewSiteId, setViewSiteId] = useState<string | undefined>(undefined);
@@ -416,6 +422,10 @@ export function MobileHomeScreen(): React.JSX.Element {
 
   const siteList = sites ?? [];
   const hasSites = siteList.length > 0;
+  const pendingSiteCards = (onboardingQuery.data ?? [])
+    .filter(isPendingOnboardingRequest)
+    .map(onboardingToPendingCard);
+  const showHero = hasSites || pendingSiteCards.length > 0;
 
   const currentSiteId = viewSiteId ?? activeSite?.id;
   const selectedSite = hasSites
@@ -468,7 +478,7 @@ export function MobileHomeScreen(): React.JSX.Element {
       <View style={{ paddingHorizontal: mobileMetrics.screenPadding, gap: 24 }}>
         {/* Hero / site state */}
         <AnimatedSection index={0}>
-          {!hasSites ? (
+          {!showHero ? (
             <EmptySiteCard
               onPrimary={() => go('/create-site')}
               onSecondary={() => go('/connect-site')}
@@ -476,12 +486,14 @@ export function MobileHomeScreen(): React.JSX.Element {
           ) : (
             <SiteCarousel
               sites={siteList}
+              pendingRequests={pendingSiteCards}
               initialActiveSiteId={activeSite?.id}
               activeSiteId={activeSite?.id}
               onSelectSite={handleSelectSite}
               onActivateSite={handleActivateSite}
               onPressSite={() => go('/plans')}
               onPressAdd={() => go('/create-site')}
+              onPressPending={(requestId) => go(`/onboarding/${requestId}`)}
               renewalFor={renewalFor}
             />
           )}

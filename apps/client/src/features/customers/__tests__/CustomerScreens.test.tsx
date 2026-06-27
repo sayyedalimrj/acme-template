@@ -61,8 +61,10 @@ describe('CustomerListScreen', () => {
 
     fireEvent.changeText(screen.getByTestId('customer-search'), 'priya');
 
-    await waitFor(() => expect(screen.queryByText('سارا رضایی')).toBeNull());
-    expect(screen.getByText('نیلوفر کریمی')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.queryByText('سارا رضایی')).toBeNull();
+      expect(screen.getByText('نیلوفر کریمی')).toBeTruthy();
+    });
   });
 
   it('aligns the search box for RTL (writingDirection + textAlign)', async () => {
