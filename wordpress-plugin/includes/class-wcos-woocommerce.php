@@ -184,6 +184,27 @@ if (!class_exists('WCOS_WooCommerce')) {
         }
 
         /**
+         * Whether HPOS (custom order tables) is enabled.
+         *
+         * @return bool|null null if WooCommerce inactive.
+         */
+        public static function is_hpos_enabled() {
+            if (!self::is_active()) {
+                return null;
+            }
+            if (class_exists('\Automattic\WooCommerce\Utilities\OrderUtil')
+                && method_exists('\Automattic\WooCommerce\Utilities\OrderUtil', 'custom_orders_table_usage_is_enabled')) {
+                return \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+            }
+            return false;
+        }
+
+        /** @return bool */
+        public static function is_multisite() {
+            return function_exists('is_multisite') && is_multisite();
+        }
+
+        /**
          * Non-secret WooCommerce summary for status/admin/health output.
          *
          * @return array<string,mixed>
@@ -193,6 +214,8 @@ if (!class_exists('WCOS_WooCommerce')) {
                 'active'       => self::is_active(),
                 'status'       => self::status(),
                 'version'      => self::version(),
+                'hposEnabled'  => self::is_hpos_enabled(),
+                'multisite'    => self::is_multisite(),
                 'capabilities' => self::capability_summary(),
             );
         }

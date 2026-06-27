@@ -218,6 +218,7 @@ export interface SiteConnection {
   name: string;
   url: string;
   status: SiteStatus;
+  connectionMode?: 'woo_rest' | 'plugin';
   wooVersion?: string;
   wpVersion?: string;
   currency: CurrencyCode;
@@ -225,10 +226,12 @@ export interface SiteConnection {
   lastSyncedAt?: ISODate;
 }
 
-/** Input accepted by the (mock) connect-site flow. Intentionally has no secret fields. */
+/** Input accepted by the connect-site flow. Intentionally has no secret fields. */
 export interface ConnectSiteInput {
   name: string;
   url: string;
+  /** Connection transport; defaults to woo_rest when omitted. */
+  mode?: 'woo_rest' | 'plugin';
 }
 
 // ---------------------------------------------------------------------------

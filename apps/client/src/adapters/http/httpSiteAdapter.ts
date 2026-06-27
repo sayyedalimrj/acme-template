@@ -15,9 +15,19 @@ interface BackendSite {
   url: string;
   status: string;
   currency: string;
+  connection_mode?: string;
   woo_version: string | null;
   wp_version: string | null;
   last_synced_at: string | null;
+}
+
+interface ConnectStartResponse {
+  siteId: string;
+  tenantId?: string;
+  connectionId?: string;
+  mode?: string;
+  deliveryBaseUrl?: string;
+  signingSecret?: string;
 }
 
 function toSite(s: BackendSite): SiteConnection {
@@ -31,6 +41,10 @@ function toSite(s: BackendSite): SiteConnection {
     url: s.url,
     status,
     currency: s.currency,
+    connectionMode:
+      s.connection_mode === 'plugin' || s.connection_mode === 'woo_rest'
+        ? s.connection_mode
+        : undefined,
     wooVersion: s.woo_version ?? undefined,
     wpVersion: s.wp_version ?? undefined,
     lastSyncedAt: s.last_synced_at ?? undefined,
@@ -65,20 +79,25 @@ export function createHttpSiteAdapter(): SiteAdapter {
       setActiveHttpSiteId(siteId);
       return toSite(res.site);
     },
-    async connectMockSite(input: ConnectSiteInput): Promise<SiteConnection> {
-      // Start a REST connection (verification with key/secret happens on the Connect screen).
-      const res = await http.post<{ siteId: string }>('/merchant/sites/connect/start', {
+    async connectMockSite(input: ConnectSiteInput): Promise<SiteConnection & { pluginPairing?: ConnectStartResponse }> {
+      const mode = input.mode ?? 'woo_rest';
+      const res = await http.post<ConnectStartResponse>('/merchant/sites/connect/start', {
         name: input.name,
         url: input.url,
-        mode: 'woo_rest',
+        mode,
       });
-      return {
+      const site: SiteConnection & { pluginPairing?: ConnectStartResponse } = {
         id: res.siteId,
         name: input.name,
         url: input.url,
         status: 'pending',
         currency: 'IRT',
+        connectionMode: mode,
       };
+      if (mode === 'plugin' && res.signingSecret && res.tenantId && res.deliveryBaseUrl) {
+        site.pluginPairing = res;
+      }
+      return site;
     },
     async disconnectMockSite(siteId: string): Promise<void> {
       await http.post(`/merchant/sites/${siteId}/disconnect`);

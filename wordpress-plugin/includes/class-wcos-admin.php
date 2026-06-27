@@ -43,7 +43,10 @@ if (!class_exists('WCOS_Admin')) {
             // Production backend connection.
             add_action('admin_post_wcos_save_settings', array(__CLASS__, 'handle_save_settings'));
             add_action('admin_post_wcos_handshake', array(__CLASS__, 'handle_handshake'));
+            add_action('admin_post_wcos_test_connection', array(__CLASS__, 'handle_test_connection'));
             add_action('admin_post_wcos_sync_now', array(__CLASS__, 'handle_sync_now'));
+            add_action('admin_post_wcos_full_sync', array(__CLASS__, 'handle_full_sync'));
+            add_action('admin_post_wcos_clear_connection', array(__CLASS__, 'handle_clear_connection'));
         }
 
         /**
@@ -91,8 +94,51 @@ if (!class_exists('WCOS_Admin')) {
                 wp_die(esc_html__('You do not have permission to perform this action.', 'wordpress-commerce-os-companion'));
             }
             check_admin_referer('wcos_sync_now');
-            $result = WCOS_Backend_Client::sync();
-            self::redirect_with_notice(!empty($result['ok']) ? 'sync_ok' : 'sync_failed');
+            WCOS_Sync_Engine::schedule_incremental_sync();
+            self::redirect_with_notice('sync_scheduled');
+        }
+
+        /**
+         * Test backend connection (signed health).
+         *
+         * @return void
+         */
+        public static function handle_test_connection() {
+            if (!WCOS_Capabilities::current_user_can('manage_local_connection_state')) {
+                wp_die(esc_html__('You do not have permission to perform this action.', 'wordpress-commerce-os-companion'));
+            }
+            check_admin_referer('wcos_test_connection');
+            $result = WCOS_Backend_Client::test_connection();
+            self::redirect_with_notice(!empty($result['ok']) ? 'test_ok' : 'test_failed');
+        }
+
+        /**
+         * Schedule a full chunked sync (background).
+         *
+         * @return void
+         */
+        public static function handle_full_sync() {
+            if (!WCOS_Capabilities::current_user_can_manage()) {
+                wp_die(esc_html__('You do not have permission to perform this action.', 'wordpress-commerce-os-companion'));
+            }
+            check_admin_referer('wcos_full_sync');
+            WCOS_Sync_Engine::schedule_full_sync();
+            self::redirect_with_notice('full_sync_scheduled');
+        }
+
+        /**
+         * Clear local connection settings (disconnect / reconnect).
+         *
+         * @return void
+         */
+        public static function handle_clear_connection() {
+            if (!WCOS_Capabilities::current_user_can('manage_local_connection_state')) {
+                wp_die(esc_html__('You do not have permission to perform this action.', 'wordpress-commerce-os-companion'));
+            }
+            check_admin_referer('wcos_clear_connection');
+            WCOS_Connection::disconnect();
+            WCOS_Audit::add_entry('connection.disconnected', 'connection', null, array('source' => 'admin'));
+            self::redirect_with_notice('disconnected');
         }
 
         /**
@@ -530,19 +576,42 @@ if (!class_exists('WCOS_Admin')) {
                         <form method="post" action="<?php echo esc_url($action_url); ?>">
                             <input type="hidden" name="action" value="wcos_handshake" />
                             <?php wp_nonce_field('wcos_handshake'); ?>
-                            <button type="submit" class="button" <?php disabled(!$settings_configured); ?>><?php echo esc_html__('Connect (handshake)', 'wordpress-commerce-os-companion'); ?></button>
+                            <button type="submit" class="button button-primary" <?php disabled(!$settings_configured); ?>><?php echo esc_html__('اتصال (Handshake)', 'wordpress-commerce-os-companion'); ?></button>
                         </form>
                         <form method="post" action="<?php echo esc_url($action_url); ?>">
-                            <input type="hidden" name="action" value="wcos_sync_now" />
-                            <?php wp_nonce_field('wcos_sync_now'); ?>
-                            <button type="submit" class="button" <?php disabled(!$settings_configured); ?>><?php echo esc_html__('Sync now', 'wordpress-commerce-os-companion'); ?></button>
+                            <input type="hidden" name="action" value="wcos_test_connection" />
+                            <?php wp_nonce_field('wcos_test_connection'); ?>
+                            <button type="submit" class="button" <?php disabled(!$settings_configured); ?>><?php echo esc_html__('تست اتصال', 'wordpress-commerce-os-companion'); ?></button>
+                        </form>
+                        <form method="post" action="<?php echo esc_url($action_url); ?>">
+                            <input type="hidden" name="action" value="wcos_full_sync" />
+                            <?php wp_nonce_field('wcos_full_sync'); ?>
+                            <button type="submit" class="button" <?php disabled(!$settings_configured); ?>><?php echo esc_html__('همگام‌سازی کامل', 'wordpress-commerce-os-companion'); ?></button>
+                        </form>
+                        <form method="post" action="<?php echo esc_url($action_url); ?>">
+                            <input type="hidden" name="action" value="wcos_clear_connection" />
+                            <?php wp_nonce_field('wcos_clear_connection'); ?>
+                            <button type="submit" class="button" <?php disabled(!$settings_configured); ?>><?php echo esc_html__('قطع اتصال محلی', 'wordpress-commerce-os-companion'); ?></button>
                         </form>
                     </div>
+                    <?php $sync_status = WCOS_Sync_State::get_status_summary(); ?>
+                    <table class="wcos-table" style="margin-top:12px;">
+                        <tbody>
+                            <tr><th><?php echo esc_html__('وضعیت اتصال', 'wordpress-commerce-os-companion'); ?></th><td><?php echo esc_html(WCOS_Connection::get_status()); ?></td></tr>
+                            <tr><th><?php echo esc_html__('آخرین Handshake', 'wordpress-commerce-os-companion'); ?></th><td><?php echo esc_html($sync_status['lastHandshakeAt'] ? (string) $sync_status['lastHandshakeAt'] : '—'); ?></td></tr>
+                            <tr><th><?php echo esc_html__('آخرین همگام‌سازی', 'wordpress-commerce-os-companion'); ?></th><td><?php echo esc_html($sync_status['lastSyncAt'] ? (string) $sync_status['lastSyncAt'] : '—'); ?></td></tr>
+                            <tr><th><?php echo esc_html__('آخرین رویداد', 'wordpress-commerce-os-companion'); ?></th><td><?php echo esc_html($sync_status['lastEventAt'] ? (string) $sync_status['lastEventAt'] : '—'); ?></td></tr>
+                            <tr><th><?php echo esc_html__('صف همگام‌سازی', 'wordpress-commerce-os-companion'); ?></th><td><?php echo esc_html(!empty($sync_status['queue']) ? implode(', ', $sync_status['queue']) : '—'); ?></td></tr>
+                            <?php if (!empty($sync_status['lastError'])) : ?>
+                            <tr><th><?php echo esc_html__('آخرین خطا', 'wordpress-commerce-os-companion'); ?></th><td><span class="wcos-badge wcos-status-error"><?php echo esc_html((string) $sync_status['lastError']); ?></span></td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                     <p class="wcos-hint">
-                        <?php echo esc_html__('Status:', 'wordpress-commerce-os-companion'); ?>
-                        <?php echo $settings_configured
-                            ? esc_html__('configured — scheduled hourly sync is active.', 'wordpress-commerce-os-companion')
-                            : esc_html__('not configured.', 'wordpress-commerce-os-companion'); ?>
+                        <?php echo esc_html__('Backend URL:', 'wordpress-commerce-os-companion'); ?> <?php echo esc_html(WCOS_Settings::get_backend_url()); ?>
+                        · <?php echo $settings_configured
+                            ? esc_html__('پیکربندی شده — همگام‌سازی زمان‌بندی‌شده فعال است.', 'wordpress-commerce-os-companion')
+                            : esc_html__('پیکربندی نشده.', 'wordpress-commerce-os-companion'); ?>
                     </p>
                 </div>
 

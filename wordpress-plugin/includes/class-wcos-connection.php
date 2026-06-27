@@ -179,11 +179,15 @@ if (!class_exists('WCOS_Connection')) {
          * @return array<string,mixed> Connection summary.
          */
         public static function disconnect() {
+            WCOS_Settings::clear();
             delete_option('wcos_connection_site_id');
             delete_option('wcos_connection_tenant_id');
             update_option('wcos_connection_status', self::STATUS_DISCONNECTED);
             update_option('wcos_connection_mode', 'local');
             update_option('wcos_connection_last_checked_at', self::now());
+            WCOS_Sync_State::reset_all_cursors();
+            WCOS_Sync_State::clear_run_id();
+            delete_option(WCOS_Sync_State::OPT_QUEUE);
 
             return self::get_connection_summary();
         }
