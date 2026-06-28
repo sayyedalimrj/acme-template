@@ -3,7 +3,7 @@
  * Plugin Name:       WordPress Commerce OS Companion
  * Plugin URI:        https://app.jet-web.ir
  * Description:       Companion plugin that connects a WordPress/WooCommerce store to JetWeb Commerce OS. Performs signed (HMAC-SHA256) handshake, chunked background sync, and incremental event delivery to your platform API. Holds only a backend-issued signing secret — never WooCommerce REST keys.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            JetWeb Commerce OS
@@ -16,7 +16,7 @@
 
 defined('ABSPATH') || exit;
 
-define('WCOS_VERSION', '1.1.0');
+define('WCOS_VERSION', '1.1.1');
 define('WCOS_SYNC_CRON_HOOK', 'wcos_scheduled_sync');
 define('WCOS_HEALTH_CRON_HOOK', 'wcos_scheduled_health');
 define('WCOS_PLUGIN_FILE', __FILE__);
@@ -67,6 +67,7 @@ function wcos_activate() {
         add_option('wcos_connection_status', 'not_connected');
     }
     update_option('wcos_plugin_version', WCOS_VERSION);
+    delete_option('wcos_sync_fail_count');
     if (!wp_next_scheduled(WCOS_SYNC_CRON_HOOK)) {
         wp_schedule_event(time() + 300, 'hourly', WCOS_SYNC_CRON_HOOK);
     }
@@ -75,6 +76,19 @@ function wcos_activate() {
     }
 }
 register_activation_hook(__FILE__, 'wcos_activate');
+
+function wcos_maybe_upgrade() {
+    $stored = (string) get_option('wcos_plugin_version', '');
+    if ($stored === WCOS_VERSION) {
+        return;
+    }
+    delete_option('wcos_sync_fail_count');
+    update_option('wcos_plugin_version', WCOS_VERSION);
+    if (class_exists('WCOS_Sync_Engine') && class_exists('WCOS_Settings') && WCOS_Settings::is_configured()) {
+        WCOS_Sync_Engine::schedule_incremental_sync();
+    }
+}
+add_action('plugins_loaded', 'wcos_maybe_upgrade', 5);
 
 function wcos_run_scheduled_sync() {
     if (class_exists('WCOS_Settings') && WCOS_Settings::is_configured()) {

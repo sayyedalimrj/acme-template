@@ -13,7 +13,14 @@ export interface OverviewSeriesResponse {
   currency: string;
   sales: { day: string; orders: number; revenue_minor: number | string }[];
   customers: { day: string; new_customers: number }[];
+  totals?: {
+    orders: number;
+    revenue_minor: number | string;
+    new_customers: number;
+  };
 }
+
+export type OverviewSeriesRange = '7d' | '30d' | '90d' | '365d';
 
 export const dashboardService = {
   getOverview(siteId?: string): Promise<DashboardOverview> {
@@ -21,7 +28,7 @@ export const dashboardService = {
   },
 
   async getOverviewSeries(
-    range: '7d' | '30d' | '90d' = '7d',
+    range: OverviewSeriesRange = '7d',
     siteId?: string,
   ): Promise<OverviewSeriesResponse | null> {
     if (!isApiConfigured()) return null;

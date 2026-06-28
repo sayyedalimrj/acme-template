@@ -69,6 +69,7 @@ function toCustomer(c: BackendCustomer, recentOrders?: CustomerOrderSummary[]): 
     firstName: firstName ?? '',
     lastName: rest.join(' '),
     email: c.email ?? '',
+    phone: c.phone ?? undefined,
     username: c.username ?? c.display_name ?? c.external_id,
     role: 'customer',
     ordersCount: c.orders_count,
@@ -90,7 +91,11 @@ export function createHttpCustomerAdapter(): CustomerAdapter {
   return {
     async listCustomers(query: CustomerListQuery = {}): Promise<Paged<Customer>> {
       const res = await http.get<{ items: BackendCustomer[]; page: number; pageSize: number; total: number }>(
-        `/merchant/sites/${siteId()}/customers${qs({ page: query.page, pageSize: query.pageSize })}`,
+        `/merchant/sites/${siteId()}/customers${qs({
+          page: query.page,
+          pageSize: query.pageSize,
+          search: query.search,
+        })}`,
       );
       return {
         items: res.items.map((c) => toCustomer(c)),

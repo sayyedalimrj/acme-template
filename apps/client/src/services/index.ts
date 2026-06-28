@@ -5,6 +5,7 @@ export { dashboardService } from './dashboardService';
 export { productService } from './productService';
 export { orderService } from './orderService';
 export { customerService } from './customerService';
+export { categoryService } from './categoryService';
 export { onboardingService } from './onboardingService';
 export { supportService } from './supportService';
 export { supportMessagingService } from './supportMessagingService';

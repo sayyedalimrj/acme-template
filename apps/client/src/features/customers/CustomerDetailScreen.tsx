@@ -176,7 +176,10 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps):
       </View>
 
       <Card title={t('customer.section.contact')}>
-        <DetailRow label={t('customer.label.email')} value={customer.email} />
+        <DetailRow label={t('customer.label.email')} value={customer.email || '—'} />
+        {customer.phone ? (
+          <DetailRow label={t('customer.label.phone')} value={customer.phone} />
+        ) : null}
         <DetailRow label={t('customer.label.username')} value={customer.username} />
         <DetailRow label={t('customer.label.role')} value={customer.role} />
         <DetailRow label={t('customer.label.since')} value={fmt.date(customer.dateCreated)} />

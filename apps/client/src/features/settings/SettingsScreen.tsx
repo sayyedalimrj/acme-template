@@ -23,6 +23,7 @@ import {
   Text,
   type BadgeTone,
 } from '@/components/ui';
+import { isApiConfigured } from '@/config/api.config';
 import { useActiveSite } from '@/features/site/useSites';
 import { useLocale, useT } from '@/i18n/I18nProvider';
 import { useSession } from '@/session/SessionProvider';
@@ -55,13 +56,6 @@ function Row({ label, value }: { label: string; value: ReactNode }): React.JSX.E
   );
 }
 
-const STATUS_ITEMS: { labelKey: StringKey; ready: boolean }[] = [
-  { labelKey: 'settings.status.appShell', ready: true },
-  { labelKey: 'settings.status.mockServices', ready: true },
-  { labelKey: 'settings.status.backendProxy', ready: false },
-  { labelKey: 'settings.status.wooApi', ready: false },
-];
-
 function siteStatusTone(status: string): BadgeTone {
   switch (status) {
     case 'connected':
@@ -82,6 +76,18 @@ export function SettingsScreen(): React.JSX.Element {
   const router = useRouter();
   const { user, signOut } = useSession();
   const { data: site } = useActiveSite();
+  const apiReady = isApiConfigured();
+  const statusItems: { labelKey: StringKey; ready: boolean }[] = [
+    { labelKey: 'settings.status.appShell', ready: true },
+    {
+      labelKey: 'settings.status.backendProxy',
+      ready: apiReady,
+    },
+    {
+      labelKey: 'settings.status.wooApi',
+      ready: apiReady && site?.status === 'connected',
+    },
+  ];
 
   return (
     <Screen testID="settings-screen" title={t('settings.title')} subtitle={t('settings.subtitle')}>
@@ -127,6 +133,14 @@ export function SettingsScreen(): React.JSX.Element {
             <Row label={t('settings.app.name')} value={site.name} />
             <Row label="URL" value={site.url} />
             <Row
+              label={t('connectSite.modeLabel')}
+              value={
+                site.connectionMode === 'plugin'
+                  ? t('connectSite.modePlugin')
+                  : t('connectSite.modeRest')
+              }
+            />
+            <Row
               label={t('settings.site.status')}
               value={<Badge tone={siteStatusTone(site.status)} label={site.status} />}
             />
@@ -134,12 +148,21 @@ export function SettingsScreen(): React.JSX.Element {
         ) : (
           <Text tone="muted">{t('settings.site.none')}</Text>
         )}
-        <View style={{ marginTop: tokens.spacing.sm, alignItems: 'flex-start' }}>
+        <View style={{ marginTop: tokens.spacing.sm, alignItems: 'flex-start', gap: tokens.spacing.sm }}>
+          {site ? (
+            <Button
+              label={t('storeSettings.title')}
+              variant="primary"
+              size="sm"
+              onPress={() => router.navigate(`/store-settings/${site.id}` as never)}
+              leading={<Ionicons name="settings-outline" size={16} color={tokens.color.onPrimary} />}
+            />
+          ) : null}
           <Button
             label={t('settings.site.manage')}
             variant="secondary"
             size="sm"
-            onPress={() => router.navigate('/connect-site' as never)}
+            onPress={() => router.navigate(site ? `/store-settings/${site.id}` as never : '/connect-site' as never)}
             leading={<Ionicons name="link-outline" size={16} color={tokens.color.text} />}
           />
         </View>
@@ -219,7 +242,7 @@ export function SettingsScreen(): React.JSX.Element {
 
       {/* F. System status placeholder */}
       <Card title={t('settings.section.status')}>
-        {STATUS_ITEMS.map((item, index) => (
+        {statusItems.map((item, index) => (
           <View key={item.labelKey}>
             {index > 0 ? <Divider /> : null}
             <View

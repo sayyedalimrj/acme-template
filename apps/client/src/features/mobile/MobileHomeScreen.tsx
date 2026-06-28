@@ -19,7 +19,8 @@ import { EmptyState, LoadingState, Text } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
 import { triggerSiteSync, wooConnectErrorMessage } from '@/services/connectionApi';
 import { dashboardService } from '@/services';
-import { currencyExponent } from '@/domain/money';
+import { currencyExponent, minorToMoney } from '@/domain/money';
+import { chartDayLabel } from '@/utils/chartDay';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useActiveSite, useSites } from '@/features/site/useSites';
@@ -182,11 +183,13 @@ function OverviewSection({
   const [range, setRange] = useState<OverviewRange>('week');
   const queryClient = useQueryClient();
   const [syncNote, setSyncNote] = useState<string | undefined>();
-  const rangeKey = range === 'week' ? '7d' : range === 'year' ? '90d' : '30d';
+  const rangeKey: '7d' | '30d' | '90d' | '365d' =
+    range === 'week' ? '7d' : range === 'year' ? '365d' : '30d';
   const seriesQuery = useQuery({
     queryKey: ['site', siteId, 'overview-series', rangeKey, metric],
-    queryFn: () => dashboardService.getOverviewSeries(rangeKey as '7d' | '30d' | '90d', siteId),
+    queryFn: () => dashboardService.getOverviewSeries(rangeKey, siteId),
     enabled: !showcase && Boolean(siteId),
+    staleTime: 30_000,
   });
   const sync = useMutation({
     mutationFn: () => triggerSiteSync(siteId as string),
@@ -204,29 +207,42 @@ function OverviewSection({
   // Production (real backend): show real headline totals, and a clean empty state for the trend
   // chart until a real time-series is synced. Never render mock bars/trend in production.
   if (!showcase) {
-    const realTotal =
-      metric === 'sales'
-        ? fmt.money(overview?.salesTotal ?? '0', overview?.currency ?? currency)
-        : metric === 'orders'
-          ? fmt.num(overview?.ordersCount ?? 0)
-          : fmt.num(overview?.customersCount ?? 0);
-
     const chartCurrency = seriesQuery.data?.currency ?? overview?.currency ?? currency;
     const revenueDivisor = 10 ** currencyExponent(chartCurrency);
+    const totals = seriesQuery.data?.totals;
 
     const salesRows = seriesQuery.data?.sales ?? [];
     const customerRows = seriesQuery.data?.customers ?? [];
     const chartSource =
       metric === 'customers'
-        ? customerRows.map((r) => ({ label: String(r.day).slice(5, 10), value: Number(r.new_customers) }))
+        ? customerRows.map((r) => ({
+            label: chartDayLabel(r.day),
+            value: Number(r.new_customers),
+          }))
         : metric === 'orders'
-          ? salesRows.map((r) => ({ label: String(r.day).slice(5, 10), value: Number(r.orders) }))
+          ? salesRows.map((r) => ({ label: chartDayLabel(r.day), value: Number(r.orders) }))
           : salesRows.map((r) => ({
-              label: String(r.day).slice(5, 10),
+              label: chartDayLabel(r.day),
               value: Number(r.revenue_minor) / revenueDivisor,
             }));
 
-    const hasChart = seriesQuery.isSuccess && chartSource.some((row) => row.value > 0);
+    const rangeTotal =
+      metric === 'sales'
+        ? minorToMoney(totals?.revenue_minor ?? 0, chartCurrency)
+        : metric === 'orders'
+          ? String(totals?.orders ?? 0)
+          : String(totals?.new_customers ?? 0);
+
+    const realTotal =
+      metric === 'sales'
+        ? fmt.money(rangeTotal, chartCurrency)
+        : fmt.num(Number(rangeTotal));
+
+    const hasChart = seriesQuery.isSuccess && chartSource.length > 0;
+    const hasData =
+      (metric === 'sales' && Number(totals?.revenue_minor ?? 0) > 0) ||
+      (metric === 'orders' && Number(totals?.orders ?? 0) > 0) ||
+      (metric === 'customers' && Number(totals?.new_customers ?? 0) > 0);
     const points: OverviewPoint[] = chartSource.map((row, index) => ({
       label: row.label,
       value: row.value,
@@ -268,6 +284,17 @@ function OverviewSection({
             data={points}
             variant={metric === 'sales' ? 'line' : 'bar'}
           />
+        ) : seriesQuery.isError ? (
+          <EmptyState
+            testID="home-overview-error"
+            icon="alert-circle-outline"
+            title={t('common.error')}
+            fill={false}
+            action={{
+              label: t('common.retry'),
+              onPress: () => void seriesQuery.refetch(),
+            }}
+          />
         ) : (
           <EmptyState
             testID="home-overview-empty"
@@ -275,7 +302,7 @@ function OverviewSection({
             title={seriesQuery.isPending ? t('common.loading') : t('home.overview.empty')}
             fill={false}
             action={
-              siteId
+              !hasData && siteId
                 ? {
                     label: sync.isPending
                       ? t('home.overview.syncing')

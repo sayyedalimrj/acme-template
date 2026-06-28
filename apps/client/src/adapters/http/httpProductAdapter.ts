@@ -243,6 +243,7 @@ export function createHttpProductAdapter(): ProductAdapter {
           search: query.search,
           stockStatus: query.stockStatus,
           status: query.status,
+          categoryId: query.categoryId,
         })}`,
       );
       return {

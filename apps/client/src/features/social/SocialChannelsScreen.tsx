@@ -10,6 +10,7 @@ import { Badge, Button, Card, EmptyState, Input, Text } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
 import {
   AnimatedSection,
+  EmptySiteCard,
   FeatureCard,
   MobilePage,
   MobileSubHeader,
@@ -17,10 +18,12 @@ import {
 import { mobileMetrics } from '@/features/mobile/mobileTokens';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
+import { useTheme } from '@/theme';
 import { http } from '@/services/httpClient';
 import type { SocialConnection, SocialPlatform } from '@/domain/types';
+import type { StringKey } from '@/i18n/strings';
 
-const PLATFORMS: { platform: SocialPlatform; labelKey: string; icon: string }[] = [
+const PLATFORMS: { platform: SocialPlatform; labelKey: StringKey; icon: string }[] = [
   { platform: 'instagram', labelKey: 'social.platform.instagram', icon: 'logo-instagram' },
   { platform: 'telegram', labelKey: 'social.platform.telegram', icon: 'paper-plane-outline' },
   { platform: 'bale', labelKey: 'social.platform.bale', icon: 'chatbubble-outline' },
@@ -29,6 +32,20 @@ const PLATFORMS: { platform: SocialPlatform; labelKey: string; icon: string }[] 
   { platform: 'whatsapp_business', labelKey: 'social.platform.whatsapp', icon: 'logo-whatsapp' },
   { platform: 'webhook', labelKey: 'social.platform.webhook', icon: 'code-slash-outline' },
 ];
+
+const PLATFORM_LABEL: Partial<Record<SocialPlatform, StringKey>> = {
+  whatsapp_business: 'social.platform.whatsapp',
+};
+
+function platformLabelKey(platform: SocialPlatform): StringKey {
+  return PLATFORM_LABEL[platform] ?? (`social.platform.${platform}` as StringKey);
+}
+
+function statusLabelKey(status: SocialConnection['status']): StringKey {
+  if (status === 'connected') return 'social.status.connected';
+  if (status === 'error') return 'social.status.error';
+  return 'social.status.pending';
+}
 
 async function fetchConnections(siteId: string): Promise<SocialConnection[]> {
   const res = await http.get<{ items: Record<string, unknown>[] }>(
@@ -64,6 +81,7 @@ function mapConnection(row: Record<string, unknown>): SocialConnection {
 export function SocialChannelsScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
+  const { rowDirection } = useTheme();
   const activeSite = useActiveSite();
   const siteId = activeSite.data?.id;
   const queryClient = useQueryClient();
@@ -71,6 +89,8 @@ export function SocialChannelsScreen(): React.JSX.Element {
   const [displayName, setDisplayName] = useState('');
   const [handleUrl, setHandleUrl] = useState('');
   const [token, setToken] = useState('');
+  const [formError, setFormError] = useState<string | undefined>();
+  const [testNote, setTestNote] = useState<string | undefined>();
 
   const listQuery = useQuery({
     queryKey: ['site', siteId, 'social-connections'],
@@ -92,6 +112,16 @@ export function SocialChannelsScreen(): React.JSX.Element {
       setDisplayName('');
       setHandleUrl('');
       setToken('');
+      setFormError(undefined);
+      await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'social-connections'] });
+    },
+    onError: () => setFormError(t('social.error.create')),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (connectionId: string) =>
+      http.del(`/merchant/sites/${siteId}/social/connections/${connectionId}`),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'social-connections'] });
     },
   });
@@ -101,9 +131,10 @@ export function SocialChannelsScreen(): React.JSX.Element {
       http.post<{ ok: boolean; message: string }>(
         `/merchant/sites/${siteId}/social/connections/${connectionId}/test`,
       ),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'social-connections'] });
+    onSuccess: (res) => {
+      setTestNote(res.message || t('social.testOk'));
     },
+    onError: () => setTestNote(t('social.testFailed')),
   });
 
   const onBack = (): void => {
@@ -131,6 +162,24 @@ export function SocialChannelsScreen(): React.JSX.Element {
     );
   }
 
+  if (!activeSite.isPending && !siteId) {
+    return (
+      <MobilePage
+        testID="social-channels-screen"
+        header={
+          <MobileSubHeader title={t('social.title')} onBack={onBack} backLabel={t('mobile.back')} />
+        }
+      >
+        <View style={{ padding: mobileMetrics.screenPadding }}>
+          <EmptySiteCard
+            onPrimary={() => router.navigate('/create-site' as never)}
+            onSecondary={() => router.navigate('/connect-site' as never)}
+          />
+        </View>
+      </MobilePage>
+    );
+  }
+
   return (
     <MobilePage
       testID="social-channels-screen"
@@ -150,82 +199,111 @@ export function SocialChannelsScreen(): React.JSX.Element {
             ) : (listQuery.data ?? []).length === 0 ? (
               <Text tone="muted">{t('social.empty')}</Text>
             ) : (
-              <View style={{ gap: 12 }}>
+              <View style={{ gap: 16 }}>
                 {(listQuery.data ?? []).map((conn) => (
-                  <View key={conn.id} style={{ gap: 6 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text variant="subheading">{conn.displayName}</Text>
-                      <Badge tone={conn.status === 'connected' ? 'success' : 'warning'} label={conn.status} />
+                  <View
+                    key={conn.id}
+                    style={{
+                      gap: 8,
+                      paddingBottom: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: 'rgba(128,128,128,0.15)',
+                    }}
+                  >
+                    <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
+                      <Text variant="subheading" style={{ flex: 1 }}>
+                        {conn.displayName}
+                      </Text>
+                      <Badge tone={conn.status === 'connected' ? 'success' : conn.status === 'error' ? 'danger' : 'warning'} label={t(statusLabelKey(conn.status))} />
                     </View>
                     <Text variant="caption" tone="muted">
-                      {t(`social.platform.${conn.platform}` as never)} · {conn.handleUrl ?? '—'}
+                      {t(platformLabelKey(conn.platform))}
+                      {conn.handleUrl ? ` · ${conn.handleUrl}` : ''}
                     </Text>
                     {conn.lastError ? (
                       <Text variant="caption" tone="danger">
                         {conn.lastError}
                       </Text>
                     ) : null}
-                    <Button
-                      label={t('social.testConnection')}
-                      variant="secondary"
-                      size="sm"
-                      loading={testMutation.isPending}
-                      onPress={() => testMutation.mutate(conn.id)}
-                    />
+                    <View style={{ flexDirection: rowDirection, gap: 8, flexWrap: 'wrap' }}>
+                      <Button
+                        label={t('social.testConnection')}
+                        variant="secondary"
+                        size="sm"
+                        loading={testMutation.isPending}
+                        onPress={() => {
+                          setTestNote(undefined);
+                          testMutation.mutate(conn.id);
+                        }}
+                      />
+                      <Button
+                        label={t('social.disconnect')}
+                        variant="secondary"
+                        size="sm"
+                        loading={deleteMutation.isPending}
+                        onPress={() => deleteMutation.mutate(conn.id)}
+                      />
+                    </View>
                   </View>
                 ))}
               </View>
             )}
+            {testNote ? (
+              <Text variant="caption" tone="muted" style={{ marginTop: 8 }}>
+                {testNote}
+              </Text>
+            ) : null}
           </Card>
         </AnimatedSection>
 
         <AnimatedSection index={2}>
           <Card title={t('social.addHeading')}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
               {PLATFORMS.map((p) => (
                 <View key={p.platform} style={{ width: '30%', flexGrow: 1 }}>
                   <FeatureCard
                     icon={p.icon as never}
-                    label={t(p.labelKey as never)}
+                    label={t(p.labelKey)}
+                    selected={selectedPlatform === p.platform}
                     onPress={() => setSelectedPlatform(p.platform)}
-                    badge={selectedPlatform === p.platform ? 1 : undefined}
                   />
                 </View>
               ))}
             </View>
-            <Input
-              value={displayName}
-              onChangeText={setDisplayName}
-              placeholder={t('social.displayNamePlaceholder')}
-            />
-            <Input
-              value={handleUrl}
-              onChangeText={setHandleUrl}
-              placeholder={t('social.handleUrlPlaceholder')}
-              autoCapitalize="none"
-            />
-            <Input
-              value={token}
-              onChangeText={setToken}
-              placeholder={t('social.tokenPlaceholder')}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-            <Text variant="caption" tone="muted">
-              {t('social.tokenHint')}
-            </Text>
-            <Button
-              label={t('social.connectCta')}
-              onPress={() => createMutation.mutate()}
-              loading={createMutation.isPending}
-              disabled={!siteId || displayName.trim().length === 0}
-            />
-          </Card>
-        </AnimatedSection>
-
-        <AnimatedSection index={3}>
-          <Card title={t('social.publishSettingsHeading')}>
-            <Text tone="muted">{t('social.publishSettingsBody')}</Text>
+            <View style={{ gap: 12 }}>
+              <Input
+                value={displayName}
+                onChangeText={setDisplayName}
+                placeholder={t('social.displayNamePlaceholder')}
+              />
+              <Input
+                value={handleUrl}
+                onChangeText={setHandleUrl}
+                placeholder={t('social.handleUrlPlaceholder')}
+                autoCapitalize="none"
+              />
+              <Input
+                value={token}
+                onChangeText={setToken}
+                placeholder={t('social.tokenPlaceholder')}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+              <Text variant="caption" tone="muted">
+                {t('social.tokenHint')}
+              </Text>
+              {formError ? (
+                <Text variant="caption" tone="danger">
+                  {formError}
+                </Text>
+              ) : null}
+              <Button
+                label={t('social.connectCta')}
+                onPress={() => createMutation.mutate()}
+                loading={createMutation.isPending}
+                disabled={!siteId || displayName.trim().length === 0}
+              />
+            </View>
           </Card>
         </AnimatedSection>
       </View>
