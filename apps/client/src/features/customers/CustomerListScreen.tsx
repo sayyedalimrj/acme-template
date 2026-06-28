@@ -125,9 +125,10 @@ function CustomerRow({ customer, onPress }: CustomerRowProps): React.JSX.Element
 
 const SEGMENT_FILTERS: { value: SegmentFilter; labelKey: StringKey }[] = [
   { value: 'all', labelKey: 'customers.filter.allSegments' },
-  { value: 'vip', labelKey: 'customers.segment.vip' },
+  { value: 'valuable', labelKey: 'customers.segment.valuable' },
   { value: 'repeat', labelKey: 'customers.segment.repeat' },
   { value: 'new', labelKey: 'customers.segment.new' },
+  { value: 'needs_followup', labelKey: 'customers.segment.needsFollowup' },
 ];
 
 export function CustomerListScreen(): React.JSX.Element {

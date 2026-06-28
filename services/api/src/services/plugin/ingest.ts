@@ -244,6 +244,7 @@ export async function ingestSyncEnvelope(
         discountMinor: n(o.discountMinor ?? o.discount_minor),
         currency,
         customerName: s(o.customerName ?? o.customer_name),
+        customerExternalId: s(o.customerId ?? o.customer_id ?? o.customerExternalId ?? o.customer_external_id) || null,
         paymentMethodTitle: s(o.paymentMethodTitle ?? o.payment_method_title),
         lineItems: lineItemsRaw.map((li) => ({
           externalId: String(li.id ?? li.externalId ?? ''),

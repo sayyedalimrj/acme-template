@@ -47,9 +47,21 @@ Headers: `x-wcos-site-id`, `x-wcos-tenant-id`, `x-wcos-timestamp`, `x-wcos-nonce
 
 ## Install
 
-1. Zip the `wordpress-plugin/` folder or copy to `wp-content/plugins/wordpress-commerce-os-companion/`.
-2. Activate in wp-admin → Plugins.
-3. Open **WordPress Commerce OS** menu.
+**Do not** zip the whole `wordpress-plugin/` folder by hand — that can include non-installable files and trigger WordPress “invalid plugin header” errors.
+
+From the repository root, build the distributable package:
+
+```bash
+./scripts/package-plugin.sh
+```
+
+Upload `wordpress-plugin/build/wordpress-commerce-os-companion-<version>.zip` in wp-admin → Plugins → Add New → Upload.
+
+See `PACKAGING.md` for zip layout, verification, and troubleshooting.
+
+For local development, copy only runtime files to `wp-content/plugins/wordpress-commerce-os-companion/` (main PHP file + `includes/` + `assets/` + `uninstall.php`). Do **not** copy `examples/` or `src/`.
+
+Activate in wp-admin → Plugins, then open **WordPress Commerce OS** menu.
 
 ## Verification
 

@@ -12,6 +12,7 @@ import {
   AnimatedSection,
   EmptySiteCard,
   FilterChipRow,
+  FilterPickerSheet,
   MobileListPage,
   MobileSearchField,
   MobileTabHeader,
@@ -56,12 +57,17 @@ function customerLabel(order: Order, fallback: string): string {
   return name.length > 0 ? name : fallback;
 }
 
-const STATUS_FILTERS: readonly { value: OrderStatusFilter; labelKey: StringKey }[] = [
+const PRIMARY_STATUS_VALUES = ['all', 'pending', 'processing', 'completed'] as const;
+
+const PRIMARY_STATUS_FILTERS: readonly { value: OrderStatusFilter; labelKey: StringKey }[] = [
   { value: 'all', labelKey: 'orders.filter.allStatus' },
   { value: 'pending', labelKey: 'orders.status.pending' },
   { value: 'processing', labelKey: 'orders.status.processing' },
-  { value: 'on-hold', labelKey: 'orders.status.on-hold' },
   { value: 'completed', labelKey: 'orders.status.completed' },
+];
+
+const SECONDARY_STATUS_FILTERS: readonly { value: OrderStatusFilter; labelKey: StringKey }[] = [
+  { value: 'on-hold', labelKey: 'orders.status.on-hold' },
   { value: 'cancelled', labelKey: 'orders.status.cancelled' },
   { value: 'refunded', labelKey: 'orders.status.refunded' },
   { value: 'failed', labelKey: 'orders.status.failed' },
@@ -154,6 +160,10 @@ export function OrderListScreen(): React.JSX.Element {
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<OrderStatusFilter>('all');
+  const secondaryActive = !PRIMARY_STATUS_VALUES.includes(
+    status as (typeof PRIMARY_STATUS_VALUES)[number],
+  );
+  const secondaryLabel = SECONDARY_STATUS_FILTERS.find((f) => f.value === status);
 
   const listQuery = useInfinitePagedQuery({
     queryKey: queryKeys.orders(siteId ?? 'none'),
@@ -228,8 +238,24 @@ export function OrderListScreen(): React.JSX.Element {
                 testID="order-search"
               />
               <FilterChipRow
-                options={STATUS_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+                options={PRIMARY_STATUS_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+                value={PRIMARY_STATUS_VALUES.includes(status as (typeof PRIMARY_STATUS_VALUES)[number]) ? status : 'all'}
+                onChange={setStatus}
+              />
+              <FilterPickerSheet
+                testID="order-more-filters"
+                variant="trigger"
+                label={t('orders.filter.more')}
+                triggerLabel={
+                  secondaryActive && secondaryLabel
+                    ? t(secondaryLabel.labelKey)
+                    : t('orders.filter.more')
+                }
                 value={status}
+                options={SECONDARY_STATUS_FILTERS.map((f) => ({
+                  value: f.value,
+                  label: t(f.labelKey),
+                }))}
                 onChange={setStatus}
               />
             </View>

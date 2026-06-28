@@ -2,6 +2,7 @@
  * Product list screen (mobile-first) with server-side pagination and stable scroll.
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -13,6 +14,7 @@ import {
   AnimatedSection,
   EmptySiteCard,
   FilterChipRow,
+  FilterPickerSheet,
   MobileListPage,
   MobileSearchField,
   MobileTabHeader,
@@ -30,7 +32,8 @@ import { useInfinitePagedQuery } from '@/hooks/useInfinitePagedQuery';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
-import { productService, queryKeys } from '@/services';
+import { isApiConfigured } from '@/config/api.config';
+import { categoryService, productService, queryKeys } from '@/services';
 import { useTheme } from '@/theme';
 import type { BadgeTone } from '@/components/ui';
 import type { Product, StockStatus } from '@/domain/types';
@@ -40,7 +43,6 @@ import {
   filterProducts,
   productTypeLabelKey,
   stockBadge,
-  syncSourceLabelKey,
   type StockFilter,
 } from './productHelpers';
 
@@ -163,9 +165,9 @@ function ProductRow({
           <Text style={{ fontSize: mobileType.captionSize, color: colors.muted }}>
             {t(productTypeLabelKey(product.type))}
           </Text>
-          {product.syncSource ? (
-            <Text style={{ fontSize: mobileType.captionSize, color: colors.muted }}>
-              · {t(syncSourceLabelKey(product.syncSource))}
+          {product.categories.length > 0 ? (
+            <Text style={{ fontSize: mobileType.captionSize, color: colors.muted }} numberOfLines={1}>
+              · {product.categories.map((c) => c.name).join('، ')}
             </Text>
           ) : null}
           {typeof product.variationsCount === 'number' && product.variationsCount > 0 ? (
@@ -208,13 +210,21 @@ export function ProductListScreen(): React.JSX.Element {
 
   const [search, setSearch] = useState('');
   const [stock, setStock] = useState<StockFilter>('all');
+  const [categoryId, setCategoryId] = useState<string | undefined>();
+
+  const categoriesQuery = useQuery({
+    queryKey: ['site', siteId, 'categories'],
+    queryFn: () => categoryService.listCategories(siteId),
+    enabled: isApiConfigured() && Boolean(siteId),
+  });
 
   const listQuery = useInfinitePagedQuery({
-    queryKey: queryKeys.products(siteId ?? 'none'),
+    queryKey: [...queryKeys.products(siteId ?? 'none'), categoryId ?? 'all'],
     queryFn: (q) => productService.listProducts(q),
     query: {
       search: search.trim() || undefined,
       stockStatus: stockToApi(stock),
+      categoryId,
     },
     pageSize: PAGE_SIZE,
     enabled: Boolean(siteId),
@@ -262,6 +272,19 @@ export function ProductListScreen(): React.JSX.Element {
             value={stock}
             onChange={setStock}
           />
+          {(categoriesQuery.data ?? []).length > 0 ? (
+            <FilterPickerSheet
+              testID="product-category-filter"
+              variant="compact"
+              label={t('products.filter.categoryLabel')}
+              value={categoryId ?? 'all'}
+              options={[
+                { value: 'all', label: t('products.filter.allCategories') },
+                ...(categoriesQuery.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+              ]}
+              onChange={(v) => setCategoryId(v === 'all' ? undefined : v)}
+            />
+          ) : null}
         </View>
       </AnimatedSection>
     </View>

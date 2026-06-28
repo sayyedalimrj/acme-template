@@ -155,6 +155,7 @@ export interface NormalizedOrder {
   discountMinor: number;
   currency: string;
   customerName: string | null;
+  customerExternalId: string | null;
   paymentMethodTitle: string | null;
   lineItems: NormalizedOrderLineItem[];
   billing: NormalizedAddress;
@@ -340,6 +341,8 @@ export interface ListQuery {
   pageSize?: number;
   search?: string;
   status?: string;
+  stockStatus?: string;
+  category?: string;
 }
 
 function pageParams(q: ListQuery): { page: number; per_page: number } {
@@ -385,6 +388,8 @@ export async function listProducts(
     per_page,
     search: q.search,
     status: q.status,
+    stock_status: q.stockStatus,
+    category: q.category,
   });
   const rows = Array.isArray(json) ? json : [];
   return {
@@ -961,6 +966,9 @@ function normalizeOrder(o: Record<string, unknown>): NormalizedOrder {
     discountMinor: toMinorUnits(String(o.discount_total ?? '0'), currency),
     currency,
     customerName: name || null,
+    customerExternalId: o.customer_id != null && String(o.customer_id) !== '0'
+      ? String(o.customer_id)
+      : null,
     paymentMethodTitle: (o.payment_method_title as string) || (o.payment_method as string) || null,
     lineItems,
     billing,

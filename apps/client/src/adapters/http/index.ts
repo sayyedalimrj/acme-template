@@ -13,7 +13,7 @@ import { createMockBillingAdapter } from '../mock/mockBillingAdapter';
 import { createMockCustomerIntelligenceAdapter } from '../mock/mockCustomerIntelligenceAdapter';
 import { createMockMediaStudioAdapter } from '../mock/mockMediaStudioAdapter';
 import { createMockNotificationAutomationAdapter } from '../mock/mockNotificationAutomationAdapter';
-import { createMockReportsAnalyticsAdapter } from '../mock/mockReportsAnalyticsAdapter';
+import { createHttpReportsAnalyticsAdapter } from './httpReportsAnalyticsAdapter';
 import { createMockSupportAdapter } from '../mock/mockSupportAdapter';
 import { createMockSupportMessagingAdapter } from '../mock/mockSupportMessagingAdapter';
 import type { Adapters } from '../types';
@@ -42,6 +42,6 @@ export function createHttpAdapters(): Adapters {
     mediaStudio: createMockMediaStudioAdapter(),
     intelligence: createMockCustomerIntelligenceAdapter(),
     automation: createMockNotificationAutomationAdapter(),
-    reports: createMockReportsAnalyticsAdapter(),
+    reports: createHttpReportsAnalyticsAdapter(),
   };
 }

@@ -14,10 +14,10 @@ export async function upsertSyncedOrder(
     `INSERT INTO synced_order (
        site_id, tenant_id, external_id, number, status,
        total_minor, subtotal_minor, tax_minor, shipping_minor, discount_minor,
-       currency, customer_name, payment_method,
+       currency, customer_name, customer_external_id, payment_method,
        line_items, billing, shipping_address,
        external_created_at, updated_at
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, now())
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18, now())
      ON CONFLICT (site_id, external_id) DO UPDATE SET
        number = EXCLUDED.number,
        status = EXCLUDED.status,
@@ -27,11 +27,12 @@ export async function upsertSyncedOrder(
        shipping_minor = EXCLUDED.shipping_minor,
        discount_minor = EXCLUDED.discount_minor,
        customer_name = EXCLUDED.customer_name,
+       customer_external_id = COALESCE(EXCLUDED.customer_external_id, synced_order.customer_external_id),
        payment_method = EXCLUDED.payment_method,
        line_items = EXCLUDED.line_items,
        billing = EXCLUDED.billing,
        shipping_address = EXCLUDED.shipping_address,
-       external_created_at = EXCLUDED.external_created_at,
+       external_created_at = COALESCE(EXCLUDED.external_created_at, synced_order.external_created_at),
        updated_at = now()`,
     [
       siteId,
@@ -46,6 +47,7 @@ export async function upsertSyncedOrder(
       o.discountMinor,
       o.currency,
       o.customerName,
+      o.customerExternalId,
       o.paymentMethodTitle,
       JSON.stringify(o.lineItems),
       JSON.stringify(o.billing),

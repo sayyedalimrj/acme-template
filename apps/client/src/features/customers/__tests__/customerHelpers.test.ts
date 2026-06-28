@@ -23,8 +23,8 @@ describe('filterCustomers', () => {
   });
 
   it('filters by segment', () => {
-    const vip = filterCustomers(customers, { segment: 'vip' });
-    expect(vip.every((c) => customerSegment(c) === 'vip')).toBe(true);
+    const valuable = filterCustomers(customers, { segment: 'valuable' });
+    expect(valuable.every((c) => customerSegment(c) === 'valuable')).toBe(true);
     const isNew = filterCustomers(customers, { segment: 'new' });
     expect(isNew.every((c) => customerSegment(c) === 'new')).toBe(true);
   });
@@ -32,23 +32,20 @@ describe('filterCustomers', () => {
 
 describe('customer value helpers', () => {
   it('segments by lifetime value and order count', () => {
-    // Priya: spent 1284.75 → VIP.
-    expect(customerSegment(customers.find((c) => c.id === 'cust_142')!)).toBe('vip');
-    // Maya: 7 orders, < threshold spend → repeat.
+    expect(customerSegment(customers.find((c) => c.id === 'cust_142')!)).toBe('valuable');
     expect(customerSegment(customers.find((c) => c.id === 'cust_310')!)).toBe('repeat');
-    // Aiko: 1 order → new.
     expect(customerSegment(customers.find((c) => c.id === 'cust_409')!)).toBe('new');
   });
 
   it('derives average order value (and handles zero orders)', () => {
-    const devon = customers.find((c) => c.id === 'cust_287')!; // 214.00 / 3
+    const devon = customers.find((c) => c.id === 'cust_287')!;
     expect(averageOrderValue(devon)).toBe('71.33');
     const noOrders = customers.find((c) => c.ordersCount === 0)!;
     expect(averageOrderValue(noOrders)).toBe('0.00');
   });
 
   it('maps segments to badge tones', () => {
-    expect(segmentBadge('vip').tone).toBe('success');
+    expect(segmentBadge('valuable').tone).toBe('success');
     expect(segmentBadge('repeat').tone).toBe('info');
     expect(segmentBadge('new').tone).toBe('neutral');
   });

@@ -18,6 +18,7 @@ export interface FeatureCardProps {
   label: string;
   onPress: () => void;
   badge?: number;
+  selected?: boolean;
   testID?: string;
 }
 
@@ -26,6 +27,7 @@ export function FeatureCard({
   label,
   onPress,
   badge,
+  selected,
   testID,
 }: FeatureCardProps): React.JSX.Element {
   const colors = useMobileColors();
@@ -43,7 +45,9 @@ export function FeatureCard({
           alignItems: 'center',
           gap: 12,
           borderRadius: mobileMetrics.cardRadiusSmall,
-          backgroundColor: colors.card,
+          backgroundColor: selected ? colors.primarySoft : colors.card,
+          borderWidth: selected ? 2 : 0,
+          borderColor: selected ? colors.primary : 'transparent',
           paddingVertical: 14,
           paddingHorizontal: 14,
           minHeight: 64,

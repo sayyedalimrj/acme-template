@@ -197,13 +197,13 @@ export function HeroSiteCard({
         >
           <View style={{ minWidth: 0 }}>
             <Text style={{ fontSize: 12, color: colors.heroTextSoft }}>
-              {t('home.hero.renewal')}
+              {t('home.hero.subscription')}
             </Text>
             <Text
               style={{ fontSize: 14, fontWeight: '600', color: colors.heroText }}
               numberOfLines={1}
             >
-              {renewalLabel ?? '—'}
+              {renewalLabel ?? t('home.hero.subscriptionActive')}
             </Text>
           </View>
 

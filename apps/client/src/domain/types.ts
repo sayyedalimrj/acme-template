@@ -234,6 +234,7 @@ export interface Customer {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   username: string;
   role: 'customer' | 'subscriber';
   ordersCount: number;
@@ -272,12 +273,11 @@ export interface SiteConnection {
 
 /** Pending site build request shown on merchant dashboard before admin delivery. */
 export type PendingSiteStatus =
-  | 'pending_build'
-  | 'under_review'
-  | 'approved'
-  | 'rejected'
-  | 'ready'
-  | 'connected';
+  | 'awaiting_approval'
+  | 'preparing'
+  | 'needs_info'
+  | 'ready_for_delivery'
+  | 'rejected';
 
 export interface PendingSiteCard {
   kind: 'pending_request';
@@ -289,6 +289,8 @@ export interface PendingSiteCard {
   requestDate: ISODate;
   nextStepMessage: string;
   type: OnboardingType;
+  templateLabel?: string;
+  planLabel?: string;
 }
 
 /** Union item for home carousel — connected site or pending build request. */

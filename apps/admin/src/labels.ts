@@ -15,6 +15,7 @@ export const en = {
   'common.none': '—',
   'common.localeToggle': 'EN',
   'nav.overview': 'Overview',
+  'nav.onboarding': 'Site requests',
   'nav.workflows': 'Workflows',
 
   // Platform overview
@@ -304,6 +305,20 @@ export const en = {
   'health.healthy': 'Healthy',
   'health.degraded': 'Degraded',
   'health.critical': 'Critical',
+
+  // Onboarding requests queue
+  'onboarding.subtitle': 'Review new store launch and site connection requests.',
+  'onboarding.empty': 'No open site requests.',
+  'onboarding.missing': 'Missing',
+  'onboarding.nextAction': 'Next action',
+  'onboarding.detailHint': 'Use workflows for full provisioning steps.',
+  'onboarding.openWorkflows': 'Open workflows board',
+  'onboarding.status.awaitingApproval': 'Awaiting approval',
+  'onboarding.status.preparing': 'Preparing',
+  'onboarding.status.needsInfo': 'Needs information',
+  'onboarding.status.readyForDelivery': 'Ready for delivery',
+  'onboarding.status.delivered': 'Delivered',
+  'onboarding.status.rejected': 'Rejected',
 } as const;
 
 export type LabelKey = keyof typeof en;
@@ -320,6 +335,7 @@ export const fa: Record<LabelKey, string> = {
   'common.none': '—',
   'common.localeToggle': 'فا',
   'nav.overview': 'نمای کلی',
+  'nav.onboarding': 'درخواست‌های سایت',
   'nav.workflows': 'گردش‌کارها',
 
   'platformAdmin.title': 'مدیریت پلتفرم',
@@ -606,6 +622,19 @@ export const fa: Record<LabelKey, string> = {
   'health.healthy': 'سالم',
   'health.degraded': 'نیازمند توجه',
   'health.critical': 'بحرانی',
+
+  'onboarding.subtitle': 'بررسی درخواست‌های راه‌اندازی فروشگاه و اتصال سایت.',
+  'onboarding.empty': 'درخواست بازی وجود ندارد.',
+  'onboarding.missing': 'موارد ناقص',
+  'onboarding.nextAction': 'اقدام بعدی',
+  'onboarding.detailHint': 'برای مراحل کامل آماده‌سازی از گردش‌کارها استفاده کنید.',
+  'onboarding.openWorkflows': 'باز کردن تابلو گردش‌کار',
+  'onboarding.status.awaitingApproval': 'در انتظار تایید',
+  'onboarding.status.preparing': 'در حال آماده‌سازی',
+  'onboarding.status.needsInfo': 'نیازمند اطلاعات',
+  'onboarding.status.readyForDelivery': 'آماده تحویل',
+  'onboarding.status.delivered': 'تحویل شده',
+  'onboarding.status.rejected': 'رد شده',
 };
 
 export const labels = { en, fa } as const;

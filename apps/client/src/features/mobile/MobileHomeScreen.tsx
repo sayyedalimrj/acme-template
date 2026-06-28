@@ -19,6 +19,14 @@ import { EmptyState, LoadingState, Text } from '@/components/ui';
 import { isApiConfigured } from '@/config/api.config';
 import { triggerSiteSync, wooConnectErrorMessage } from '@/services/connectionApi';
 import { dashboardService } from '@/services';
+import { currencyExponent, minorToMoney } from '@/domain/money';
+import { chartDayLabel } from '@/utils/chartDay';
+import {
+  downsampleChartRows,
+  isEmptySeries,
+  isUniformSeries,
+  toOverviewPoints,
+} from '@/utils/chartSeries';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useActiveSite, useSites } from '@/features/site/useSites';
@@ -181,17 +189,23 @@ function OverviewSection({
   const [range, setRange] = useState<OverviewRange>('week');
   const queryClient = useQueryClient();
   const [syncNote, setSyncNote] = useState<string | undefined>();
-  const rangeKey = range === 'week' ? '7d' : range === 'year' ? '90d' : '30d';
+  const rangeKey: '7d' | '30d' | '90d' | '365d' =
+    range === 'week' ? '7d' : range === 'year' ? '365d' : '30d';
   const seriesQuery = useQuery({
     queryKey: ['site', siteId, 'overview-series', rangeKey, metric],
-    queryFn: () => dashboardService.getOverviewSeries(rangeKey as '7d' | '30d' | '90d'),
+    queryFn: () => dashboardService.getOverviewSeries(rangeKey, siteId),
     enabled: !showcase && Boolean(siteId),
+    staleTime: 30_000,
   });
   const sync = useMutation({
     mutationFn: () => triggerSiteSync(siteId as string),
     onSuccess: async () => {
       setSyncNote(t('home.overview.syncStarted'));
-      if (siteId) await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'dashboard'] });
+      if (siteId) {
+        await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'dashboard'] });
+        await queryClient.invalidateQueries({ queryKey: ['site', siteId, 'overview-series'] });
+        await queryClient.invalidateQueries({ queryKey: ['dashboard', 'overview', siteId] });
+      }
     },
     onError: (e: unknown) => setSyncNote(wooConnectErrorMessage(e)),
   });
@@ -199,31 +213,60 @@ function OverviewSection({
   // Production (real backend): show real headline totals, and a clean empty state for the trend
   // chart until a real time-series is synced. Never render mock bars/trend in production.
   if (!showcase) {
-    const realTotal =
-      metric === 'sales'
-        ? fmt.money(overview?.salesTotal ?? '0', overview?.currency ?? currency)
-        : metric === 'orders'
-          ? fmt.num(overview?.ordersCount ?? 0)
-          : fmt.num(overview?.customersCount ?? 0);
+    const chartCurrency = seriesQuery.data?.currency ?? overview?.currency ?? currency;
+    const revenueDivisor = 10 ** currencyExponent(chartCurrency);
+    const totals = seriesQuery.data?.totals;
 
     const salesRows = seriesQuery.data?.sales ?? [];
     const customerRows = seriesQuery.data?.customers ?? [];
     const chartSource =
       metric === 'customers'
-        ? customerRows.map((r) => ({ label: String(r.day).slice(5, 10), value: Number(r.new_customers) }))
+        ? customerRows.map((r) => ({
+            label: chartDayLabel(r.day),
+            value: Number(r.new_customers),
+          }))
         : metric === 'orders'
-          ? salesRows.map((r) => ({ label: String(r.day).slice(5, 10), value: Number(r.orders) }))
+          ? salesRows.map((r) => ({ label: chartDayLabel(r.day), value: Number(r.orders) }))
           : salesRows.map((r) => ({
-              label: String(r.day).slice(5, 10),
-              value: Number(r.revenue_minor) / 100,
+              label: chartDayLabel(r.day),
+              value: Number(r.revenue_minor) / revenueDivisor,
             }));
 
-    const hasChart = chartSource.length > 0;
-    const points: OverviewPoint[] = chartSource.map((row, index) => ({
-      label: row.label,
-      value: row.value,
-      highlight: index === chartSource.length - 1,
-    }));
+    const downsampled = downsampleChartRows(chartSource, rangeKey);
+    const metricLabel = t(
+      metric === 'sales'
+        ? 'home.overview.sales'
+        : metric === 'orders'
+          ? 'home.overview.orders'
+          : 'home.overview.customers',
+    );
+    const rangeLabel = t(
+      range === 'week'
+        ? 'home.overview.week'
+        : range === 'year'
+          ? 'home.overview.year'
+          : 'home.overview.month',
+    );
+
+    const rangeTotal =
+      metric === 'sales'
+        ? minorToMoney(totals?.revenue_minor ?? 0, chartCurrency)
+        : metric === 'orders'
+          ? String(totals?.orders ?? 0)
+          : String(totals?.new_customers ?? 0);
+
+    const realTotal =
+      metric === 'sales'
+        ? fmt.money(rangeTotal, chartCurrency)
+        : fmt.num(Number(rangeTotal));
+
+    const hasData =
+      (metric === 'sales' && Number(totals?.revenue_minor ?? 0) > 0) ||
+      (metric === 'orders' && Number(totals?.orders ?? 0) > 0) ||
+      (metric === 'customers' && Number(totals?.new_customers ?? 0) > 0);
+    const points = toOverviewPoints(downsampled);
+    const uniform = isUniformSeries(downsampled);
+    const showChart = seriesQuery.isSuccess && downsampled.length > 0 && (hasData || !isEmptySeries(downsampled));
 
     return (
       <View
@@ -244,6 +287,15 @@ function OverviewSection({
         />
         <Text
           style={{
+            fontSize: type.captionSize,
+            color: colors.textSecondary,
+            textAlign: isRTL ? 'right' : 'left',
+          }}
+        >
+          {metricLabel} · {rangeLabel}
+        </Text>
+        <Text
+          style={{
             fontSize: Math.round(type.titleSize * 0.95),
             fontWeight: '700',
             color: colors.text,
@@ -255,23 +307,55 @@ function OverviewSection({
         >
           {realTotal}
         </Text>
-        {hasChart ? (
-          <OverviewChart
-            data={points}
-            variant={metric === 'sales' ? 'line' : 'bar'}
+        {showChart ? (
+          <View style={{ gap: 8 }}>
+            {uniform ? (
+              <Text
+                style={{
+                  fontSize: type.captionSize,
+                  color: colors.textSecondary,
+                  textAlign: isRTL ? 'right' : 'left',
+                }}
+              >
+                {t('home.overview.uniformRange')}
+              </Text>
+            ) : null}
+            <OverviewChart
+              data={points}
+              variant={metric === 'sales' && !uniform ? 'line' : 'bar'}
+              sparseLabels
+              showDots={points.length <= 7 && !uniform}
+            />
+          </View>
+        ) : seriesQuery.isError ? (
+          <EmptyState
+            testID="home-overview-error"
+            icon="alert-circle-outline"
+            title={t('common.error')}
+            fill={false}
+            action={{
+              label: t('common.retry'),
+              onPress: () => void seriesQuery.refetch(),
+            }}
           />
         ) : (
           <EmptyState
             testID="home-overview-empty"
             icon="bar-chart-outline"
-            title={seriesQuery.isPending ? t('common.loading') : t('home.overview.empty')}
+            title={
+              seriesQuery.isPending
+                ? t('common.loading')
+                : hasData
+                  ? t('home.overview.uniformRange')
+                  : t('home.overview.empty')
+            }
             fill={false}
             action={
-              siteId
+              !hasData && siteId
                 ? {
                     label: sync.isPending
                       ? t('home.overview.syncing')
-                      : t('storeSettings.sync.button'),
+                      : t('home.overview.refreshData'),
                     onPress: () => {
                       setSyncNote(undefined);
                       sync.mutate();
@@ -390,6 +474,8 @@ function OverviewSection({
       <OverviewChart
         data={points}
         variant={isLine ? 'line' : 'bar'}
+        sparseLabels={range !== 'week'}
+        showDots={points.length <= 7}
         testID="home-overview-chart"
       />
 
@@ -435,8 +521,8 @@ export function MobileHomeScreen(): React.JSX.Element {
   // Real, synced overview (production only). Drives real counts + headline totals; never faked.
   const { data: overview } = useQuery({
     queryKey: ['dashboard', 'overview', selectedSite?.id ?? 'none'],
-    queryFn: () => dashboardService.getOverview(),
-    enabled: !showcase && hasSites,
+    queryFn: () => dashboardService.getOverview(selectedSite?.id),
+    enabled: !showcase && hasSites && Boolean(selectedSite?.id),
   });
 
   const renewalFor = (site: SiteConnection): string | undefined => {

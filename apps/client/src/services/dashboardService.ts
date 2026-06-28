@@ -13,19 +13,29 @@ export interface OverviewSeriesResponse {
   currency: string;
   sales: { day: string; orders: number; revenue_minor: number | string }[];
   customers: { day: string; new_customers: number }[];
+  totals?: {
+    orders: number;
+    revenue_minor: number | string;
+    new_customers: number;
+  };
 }
 
+export type OverviewSeriesRange = '7d' | '30d' | '90d' | '365d';
+
 export const dashboardService = {
-  getOverview(): Promise<DashboardOverview> {
-    return getAdapters().dashboard.getOverview();
+  getOverview(siteId?: string): Promise<DashboardOverview> {
+    return getAdapters().dashboard.getOverview(siteId);
   },
 
-  async getOverviewSeries(range: '7d' | '30d' | '90d' = '7d'): Promise<OverviewSeriesResponse | null> {
+  async getOverviewSeries(
+    range: OverviewSeriesRange = '7d',
+    siteId?: string,
+  ): Promise<OverviewSeriesResponse | null> {
     if (!isApiConfigured()) return null;
-    const siteId = getActiveHttpSiteId();
-    if (!siteId) return null;
+    const id = siteId ?? getActiveHttpSiteId();
+    if (!id) return null;
     return http.get<OverviewSeriesResponse>(
-      `/merchant/sites/${siteId}/reports/overview-series?range=${range}`,
+      `/merchant/sites/${id}/reports/overview-series?range=${range}`,
     );
   },
 };

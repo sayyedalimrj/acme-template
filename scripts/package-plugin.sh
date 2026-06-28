@@ -29,6 +29,17 @@ if ! command -v zip >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "Linting plugin PHP files…"
+while IFS= read -r -d '' php_file; do
+  php -l "${php_file}" >/dev/null
+done < <(find "${PLUGIN_DIR}" -name '*.php' -not -path '*/examples/*' -print0)
+
+HEADER_COUNT="$(grep -R --include='*.php' -c 'Plugin Name:' "${PLUGIN_DIR}" | awk -F: '{s+=$2} END {print s+0}')"
+if [[ "${HEADER_COUNT}" -ne 1 ]]; then
+  echo "ERROR: expected exactly one 'Plugin Name:' in plugin PHP tree, found ${HEADER_COUNT}" >&2
+  exit 1
+fi
+
 # Read the version from the plugin header (e.g. "Version:  1.0.0").
 VERSION="$(grep -iE '^[[:space:]]*\*[[:space:]]*Version:' "${MAIN_FILE}" | head -n1 | sed -E 's/.*Version:[[:space:]]*//' | tr -d '[:space:]')"
 VERSION="${VERSION:-0.0.0}"
@@ -44,9 +55,21 @@ cp "${MAIN_FILE}" "${DEST}/"
 [[ -f "${PLUGIN_DIR}/uninstall.php" ]] && cp "${PLUGIN_DIR}/uninstall.php" "${DEST}/"
 [[ -f "${PLUGIN_DIR}/README.md" ]] && cp "${PLUGIN_DIR}/README.md" "${DEST}/"
 [[ -f "${PLUGIN_DIR}/SECURITY.md" ]] && cp "${PLUGIN_DIR}/SECURITY.md" "${DEST}/"
+[[ -f "${PLUGIN_DIR}/PACKAGING.md" ]] && cp "${PLUGIN_DIR}/PACKAGING.md" "${DEST}/"
 for sub in includes assets languages; do
   [[ -d "${PLUGIN_DIR}/${sub}" ]] && cp -R "${PLUGIN_DIR}/${sub}" "${DEST}/"
 done
+
+STAGED_HEADERS="$(grep -R --include='*.php' -c 'Plugin Name:' "${DEST}" | awk -F: '{s+=$2} END {print s+0}')"
+if [[ "${STAGED_HEADERS}" -ne 1 ]]; then
+  echo "ERROR: staged package must contain exactly one plugin header, found ${STAGED_HEADERS}" >&2
+  exit 1
+fi
+
+if [[ ! -f "${DEST}/${SLUG}.php" ]]; then
+  echo "ERROR: staged package missing main file ${SLUG}.php" >&2
+  exit 1
+fi
 
 mkdir -p "${BUILD_DIR}"
 OUT="${BUILD_DIR}/${SLUG}-${VERSION}.zip"
@@ -57,4 +80,6 @@ rm -f "${OUT}"
 )
 
 echo "Built plugin package: ${OUT}"
+echo "Zip layout:"
+unzip -l "${OUT}" | head -n 12
 echo "NOTE: this is a build artifact (gitignored) — do not commit it."

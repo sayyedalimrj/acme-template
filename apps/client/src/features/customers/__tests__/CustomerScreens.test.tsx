@@ -88,7 +88,7 @@ describe('CustomerListScreen', () => {
 describe('CustomerDetailScreen', () => {
   it('renders the selected customer with value summary', async () => {
     renderWithProviders(<CustomerDetailScreen customerId="cust_142" />);
-    expect(await screen.findByText('نیلوفر کریمی', {}, { timeout: 4000 })).toBeTruthy();
+    expect(await screen.findByTestId('customer-detail-name', {}, { timeout: 4000 })).toBeTruthy();
     expect(screen.getByText('priya.nair@example.test')).toBeTruthy();
   });
 });

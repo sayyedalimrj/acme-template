@@ -34,11 +34,13 @@ import {
   getSalesReport,
   createProduct,
   deleteProduct,
+  listProducts,
   setProductImages,
   uploadProductMedia,
   updateOrderStatus,
   updateProduct,
   updateProductStock,
+  type NormalizedProduct,
 } from '../../services/woocommerce/wooClient';
 import { authenticate, requirePortal, type AuthedRequest } from '../middleware/auth';
 import { asyncHandler } from '../asyncHandler';
@@ -113,6 +115,55 @@ function mapOrderApi(o: Record<string, unknown>) {
     shipping_address: o.shipping_address ?? null,
     external_created_at: o.external_created_at,
   };
+}
+
+/** Map a live WooCommerce product to the merchant list read-model (matches synced_product list shape). */
+function mapLiveProductListItem(p: NormalizedProduct, site: SiteRow) {
+  return {
+    external_id: p.externalId,
+    name: p.name,
+    sku: p.sku,
+    status: p.status,
+    type: p.type,
+    price_minor: p.priceMinor,
+    regular_price_minor: p.regularPriceMinor,
+    sale_price_minor: p.salePriceMinor,
+    currency: p.currency || site.currency,
+    stock_status: p.stockStatus,
+    stock_qty: p.stockQty,
+    updated_at: new Date().toISOString(),
+    permalink: p.permalink,
+    image_src: p.images[0]?.src ?? null,
+    variations_count: null,
+    images_count: p.images.length,
+    categories: p.categories.map((c) => ({ external_id: c.externalId, name: c.name })),
+    sync_source: 'woo_rest',
+    sync_status: 'synced',
+    last_synced_at: new Date().toISOString(),
+  };
+}
+
+/** Fill missing calendar days so chart buckets align with the selected range. */
+function fillDailySeries<T extends { day: string }>(
+  rows: T[],
+  days: number,
+  empty: Omit<T, 'day'>,
+): T[] {
+  const byDay = new Map<string, T>();
+  for (const row of rows) {
+    const key = String(row.day).slice(0, 10);
+    byDay.set(key, { ...row, day: key });
+  }
+  const end = new Date();
+  end.setUTCHours(0, 0, 0, 0);
+  const out: T[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date(end);
+    d.setUTCDate(d.getUTCDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    out.push(byDay.get(key) ?? ({ ...empty, day: key } as T));
+  }
+  return out;
 }
 
 function mapLiveOrder(o: Awaited<ReturnType<typeof getOrder>>) {
@@ -490,8 +541,33 @@ merchantRouter.get(
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const site = await siteFor(req, req.params.siteId);
     const { page, pageSize, offset } = parsePagination(req.query as Record<string, unknown>);
-    const search = req.query.search ? `%${String(req.query.search)}%` : null;
+    const searchRaw = req.query.search ? String(req.query.search).trim() : '';
+    const search = searchRaw || null;
     const stockStatus = req.query.stockStatus ? String(req.query.stockStatus) : null;
+    const categoryId = req.query.categoryId ? String(req.query.categoryId) : null;
+
+    // Woo REST sites: list live from WooCommerce (same as product detail). The synced read-model
+    // is populated in the background and may be empty right after connect.
+    const creds = await getWooCredentials(site.id);
+    if (creds) {
+      const wooPage = await listProducts(creds, {
+        page,
+        pageSize,
+        search: search ?? undefined,
+        stockStatus: stockStatus ?? undefined,
+        category: categoryId ?? undefined,
+        status: req.query.status ? String(req.query.status) : undefined,
+      });
+      res.json({
+        items: wooPage.items.map((p) => mapLiveProductListItem(p, site)),
+        page: wooPage.page,
+        pageSize: wooPage.pageSize,
+        total: wooPage.total,
+        hasNext: wooPage.page * wooPage.pageSize < wooPage.total,
+      });
+      return;
+    }
+
     const items = await query(
       `SELECT p.external_id, p.name, p.sku, p.status, p.type, p.price_minor, p.currency,
               p.stock_status, p.stock_qty, p.updated_at, p.permalink,
@@ -511,15 +587,25 @@ merchantRouter.get(
         WHERE p.site_id = $1
           AND ($2::text IS NULL OR p.name ILIKE $2 OR p.sku ILIKE $2)
           AND ($5::text IS NULL OR p.stock_status = $5)
+          AND ($6::text IS NULL OR EXISTS (
+            SELECT 1 FROM synced_product_category pc
+              JOIN synced_category c ON c.id = pc.category_id
+             WHERE pc.product_id = p.id AND c.external_id = $6
+          ))
         ORDER BY p.updated_at DESC LIMIT $3 OFFSET $4`,
-      [site.id, search, pageSize, offset, stockStatus],
+      [site.id, search ? `%${search}%` : null, pageSize, offset, stockStatus, categoryId],
     );
     const total = await queryOne<{ count: number }>(
-      `SELECT count(*)::int AS count FROM synced_product
+      `SELECT count(*)::int AS count FROM synced_product p
          WHERE site_id = $1
            AND ($2::text IS NULL OR name ILIKE $2 OR sku ILIKE $2)
-           AND ($3::text IS NULL OR stock_status = $3)`,
-      [site.id, search, stockStatus],
+           AND ($3::text IS NULL OR stock_status = $3)
+           AND ($4::text IS NULL OR EXISTS (
+             SELECT 1 FROM synced_product_category pc
+               JOIN synced_category c ON c.id = pc.category_id
+              WHERE pc.product_id = p.id AND c.external_id = $4
+           ))`,
+      [site.id, search ? `%${search}%` : null, stockStatus, categoryId],
     );
     const count = total?.count ?? 0;
     res.json({
@@ -699,14 +785,22 @@ merchantRouter.get(
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const site = await siteFor(req, req.params.siteId);
     const { page, pageSize, offset } = parsePagination(req.query as Record<string, unknown>);
+    const searchRaw = req.query.search ? String(req.query.search).trim() : '';
+    const search = searchRaw ? `%${searchRaw}%` : null;
     const items = await query(
-      `SELECT external_id, display_name, orders_count, total_spent_minor, currency, updated_at
-         FROM synced_customer WHERE site_id = $1 ORDER BY total_spent_minor DESC LIMIT $2 OFFSET $3`,
-      [site.id, pageSize, offset],
+      `SELECT external_id, display_name, email, phone, username, orders_count, total_spent_minor,
+              currency, external_created_at, updated_at
+         FROM synced_customer
+        WHERE site_id = $1
+          AND ($2::text IS NULL OR display_name ILIKE $2 OR email ILIKE $2 OR username ILIKE $2)
+        ORDER BY total_spent_minor DESC LIMIT $3 OFFSET $4`,
+      [site.id, search, pageSize, offset],
     );
     const total = await queryOne<{ count: number }>(
-      `SELECT count(*)::int AS count FROM synced_customer WHERE site_id = $1`,
-      [site.id],
+      `SELECT count(*)::int AS count FROM synced_customer
+         WHERE site_id = $1
+           AND ($2::text IS NULL OR display_name ILIKE $2 OR email ILIKE $2 OR username ILIKE $2)`,
+      [site.id, search],
     );
     res.json({ items, page, pageSize, total: total?.count ?? 0 });
   }),
@@ -726,9 +820,13 @@ merchantRouter.get(
     const recentOrders = await query(
       `SELECT external_id, number, status, total_minor, currency, external_created_at
          FROM synced_order
-        WHERE site_id = $1 AND customer_name ILIKE '%' || split_part($2, ' ', 1) || '%'
-        ORDER BY external_created_at DESC NULLS LAST LIMIT 10`,
-      [site.id, (customer as { display_name?: string }).display_name ?? ''],
+        WHERE site_id = $1
+          AND (
+            customer_external_id = $2
+            OR (customer_external_id IS NULL AND customer_name ILIKE '%' || split_part($3, ' ', 1) || '%')
+          )
+        ORDER BY COALESCE(external_created_at, updated_at) DESC NULLS LAST LIMIT 10`,
+      [site.id, req.params.customerId, (customer as { display_name?: string }).display_name ?? ''],
     );
     res.json({ customer, recentOrders });
   }),
@@ -739,28 +837,56 @@ merchantRouter.get(
   asyncHandler(async (req: AuthedRequest, res: Response) => {
     const site = await siteFor(req, req.params.siteId);
     const range = String(req.query.range ?? '7d');
-    const days = range === '90d' ? 90 : range === '30d' ? 30 : 7;
+    const days =
+      range === '365d' ? 365 : range === '90d' ? 90 : range === '30d' ? 30 : 7;
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-    const sales = await query(
-      `SELECT date_trunc('day', external_created_at) AS day,
+    const orderDay = `COALESCE(external_created_at, updated_at)`;
+    const salesRaw = await query(
+      `SELECT date_trunc('day', ${orderDay}) AS day,
               count(*)::int AS orders,
               COALESCE(sum(total_minor),0)::bigint AS revenue_minor
          FROM synced_order
         WHERE site_id = $1
-          AND external_created_at >= $2
+          AND ${orderDay} >= $2
           AND status NOT IN ('cancelled','refunded','failed')
         GROUP BY 1 ORDER BY 1 ASC`,
       [site.id, since],
     );
-    const customers = await query(
-      `SELECT date_trunc('day', external_created_at) AS day,
+    const customersRaw = await query(
+      `SELECT date_trunc('day', COALESCE(external_created_at, updated_at)) AS day,
               count(*)::int AS new_customers
          FROM synced_customer
-        WHERE site_id = $1 AND external_created_at >= $2
+        WHERE site_id = $1 AND COALESCE(external_created_at, updated_at) >= $2
         GROUP BY 1 ORDER BY 1 ASC`,
       [site.id, since],
     );
-    res.json({ range, currency: site.currency, sales, customers });
+    const sales = fillDailySeries(
+      salesRaw as { day: string; orders: number; revenue_minor: number | string }[],
+      days,
+      { orders: 0, revenue_minor: 0 },
+    );
+    const customers = fillDailySeries(
+      customersRaw as { day: string; new_customers: number }[],
+      days,
+      { new_customers: 0 },
+    );
+    const totals = await queryOne<{
+      orders: number;
+      revenue_minor: string | number;
+      new_customers: number;
+    }>(
+      `SELECT
+         (SELECT count(*)::int FROM synced_order
+            WHERE site_id = $1 AND ${orderDay} >= $2
+              AND status NOT IN ('cancelled','refunded','failed')) AS orders,
+         (SELECT COALESCE(sum(total_minor),0)::bigint FROM synced_order
+            WHERE site_id = $1 AND ${orderDay} >= $2
+              AND status NOT IN ('cancelled','refunded','failed')) AS revenue_minor,
+         (SELECT count(*)::int FROM synced_customer
+            WHERE site_id = $1 AND COALESCE(external_created_at, updated_at) >= $2) AS new_customers`,
+      [site.id, since],
+    );
+    res.json({ range, currency: site.currency, sales, customers, totals });
   }),
 );
 
