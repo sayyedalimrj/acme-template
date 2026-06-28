@@ -126,6 +126,36 @@ export function PendingSiteCard({
         >
           {t('home.pending.requestDate', { date: fmt.date(request.requestDate) })}
         </Text>
+        {request.templateLabel || request.planLabel ? (
+          <Text
+            style={{
+              fontSize: type.captionSize,
+              color: colors.heroTextSoft,
+              textAlign: isRTL ? 'right' : 'left',
+            }}
+            numberOfLines={1}
+          >
+            {[request.templateLabel, request.planLabel].filter(Boolean).join(' · ')}
+          </Text>
+        ) : null}
+        <PressableScale
+          onPress={onPress}
+          accessibilityLabel={t('home.pending.followUp')}
+          style={{
+            alignSelf: isRTL ? 'flex-end' : 'flex-start',
+            marginTop: 4,
+            paddingHorizontal: 14,
+            height: 36,
+            borderRadius: 10,
+            backgroundColor: colors.statusAttention,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.onPrimary }}>
+            {t('home.pending.followUp')}
+          </Text>
+        </PressableScale>
       </View>
     </PressableScale>
   );

@@ -14,6 +14,7 @@ import {
   AnimatedSection,
   EmptySiteCard,
   FilterChipRow,
+  FilterPickerSheet,
   MobileListPage,
   MobileSearchField,
   MobileTabHeader,
@@ -42,7 +43,6 @@ import {
   filterProducts,
   productTypeLabelKey,
   stockBadge,
-  syncSourceLabelKey,
   type StockFilter,
 } from './productHelpers';
 
@@ -165,9 +165,9 @@ function ProductRow({
           <Text style={{ fontSize: mobileType.captionSize, color: colors.muted }}>
             {t(productTypeLabelKey(product.type))}
           </Text>
-          {product.syncSource ? (
-            <Text style={{ fontSize: mobileType.captionSize, color: colors.muted }}>
-              · {t(syncSourceLabelKey(product.syncSource))}
+          {product.categories.length > 0 ? (
+            <Text style={{ fontSize: mobileType.captionSize, color: colors.muted }} numberOfLines={1}>
+              · {product.categories.map((c) => c.name).join('، ')}
             </Text>
           ) : null}
           {typeof product.variationsCount === 'number' && product.variationsCount > 0 ? (
@@ -273,12 +273,14 @@ export function ProductListScreen(): React.JSX.Element {
             onChange={setStock}
           />
           {(categoriesQuery.data ?? []).length > 0 ? (
-            <FilterChipRow
+            <FilterPickerSheet
+              testID="product-category-filter"
+              label={t('products.filter.categoryLabel')}
+              value={categoryId ?? 'all'}
               options={[
                 { value: 'all', label: t('products.filter.allCategories') },
                 ...(categoriesQuery.data ?? []).map((c) => ({ value: c.id, label: c.name })),
               ]}
-              value={categoryId ?? 'all'}
               onChange={(v) => setCategoryId(v === 'all' ? undefined : v)}
             />
           ) : null}

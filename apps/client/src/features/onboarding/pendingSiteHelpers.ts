@@ -4,36 +4,33 @@
 import type { OnboardingRequest, PendingSiteCard, PendingSiteStatus } from '@/domain/types';
 
 const NEXT_STEP_KEYS: Record<PendingSiteStatus, string> = {
-  pending_build: 'home.pending.nextStep.building',
-  under_review: 'home.pending.nextStep.review',
-  approved: 'home.pending.nextStep.approved',
+  awaiting_approval: 'home.pending.nextStep.awaitingApproval',
+  preparing: 'home.pending.nextStep.preparing',
+  needs_info: 'home.pending.nextStep.needsInfo',
+  ready_for_delivery: 'home.pending.nextStep.readyForDelivery',
   rejected: 'home.pending.nextStep.rejected',
-  ready: 'home.pending.nextStep.ready',
-  connected: 'home.pending.nextStep.connected',
 };
 
 export function mapOnboardingStatusToPending(status: string): PendingSiteStatus {
   switch (status) {
     case 'submitted':
+    case 'under_review':
+    case 'ready_for_review':
+      return 'awaiting_approval';
     case 'provisioning':
     case 'connection_scheduled':
-      return 'pending_build';
-    case 'under_review':
+      return 'preparing';
     case 'needs_customer_action':
     case 'awaiting_assets':
-    case 'ready_for_review':
-      return 'under_review';
+      return 'needs_info';
     case 'ready':
-      return 'ready';
-    case 'connected':
-    case 'delivered':
-      return 'connected';
+      return 'ready_for_delivery';
     case 'rejected':
     case 'unsupported':
     case 'archived':
       return 'rejected';
     default:
-      return 'pending_build';
+      return 'awaiting_approval';
   }
 }
 
@@ -56,6 +53,8 @@ export function onboardingToPendingCard(request: OnboardingRequest): PendingSite
     requestDate: request.createdAt,
     nextStepMessage: NEXT_STEP_KEYS[status],
     type: request.type,
+    templateLabel: request.type === 'new' ? request.templateId : undefined,
+    planLabel: request.type === 'new' ? request.planId : undefined,
   };
 }
 

@@ -14,8 +14,9 @@ import {
   FeatureCard,
   MobilePage,
   MobileSubHeader,
+  PressableScale,
 } from '@/features/mobile/components';
-import { mobileMetrics } from '@/features/mobile/mobileTokens';
+import { mobileMetrics, mobileType, useMobileColors } from '@/features/mobile/mobileTokens';
 import { useActiveSite } from '@/features/site/useSites';
 import { useT } from '@/i18n/I18nProvider';
 import { useTheme } from '@/theme';
@@ -23,18 +24,33 @@ import { http } from '@/services/httpClient';
 import type { SocialConnection, SocialPlatform } from '@/domain/types';
 import type { StringKey } from '@/i18n/strings';
 
-const PLATFORMS: { platform: SocialPlatform; labelKey: StringKey; icon: string }[] = [
-  { platform: 'instagram', labelKey: 'social.platform.instagram', icon: 'logo-instagram' },
+interface PlatformDef {
+  platform: SocialPlatform;
+  labelKey: StringKey;
+  icon: string;
+}
+
+const PRIMARY_PLATFORMS: PlatformDef[] = [
   { platform: 'telegram', labelKey: 'social.platform.telegram', icon: 'paper-plane-outline' },
+  { platform: 'instagram', labelKey: 'social.platform.instagram', icon: 'logo-instagram' },
+  { platform: 'whatsapp_business', labelKey: 'social.platform.whatsapp', icon: 'logo-whatsapp' },
   { platform: 'bale', labelKey: 'social.platform.bale', icon: 'chatbubble-outline' },
+];
+
+const MORE_PLATFORMS: PlatformDef[] = [
   { platform: 'eitaa', labelKey: 'social.platform.eitaa', icon: 'chatbubbles-outline' },
   { platform: 'rubika', labelKey: 'social.platform.rubika', icon: 'people-outline' },
-  { platform: 'whatsapp_business', labelKey: 'social.platform.whatsapp', icon: 'logo-whatsapp' },
-  { platform: 'webhook', labelKey: 'social.platform.webhook', icon: 'code-slash-outline' },
 ];
+
+const CUSTOM_PLATFORM: PlatformDef = {
+  platform: 'webhook',
+  labelKey: 'social.platform.customConnection',
+  icon: 'link-outline',
+};
 
 const PLATFORM_LABEL: Partial<Record<SocialPlatform, StringKey>> = {
   whatsapp_business: 'social.platform.whatsapp',
+  webhook: 'social.platform.customConnection',
 };
 
 function platformLabelKey(platform: SocialPlatform): StringKey {
@@ -80,12 +96,15 @@ function mapConnection(row: Record<string, unknown>): SocialConnection {
 
 export function SocialChannelsScreen(): React.JSX.Element {
   const t = useT();
+  const colors = useMobileColors();
   const router = useRouter();
   const { rowDirection } = useTheme();
   const activeSite = useActiveSite();
   const siteId = activeSite.data?.id;
   const queryClient = useQueryClient();
   const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform>('telegram');
+  const [showMore, setShowMore] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [handleUrl, setHandleUrl] = useState('');
   const [token, setToken] = useState('');
@@ -207,14 +226,23 @@ export function SocialChannelsScreen(): React.JSX.Element {
                       gap: 8,
                       paddingBottom: 12,
                       borderBottomWidth: 1,
-                      borderBottomColor: 'rgba(128,128,128,0.15)',
+                      borderBottomColor: colors.separator,
                     }}
                   >
                     <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
                       <Text variant="subheading" style={{ flex: 1 }}>
                         {conn.displayName}
                       </Text>
-                      <Badge tone={conn.status === 'connected' ? 'success' : conn.status === 'error' ? 'danger' : 'warning'} label={t(statusLabelKey(conn.status))} />
+                      <Badge
+                        tone={
+                          conn.status === 'connected'
+                            ? 'success'
+                            : conn.status === 'error'
+                              ? 'danger'
+                              : 'warning'
+                        }
+                        label={t(statusLabelKey(conn.status))}
+                      />
                     </View>
                     <Text variant="caption" tone="muted">
                       {t(platformLabelKey(conn.platform))}
@@ -258,17 +286,56 @@ export function SocialChannelsScreen(): React.JSX.Element {
 
         <AnimatedSection index={2}>
           <Card title={t('social.addHeading')}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-              {PLATFORMS.map((p) => (
-                <View key={p.platform} style={{ width: '30%', flexGrow: 1 }}>
-                  <FeatureCard
-                    icon={p.icon as never}
-                    label={t(p.labelKey)}
-                    selected={selectedPlatform === p.platform}
-                    onPress={() => setSelectedPlatform(p.platform)}
-                  />
+            <View style={{ gap: 12, marginBottom: 12 }}>
+              <View style={{ flexDirection: rowDirection, flexWrap: 'wrap', gap: 10 }}>
+                {PRIMARY_PLATFORMS.map((p) => (
+                  <View key={p.platform} style={{ width: '48%', flexGrow: 1 }}>
+                    <FeatureCard
+                      icon={p.icon as never}
+                      label={t(p.labelKey)}
+                      selected={selectedPlatform === p.platform}
+                      onPress={() => setSelectedPlatform(p.platform)}
+                    />
+                  </View>
+                ))}
+              </View>
+              {showMore ? (
+                <View style={{ flexDirection: rowDirection, flexWrap: 'wrap', gap: 10 }}>
+                  {MORE_PLATFORMS.map((p) => (
+                    <View key={p.platform} style={{ width: '48%', flexGrow: 1 }}>
+                      <FeatureCard
+                        icon={p.icon as never}
+                        label={t(p.labelKey)}
+                        selected={selectedPlatform === p.platform}
+                        onPress={() => setSelectedPlatform(p.platform)}
+                      />
+                    </View>
+                  ))}
                 </View>
-              ))}
+              ) : (
+                <PressableScale onPress={() => setShowMore(true)} accessibilityLabel={t('social.moreChannels')}>
+                  <Text style={{ fontSize: mobileType.captionSize, color: colors.primary, fontWeight: '700' }}>
+                    {t('social.moreChannels')}
+                  </Text>
+                </PressableScale>
+              )}
+              {showAdvanced ? (
+                <FeatureCard
+                  icon={CUSTOM_PLATFORM.icon as never}
+                  label={t(CUSTOM_PLATFORM.labelKey)}
+                  selected={selectedPlatform === CUSTOM_PLATFORM.platform}
+                  onPress={() => setSelectedPlatform(CUSTOM_PLATFORM.platform)}
+                />
+              ) : (
+                <PressableScale
+                  onPress={() => setShowAdvanced(true)}
+                  accessibilityLabel={t('social.advancedConnection')}
+                >
+                  <Text style={{ fontSize: mobileType.captionSize, color: colors.textSecondary, fontWeight: '600' }}>
+                    {t('social.advancedConnection')}
+                  </Text>
+                </PressableScale>
+              )}
             </View>
             <View style={{ gap: 12 }}>
               <Input
@@ -282,13 +349,15 @@ export function SocialChannelsScreen(): React.JSX.Element {
                 placeholder={t('social.handleUrlPlaceholder')}
                 autoCapitalize="none"
               />
-              <Input
-                value={token}
-                onChangeText={setToken}
-                placeholder={t('social.tokenPlaceholder')}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              {selectedPlatform === 'webhook' || showAdvanced ? (
+                <Input
+                  value={token}
+                  onChangeText={setToken}
+                  placeholder={t('social.tokenPlaceholder')}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              ) : null}
               <Text variant="caption" tone="muted">
                 {t('social.tokenHint')}
               </Text>

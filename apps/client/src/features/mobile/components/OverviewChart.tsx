@@ -31,6 +31,10 @@ export interface OverviewChartProps {
   data: OverviewPoint[];
   height?: number;
   variant?: OverviewChartVariant;
+  /** When true, only show labels for first, middle, and last points (reduces clutter). */
+  sparseLabels?: boolean;
+  /** Hide point dots when the series is long or flat. */
+  showDots?: boolean;
   testID?: string;
 }
 
@@ -110,10 +114,12 @@ function LineChart({
   data,
   height,
   colors,
+  showDots,
 }: {
   data: OverviewPoint[];
   height: number;
   colors: ReturnType<typeof useMobileColors>;
+  showDots: boolean;
 }): React.JSX.Element {
   const [width, setWidth] = useState(0);
   const max = Math.max(1, ...data.map((d) => (Number.isFinite(d.value) ? d.value : 0)));
@@ -159,42 +165,72 @@ function LineChart({
           {samples.slice(0, -1).map((s, i) => (
             <LineSegment key={i} a={s} b={samples[i + 1]} color={colors.primary} width={3} />
           ))}
-          {points.map((p, i) => (
-            <View
-              key={`dot-${i}`}
-              style={{
-                position: 'absolute',
-                left: p.x - (data[i].highlight ? 5 : 3),
-                top: p.y - (data[i].highlight ? 5 : 3),
-                width: data[i].highlight ? 10 : 6,
-                height: data[i].highlight ? 10 : 6,
-                borderRadius: 5,
-                backgroundColor: colors.primary,
-                borderWidth: data[i].highlight ? 2 : 0,
-                borderColor: colors.card,
-              }}
-            />
-          ))}
+          {showDots
+            ? points.map((p, i) => (
+                <View
+                  key={`dot-${i}`}
+                  style={{
+                    position: 'absolute',
+                    left: p.x - (data[i].highlight ? 5 : 3),
+                    top: p.y - (data[i].highlight ? 5 : 3),
+                    width: data[i].highlight ? 10 : 6,
+                    height: data[i].highlight ? 10 : 6,
+                    borderRadius: 5,
+                    backgroundColor: colors.primary,
+                    borderWidth: data[i].highlight ? 2 : 0,
+                    borderColor: colors.card,
+                  }}
+                />
+              ))
+            : points
+                .filter((_, i) => data[i]?.highlight)
+                .map((p, i) => (
+                  <View
+                    key={`dot-hi-${i}`}
+                    style={{
+                      position: 'absolute',
+                      left: p.x - 5,
+                      top: p.y - 5,
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: colors.primary,
+                      borderWidth: 2,
+                      borderColor: colors.card,
+                    }}
+                  />
+                ))}
         </>
       ) : null}
     </View>
   );
 }
 
+function shouldShowLabel(index: number, total: number, sparseLabels: boolean): boolean {
+  if (!sparseLabels || total <= 4) return true;
+  if (index === 0 || index === total - 1) return true;
+  if (total <= 7) return index === Math.floor(total / 2);
+  const step = Math.max(1, Math.ceil(total / 4));
+  return index % step === 0;
+}
+
 export function OverviewChart({
   data,
   height = 132,
   variant = 'bar',
+  sparseLabels = false,
+  showDots,
   testID,
 }: OverviewChartProps): React.JSX.Element {
   const colors = useMobileColors();
   const max = Math.max(1, ...data.map((d) => (Number.isFinite(d.value) ? d.value : 0)));
   const gridFractions = [0, 0.5, 1];
+  const dotsVisible = showDots ?? data.length <= 7;
 
   return (
     <View testID={testID} style={{ gap: 8 }}>
       {variant === 'line' ? (
-        <LineChart data={data} height={height} colors={colors} />
+        <LineChart data={data} height={height} colors={colors} showDots={dotsVisible} />
       ) : (
         <View style={{ height, justifyContent: 'flex-end' }}>
           {/* Soft gridline backdrop. */}
@@ -242,20 +278,24 @@ export function OverviewChart({
       )}
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        {data.map((d, index) => (
-          <View key={`${d.label}-label-${index}`} style={{ flex: 1, alignItems: 'center' }}>
-            <Text
-              numberOfLines={1}
-              style={{
-                fontSize: 11,
-                color: d.highlight ? colors.text : colors.textSecondary,
-                fontWeight: d.highlight ? '700' : '500',
-              }}
-            >
-              {d.label}
-            </Text>
-          </View>
-        ))}
+        {data.map((d, index) => {
+          const visible = shouldShowLabel(index, data.length, sparseLabels);
+          return (
+            <View key={`${d.label}-label-${index}`} style={{ flex: 1, alignItems: 'center' }}>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 11,
+                  color: d.highlight ? colors.text : colors.textSecondary,
+                  fontWeight: d.highlight ? '700' : '500',
+                  opacity: visible ? 1 : 0,
+                }}
+              >
+                {visible ? d.label : ' '}
+              </Text>
+            </View>
+          );
+        })}
       </View>
     </View>
   );

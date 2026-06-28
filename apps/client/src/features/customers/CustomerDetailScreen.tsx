@@ -1,10 +1,5 @@
 /**
- * Customer detail screen.
- *
- * Read-only customer profile: contact, customer-value signals (total spent, orders, AOV,
- * last order), segment, recent order history (cross-links to order detail), and a
- * marketing/consent placeholder. No edits/notes mutations. Active-site-aware via
- * `useCustomer`. The order-status badge is reused from the Orders module for consistency.
+ * Customer detail screen — merchant-facing profile with value signals and recent orders.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -13,6 +8,7 @@ import { Pressable, View } from 'react-native';
 
 import {
   Badge,
+  Button,
   Card,
   Divider,
   EmptyState,
@@ -68,14 +64,20 @@ function DetailRow({ label, value }: DetailRowProps): React.JSX.Element {
 }
 
 function RecentOrders({ customer }: { customer: Customer }): React.JSX.Element {
-  const { tokens, rowDirection } = useTheme();
+  const { tokens, rowDirection, isRTL } = useTheme();
   const t = useT();
   const fmt = useFormatters();
   const router = useRouter();
   const orders = customer.recentOrders ?? [];
 
   if (orders.length === 0) {
-    return <Text tone="muted">{t('customer.orders.empty')}</Text>;
+    return (
+      <EmptyState
+        icon="receipt-outline"
+        title={t('customer.orders.empty')}
+        fill={false}
+      />
+    );
   }
 
   return (
@@ -107,7 +109,11 @@ function RecentOrders({ customer }: { customer: Customer }): React.JSX.Element {
               </View>
               <Badge tone={status.tone} label={t(status.labelKey)} />
               <Text variant="label">{fmt.money(order.total, order.currency)}</Text>
-              <Ionicons name="chevron-forward" size={16} color={tokens.color.textMuted} />
+              <Ionicons
+                name={isRTL ? 'chevron-back' : 'chevron-forward'}
+                size={16}
+                color={tokens.color.textMuted}
+              />
             </Pressable>
           </View>
         );
@@ -168,29 +174,41 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps):
   }
 
   const segment = segmentBadge(customerSegment(customer));
+  const name = customerFullName(customer);
 
   return (
-    <Screen testID="customer-detail-screen" title={customerFullName(customer)}>
-      <View style={{ flexDirection: rowDirection, gap: tokens.spacing.xs, flexWrap: 'wrap' }}>
-        <Badge tone={segment.tone} label={t(segment.labelKey)} />
-      </View>
-
-      <Card title={t('customer.section.contact')}>
-        <DetailRow label={t('customer.label.email')} value={customer.email || '—'} />
-        {customer.phone ? (
-          <DetailRow label={t('customer.label.phone')} value={customer.phone} />
-        ) : null}
-        <DetailRow label={t('customer.label.username')} value={customer.username} />
-        <DetailRow label={t('customer.label.role')} value={customer.role} />
-        <DetailRow label={t('customer.label.since')} value={fmt.date(customer.dateCreated)} />
+    <Screen testID="customer-detail-screen" title={name || t('customer.fallbackName')}>
+      <Card>
+        <View style={{ gap: tokens.spacing.sm }}>
+          <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: tokens.spacing.sm, flexWrap: 'wrap' }}>
+            <Text variant="heading" testID="customer-detail-name">
+              {name || t('customer.fallbackName')}
+            </Text>
+            <Badge tone={segment.tone} label={t(segment.labelKey)} />
+          </View>
+          {customer.phone ? (
+            <Text variant="label">{customer.phone}</Text>
+          ) : null}
+          {customer.email ? (
+            <Text variant="caption" tone="muted">
+              {customer.email}
+            </Text>
+          ) : null}
+          {customer.username ? (
+            <Text variant="caption" tone="muted">
+              {t('customer.label.username')}: {customer.username}
+            </Text>
+          ) : null}
+        </View>
       </Card>
 
       <Card title={t('customer.section.value')}>
+        <DetailRow label={t('customer.label.since')} value={fmt.date(customer.dateCreated)} />
+        <DetailRow label={t('customer.label.orders')} value={fmt.num(customer.ordersCount)} />
         <DetailRow
           label={t('customer.label.totalSpent')}
           value={fmt.money(customer.totalSpent, customer.currency)}
         />
-        <DetailRow label={t('customer.label.orders')} value={fmt.num(customer.ordersCount)} />
         <DetailRow
           label={t('customer.label.avgOrder')}
           value={fmt.money(averageOrderValue(customer), customer.currency)}
@@ -201,20 +219,23 @@ export function CustomerDetailScreen({ customerId }: CustomerDetailScreenProps):
             customer.lastOrderDate ? fmt.date(customer.lastOrderDate) : t('product.value.none')
           }
         />
-        <DetailRow
-          label={t('customer.label.segment')}
-          value={<Badge tone={segment.tone} label={t(segment.labelKey)} />}
-        />
+      </Card>
+
+      <Card title={t('customer.section.actions')}>
+        <View style={{ flexDirection: rowDirection, flexWrap: 'wrap', gap: tokens.spacing.sm }}>
+          <Button label={t('customer.action.message')} variant="secondary" size="sm" disabled />
+          <Button
+            label={t('customer.action.viewOrders')}
+            variant="secondary"
+            size="sm"
+            onPress={() => router.navigate('/orders' as never)}
+          />
+          <Button label={t('customer.action.addNote')} variant="secondary" size="sm" disabled />
+        </View>
       </Card>
 
       <Card title={t('customer.section.orders')}>
         <RecentOrders customer={customer} />
-      </Card>
-
-      <Card title={t('customer.section.marketing')}>
-        <Text tone="muted" variant="caption">
-          {t('customer.marketing.note')}
-        </Text>
       </Card>
     </Screen>
   );

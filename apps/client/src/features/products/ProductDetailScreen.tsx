@@ -28,8 +28,6 @@ import {
   productTypeLabelKey,
   statusBadge,
   stockBadge,
-  syncSourceLabelKey,
-  syncStatusBadge,
 } from './productHelpers';
 import { useDeleteProduct, useProduct } from './useProducts';
 
@@ -122,7 +120,6 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
 
   const stock = stockBadge(product);
   const status = statusBadge(product.status);
-  const syncStatus = product.syncStatus ? syncStatusBadge(product.syncStatus) : null;
   const none = t('product.value.none');
 
   const openGallery = (index: number): void => {
@@ -149,17 +146,13 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
         <Badge tone={stock.tone} label={t(stock.labelKey)} />
         <Badge tone={status.tone} label={t(status.labelKey)} />
         <Badge tone="neutral" label={t(productTypeLabelKey(product.type))} />
-        {syncStatus ? <Badge tone={syncStatus.tone} label={t(syncStatus.labelKey)} /> : null}
-        {product.syncSource ? (
-          <Badge tone="info" label={t(syncSourceLabelKey(product.syncSource))} />
-        ) : null}
       </View>
 
       {product.adminEditUrl || product.permalink ? (
         <View style={{ alignItems: 'flex-start', marginTop: tokens.spacing.xs }}>
           <Button
-            testID="product-open-wordpress"
-            label={t('product.action.openInWordPress')}
+            testID="product-open-site"
+            label={t('product.action.openOnSite')}
             variant="secondary"
             size="sm"
             onPress={() => {
@@ -177,12 +170,6 @@ export function ProductDetailScreen({ productId }: ProductDetailScreenProps): Re
           label={t('product.label.lastUpdated')}
           value={fmt.date(product.dateModified)}
         />
-        {product.lastSyncedAt ? (
-          <DetailRow
-            label={t('product.label.lastSync')}
-            value={fmt.date(product.lastSyncedAt)}
-          />
-        ) : null}
         {typeof product.averageRating === 'number' ? (
           <DetailRow
             label={t('product.label.rating')}

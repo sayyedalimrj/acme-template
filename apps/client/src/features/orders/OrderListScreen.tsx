@@ -12,6 +12,7 @@ import {
   AnimatedSection,
   EmptySiteCard,
   FilterChipRow,
+  FilterPickerSheet,
   MobileListPage,
   MobileSearchField,
   MobileTabHeader,
@@ -56,12 +57,19 @@ function customerLabel(order: Order, fallback: string): string {
   return name.length > 0 ? name : fallback;
 }
 
-const STATUS_FILTERS: readonly { value: OrderStatusFilter; labelKey: StringKey }[] = [
+const PRIMARY_STATUS_FILTERS: readonly { value: OrderStatusFilter; labelKey: StringKey }[] = [
   { value: 'all', labelKey: 'orders.filter.allStatus' },
   { value: 'pending', labelKey: 'orders.status.pending' },
   { value: 'processing', labelKey: 'orders.status.processing' },
-  { value: 'on-hold', labelKey: 'orders.status.on-hold' },
   { value: 'completed', labelKey: 'orders.status.completed' },
+];
+
+const MORE_STATUS_FILTERS: readonly { value: OrderStatusFilter; labelKey: StringKey }[] = [
+  { value: 'all', labelKey: 'orders.filter.allStatus' },
+  { value: 'pending', labelKey: 'orders.status.pending' },
+  { value: 'processing', labelKey: 'orders.status.processing' },
+  { value: 'completed', labelKey: 'orders.status.completed' },
+  { value: 'on-hold', labelKey: 'orders.status.on-hold' },
   { value: 'cancelled', labelKey: 'orders.status.cancelled' },
   { value: 'refunded', labelKey: 'orders.status.refunded' },
   { value: 'failed', labelKey: 'orders.status.failed' },
@@ -228,8 +236,15 @@ export function OrderListScreen(): React.JSX.Element {
                 testID="order-search"
               />
               <FilterChipRow
-                options={STATUS_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+                options={PRIMARY_STATUS_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
                 value={status}
+                onChange={setStatus}
+              />
+              <FilterPickerSheet
+                testID="order-more-filters"
+                label={t('orders.filter.more')}
+                value={status}
+                options={MORE_STATUS_FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
                 onChange={setStatus}
               />
             </View>

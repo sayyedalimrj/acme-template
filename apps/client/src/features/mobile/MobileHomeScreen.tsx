@@ -21,6 +21,11 @@ import { triggerSiteSync, wooConnectErrorMessage } from '@/services/connectionAp
 import { dashboardService } from '@/services';
 import { currencyExponent, minorToMoney } from '@/domain/money';
 import { chartDayLabel } from '@/utils/chartDay';
+import {
+  downsampleChartRows,
+  isLowActivitySeries,
+  toOverviewPoints,
+} from '@/utils/chartSeries';
 import { useT } from '@/i18n/I18nProvider';
 import { useFormatters } from '@/i18n/useFormatters';
 import { useActiveSite, useSites } from '@/features/site/useSites';
@@ -226,6 +231,22 @@ function OverviewSection({
               value: Number(r.revenue_minor) / revenueDivisor,
             }));
 
+    const downsampled = downsampleChartRows(chartSource, rangeKey);
+    const metricLabel = t(
+      metric === 'sales'
+        ? 'home.overview.sales'
+        : metric === 'orders'
+          ? 'home.overview.orders'
+          : 'home.overview.customers',
+    );
+    const rangeLabel = t(
+      range === 'week'
+        ? 'home.overview.week'
+        : range === 'year'
+          ? 'home.overview.year'
+          : 'home.overview.month',
+    );
+
     const rangeTotal =
       metric === 'sales'
         ? minorToMoney(totals?.revenue_minor ?? 0, chartCurrency)
@@ -238,16 +259,12 @@ function OverviewSection({
         ? fmt.money(rangeTotal, chartCurrency)
         : fmt.num(Number(rangeTotal));
 
-    const hasChart = seriesQuery.isSuccess && chartSource.length > 0;
+    const hasChart = seriesQuery.isSuccess && downsampled.length > 0 && !isLowActivitySeries(downsampled);
     const hasData =
       (metric === 'sales' && Number(totals?.revenue_minor ?? 0) > 0) ||
       (metric === 'orders' && Number(totals?.orders ?? 0) > 0) ||
       (metric === 'customers' && Number(totals?.new_customers ?? 0) > 0);
-    const points: OverviewPoint[] = chartSource.map((row, index) => ({
-      label: row.label,
-      value: row.value,
-      highlight: index === chartSource.length - 1,
-    }));
+    const points = toOverviewPoints(downsampled);
 
     return (
       <View
@@ -268,6 +285,15 @@ function OverviewSection({
         />
         <Text
           style={{
+            fontSize: type.captionSize,
+            color: colors.textSecondary,
+            textAlign: isRTL ? 'right' : 'left',
+          }}
+        >
+          {metricLabel} · {rangeLabel}
+        </Text>
+        <Text
+          style={{
             fontSize: Math.round(type.titleSize * 0.95),
             fontWeight: '700',
             color: colors.text,
@@ -283,6 +309,8 @@ function OverviewSection({
           <OverviewChart
             data={points}
             variant={metric === 'sales' ? 'line' : 'bar'}
+            sparseLabels
+            showDots={points.length <= 7}
           />
         ) : seriesQuery.isError ? (
           <EmptyState
@@ -299,14 +327,20 @@ function OverviewSection({
           <EmptyState
             testID="home-overview-empty"
             icon="bar-chart-outline"
-            title={seriesQuery.isPending ? t('common.loading') : t('home.overview.empty')}
+            title={
+              seriesQuery.isPending
+                ? t('common.loading')
+                : isLowActivitySeries(downsampled)
+                  ? t('home.overview.lowActivity')
+                  : t('home.overview.empty')
+            }
             fill={false}
             action={
               !hasData && siteId
                 ? {
                     label: sync.isPending
                       ? t('home.overview.syncing')
-                      : t('storeSettings.sync.button'),
+                      : t('home.overview.refreshData'),
                     onPress: () => {
                       setSyncNote(undefined);
                       sync.mutate();
@@ -425,6 +459,8 @@ function OverviewSection({
       <OverviewChart
         data={points}
         variant={isLine ? 'line' : 'bar'}
+        sparseLabels={range !== 'week'}
+        showDots={points.length <= 7}
         testID="home-overview-chart"
       />
 
