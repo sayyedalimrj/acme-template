@@ -275,6 +275,7 @@ export function ProductListScreen(): React.JSX.Element {
           {(categoriesQuery.data ?? []).length > 0 ? (
             <FilterPickerSheet
               testID="product-category-filter"
+              variant="compact"
               label={t('products.filter.categoryLabel')}
               value={categoryId ?? 'all'}
               options={[

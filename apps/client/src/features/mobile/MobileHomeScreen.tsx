@@ -23,7 +23,8 @@ import { currencyExponent, minorToMoney } from '@/domain/money';
 import { chartDayLabel } from '@/utils/chartDay';
 import {
   downsampleChartRows,
-  isLowActivitySeries,
+  isEmptySeries,
+  isUniformSeries,
   toOverviewPoints,
 } from '@/utils/chartSeries';
 import { useT } from '@/i18n/I18nProvider';
@@ -259,12 +260,13 @@ function OverviewSection({
         ? fmt.money(rangeTotal, chartCurrency)
         : fmt.num(Number(rangeTotal));
 
-    const hasChart = seriesQuery.isSuccess && downsampled.length > 0 && !isLowActivitySeries(downsampled);
     const hasData =
       (metric === 'sales' && Number(totals?.revenue_minor ?? 0) > 0) ||
       (metric === 'orders' && Number(totals?.orders ?? 0) > 0) ||
       (metric === 'customers' && Number(totals?.new_customers ?? 0) > 0);
     const points = toOverviewPoints(downsampled);
+    const uniform = isUniformSeries(downsampled);
+    const showChart = seriesQuery.isSuccess && downsampled.length > 0 && (hasData || !isEmptySeries(downsampled));
 
     return (
       <View
@@ -305,13 +307,26 @@ function OverviewSection({
         >
           {realTotal}
         </Text>
-        {hasChart ? (
-          <OverviewChart
-            data={points}
-            variant={metric === 'sales' ? 'line' : 'bar'}
-            sparseLabels
-            showDots={points.length <= 7}
-          />
+        {showChart ? (
+          <View style={{ gap: 8 }}>
+            {uniform ? (
+              <Text
+                style={{
+                  fontSize: type.captionSize,
+                  color: colors.textSecondary,
+                  textAlign: isRTL ? 'right' : 'left',
+                }}
+              >
+                {t('home.overview.uniformRange')}
+              </Text>
+            ) : null}
+            <OverviewChart
+              data={points}
+              variant={metric === 'sales' && !uniform ? 'line' : 'bar'}
+              sparseLabels
+              showDots={points.length <= 7 && !uniform}
+            />
+          </View>
         ) : seriesQuery.isError ? (
           <EmptyState
             testID="home-overview-error"
@@ -330,8 +345,8 @@ function OverviewSection({
             title={
               seriesQuery.isPending
                 ? t('common.loading')
-                : isLowActivitySeries(downsampled)
-                  ? t('home.overview.lowActivity')
+                : hasData
+                  ? t('home.overview.uniformRange')
                   : t('home.overview.empty')
             }
             fill={false}

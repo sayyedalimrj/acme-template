@@ -8,6 +8,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { useAsync, useFmt, useT, useTheme } from '@/system';
+import type { LabelKey } from '@/labels';
 import {
   Badge,
   Card,
@@ -35,7 +36,7 @@ type PriorityFilter = 'all' | WorkflowPriority;
 type TypeFilter = 'all' | WorkflowType;
 
 const COLUMN_ORDER: BoardColumnKey[] = ['backlog', 'inProgress', 'waitingBlocked', 'review', 'done'];
-const COLUMN_LABEL: Record<BoardColumnKey, string> = {
+const COLUMN_LABEL: Record<BoardColumnKey, LabelKey> = {
   backlog: 'workflow.col.backlog',
   inProgress: 'workflow.col.inProgress',
   waitingBlocked: 'workflow.col.waitingBlocked',

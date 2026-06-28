@@ -1,7 +1,5 @@
 /**
  * FilterPickerSheet — compact filter control with a bottom sheet for secondary options.
- *
- * Keeps primary screens uncluttered: one tappable row opens a modal list instead of many chips.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
@@ -24,6 +22,10 @@ export interface FilterPickerSheetProps<T extends string> {
   options: readonly FilterPickerOption<T>[];
   onChange: (value: T) => void;
   testID?: string;
+  /** compact = lighter single-line row; trigger = text-only more-filters button */
+  variant?: 'default' | 'compact' | 'trigger';
+  /** Shown on trigger variant when no secondary value is active */
+  triggerLabel?: string;
 }
 
 export function FilterPickerSheet<T extends string>({
@@ -32,6 +34,8 @@ export function FilterPickerSheet<T extends string>({
   options,
   onChange,
   testID,
+  variant = 'default',
+  triggerLabel,
 }: FilterPickerSheetProps<T>): React.JSX.Element {
   const colors = useMobileColors();
   const { rowDirection, isRTL } = useTheme();
@@ -43,35 +47,66 @@ export function FilterPickerSheet<T extends string>({
     setOpen(false);
   };
 
+  const isCompact = variant === 'compact';
+  const isTrigger = variant === 'trigger';
+
   return (
     <>
       <PressableScale
         testID={testID}
         accessibilityRole="button"
-        accessibilityLabel={label}
+        accessibilityLabel={isTrigger ? (triggerLabel ?? label) : label}
         onPress={() => setOpen(true)}
         style={{
           flexDirection: rowDirection,
           alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 10,
-          minHeight: 40,
-          paddingHorizontal: 14,
+          justifyContent: isTrigger ? 'flex-start' : 'space-between',
+          gap: isTrigger ? 6 : 10,
+          minHeight: isTrigger ? 32 : isCompact ? 38 : 40,
+          paddingHorizontal: isTrigger ? 0 : isCompact ? 12 : 14,
           borderRadius: mobileMetrics.cardRadiusSmall,
-          backgroundColor: colors.tile,
+          backgroundColor: isTrigger ? 'transparent' : isCompact ? colors.card : colors.tile,
+          borderWidth: isCompact ? 1 : 0,
+          borderColor: isCompact ? colors.separator : 'transparent',
         }}
       >
-        <Text style={{ fontSize: mobileType.captionSize, color: colors.textSecondary, fontWeight: '600' }}>
-          {label}
-        </Text>
+        {!isTrigger ? (
+          <Text
+            style={{
+              fontSize: mobileType.captionSize,
+              color: colors.textSecondary,
+              fontWeight: '600',
+            }}
+          >
+            {label}
+          </Text>
+        ) : null}
         <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 6, flexShrink: 1 }}>
           <Text
-            style={{ fontSize: mobileType.captionSize, color: colors.text, fontWeight: '700' }}
+            style={{
+              fontSize: mobileType.captionSize,
+              color: isTrigger ? colors.primary : colors.text,
+              fontWeight: isTrigger ? '600' : '700',
+            }}
             numberOfLines={1}
           >
-            {selected?.label ?? ''}
+            {isTrigger ? (triggerLabel ?? label) : (selected?.label ?? '')}
           </Text>
-          <Ionicons name="chevron-down" size={16} color={colors.muted} />
+          {!isTrigger && selected?.value !== options[0]?.value ? (
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: colors.primary,
+              }}
+            />
+          ) : null}
+          <Ionicons
+            name="chevron-down"
+            size={isTrigger ? 14 : 16}
+            color={isTrigger ? colors.primary : colors.muted}
+          />
         </View>
       </PressableScale>
 

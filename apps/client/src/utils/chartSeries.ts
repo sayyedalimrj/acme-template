@@ -33,7 +33,6 @@ export function downsampleChartRows(
   if (rangeKey === '30d') {
     return bucketSum(rows, Math.max(1, Math.ceil(rows.length / 4)));
   }
-  // 7d — keep all points; labels are thinned in OverviewChart.
   return rows;
 }
 
@@ -45,11 +44,17 @@ export function toOverviewPoints(rows: ChartRow[]): OverviewPoint[] {
   }));
 }
 
-/** True when the series has no meaningful variation (flat line or all zeros). */
-export function isLowActivitySeries(rows: ChartRow[]): boolean {
+/** No points or every bucket is zero. */
+export function isEmptySeries(rows: ChartRow[]): boolean {
   if (rows.length === 0) return true;
+  return rows.every((r) => !Number.isFinite(r.value) || r.value <= 0);
+}
+
+/** Same value on every day — still may have a meaningful range total. */
+export function isUniformSeries(rows: ChartRow[]): boolean {
+  if (rows.length <= 1) return false;
   const max = Math.max(...rows.map((r) => r.value));
-  if (max <= 0) return true;
+  if (max <= 0) return false;
   const min = Math.min(...rows.map((r) => r.value));
   return min === max;
 }
